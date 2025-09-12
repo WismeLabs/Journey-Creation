@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Playwright ChatGPT Automation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #000000 0%, #505151 100%);
+      color: #f3f3f3;
+    }
+    .container {
+      max-width: 800px;
+      margin: 3em auto;
+      background: linear-gradient(135deg, #ffffff 0%, #686868 100%);
+      border-radius: 18px;
+      box-shadow: 0 4px 24px #0008, 0 1.5px 6px #0004;
+      padding: 2.5em 4em;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5em;
+    }
+    h1 {
+      text-align: center;
+      color: #000000;
+      letter-spacing: 1px;
+      margin-bottom: 0.5em;
+      font-weight: 700;
+      background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    label {
+      font-weight: 600;
+      margin: 1em;
+      display: block;
+      color: #000000;
+    }
+    input[type="text"], textarea {
+      width: 100%;
+      margin-bottom: 1em;
+      border-radius: 8px;
+      border: 1px solid #444;
+      padding: 0.7em;
+      background: #23272f;
+      color: #f3f3f3;
+      font-size: 1em;
+      transition: border 0.2s;
+    }
+    input[type="text"]:focus, textarea:focus {
+      border: 1.5px solid #00c6ff;
+      outline: none;
+    }
+    textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+    .prompt-row {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 2em;
+      gap: 0.7em;
+    }
+    .prompt-row label {
+      flex: 0 0 90px;
+      margin: 0;
+      font-weight: 500;
+      color: #053048;
+    }
+    .prompt-row textarea {
+      flex: 1;
+      margin-left: 0;
+      min-height: 60px;
+      background: #23272f;
+      color: #f3f3f3;
+      border-radius: 8px;
+      border: 1px solid #444;
+    }
+    #promptCount { width: 60px; }
+    #status {
+      margin-top: 1.5em;
+      text-align: center;
+      font-weight: bold;
+      color: #035788;
+      letter-spacing: 0.5px;
+    }
+    button {
+      margin-top: 1em;
+      padding: 0.9em 2.5em;
+      border-radius: 8px;
+      border: none;
+      background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%);
+      color: #fff;
+      font-size: 1.15em;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #0072ff33;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    button:disabled {
+      background: #444;
+      color: #aaa;
+      box-shadow: none;
+    }
+    .slider-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #000000;
+    }
+    .slider-label span {
+      font-size: 0.95em;
+      color: #131313;
+    }
+    input[type="range"] {
+      width: 100%;
+      margin-bottom: 1.5em;
+      accent-color: #000000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Wisme Journey Automation</h1>
+    <form id="promptForm">
+      <label for="context">Context (shared for all prompts):</label>
+      <textarea id="context" name="context" placeholder="Enter context for Gemini (optional)"></textarea>
+      <label for="hostName">Host Name:</label>
+      <input type="text" id="hostName" name="hostName" value="Harry">
+      <label for="hostVoiceId">Host Voice ID:</label>
+      <input type="text" id="hostVoiceId" name="hostVoiceId" placeholder="Enter ElevenLabs Host Voice ID">
+      <label for="speakerName">Speaker Name:</label>
+      <input type="text" id="speakerName" name="speakerName" value="Maya">
+      <label for="speakerVoiceId">Speaker Voice ID:</label>
+      <input type="text" id="speakerVoiceId" name="speakerVoiceId" placeholder="Enter ElevenLabs Speaker Voice ID">
+      <label for="journeyName">Journey Name:</label>
+      <input type="text" id="journeyName" name="journeyName" placeholder="Enter journey name" required>
+      <div class="slider-label">
+        <label for="promptCount">Number of Prompts:</label>
+        <span id="promptCountValue">3</span>
+      </div>
+      <input type="range" id="promptCount" name="promptCount" min="1" max="10" value="3">
+      <div id="promptsContainer"></div>
+      <button type="submit">Start Automation</button>
+    </form>
+    <div id="status"></div>
+  </div>
+  <script>
+    // Dynamically create prompt input fields
+    const promptsContainer = document.getElementById('promptsContainer');
+    const promptCount = document.getElementById('promptCount');
+    const promptCountValue = document.getElementById('promptCountValue');
+    function renderPromptInputs(count) {
+      promptsContainer.innerHTML = '';
+      for (let i = 1; i <= count; i++) {
+        const row = document.createElement('div');
+        row.className = 'prompt-row';
+        row.innerHTML = `<label for="prompt${i}">Prompt ${i}:</label><textarea id="prompt${i}" name="prompt${i}" placeholder="Enter prompt ${i}"></textarea>`;
+        promptsContainer.appendChild(row);
+      }
+    }
+    promptCount.addEventListener('input', function() {
+      promptCountValue.textContent = promptCount.value;
+      renderPromptInputs(Number(promptCount.value));
+    });
+    // Initial render
+    renderPromptInputs(Number(promptCount.value));
+
+    document.getElementById('promptForm').onsubmit = async function(e) {
+      e.preventDefault();
+      const context = document.getElementById('context').value;
+      const journeyName = document.getElementById('journeyName').value.trim();
+      const hostName = document.getElementById('hostName').value;
+      const hostVoiceId = document.getElementById('hostVoiceId').value;
+      const speakerName = document.getElementById('speakerName').value;
+      const speakerVoiceId = document.getElementById('speakerVoiceId').value;
+      const count = Number(promptCount.value);
+      const prompts = [];
+      for (let i = 1; i <= count; i++) {
+        const val = document.getElementById(`prompt${i}`).value.trim();
+        if (val) prompts.push(val);
+      }
+      if (!journeyName) {
+        document.getElementById('status').innerText = 'Please enter a journey name.';
+        return;
+      }
+      if (prompts.length === 0) {
+        document.getElementById('status').innerText = 'Please enter at least one prompt.';
+        return;
+      }
+      document.getElementById('status').innerText = 'Running...';
+      const res = await fetch('/api/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context, journeyName, prompts, hostName, hostVoiceId, speakerName, speakerVoiceId })
+      });
+      const data = await res.json();
+      if (data.status === 'completed') {
+        document.getElementById('status').innerText = 'Done! Check outputs folder.';
+      } else {
+        document.getElementById('status').innerText = 'Error: ' + (data.error || 'Unknown');
+      }
+    };
+  </script>
+</body>
+</html>

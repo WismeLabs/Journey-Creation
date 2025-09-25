@@ -120,6 +120,31 @@
       margin-bottom: 1.5em;
       accent-color: #000000;
     }
+    .tts-options {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 10px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    select {
+      width: 100%;
+      padding: 0.7em;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background: #23272f;
+      color: #f3f3f3;
+      font-size: 1em;
+      transition: border 0.2s;
+    }
+    select:focus {
+      border: 1.5px solid #00c6ff;
+      outline: none;
+    }
+    select option {
+      background: #23272f;
+      color: #f3f3f3;
+    }
   </style>
 </head>
 <body>
@@ -128,14 +153,52 @@
     <form id="promptForm">
       <label for="context">Context (shared for all prompts):</label>
       <textarea id="context" name="context" placeholder="Enter context for Gemini (optional)"></textarea>
-      <label for="hostName">Host Name:</label>
-      <input type="text" id="hostName" name="hostName" value="Harry">
-      <label for="hostVoiceId">Host Voice ID:</label>
-      <input type="text" id="hostVoiceId" name="hostVoiceId" placeholder="Enter ElevenLabs Host Voice ID">
-      <label for="speakerName">Speaker Name:</label>
-      <input type="text" id="speakerName" name="speakerName" value="Maya">
-      <label for="speakerVoiceId">Speaker Voice ID:</label>
-      <input type="text" id="speakerVoiceId" name="speakerVoiceId" placeholder="Enter ElevenLabs Speaker Voice ID">
+      
+      <label for="ttsProvider">Text-to-Speech Provider:</label>
+      <select id="ttsProvider" name="ttsProvider" onchange="toggleTTSOptions()" style="width: 100%; padding: 0.7em; border-radius: 8px; border: 1px solid #444; background: #23272f; color: #f3f3f3; font-size: 1em;">
+        <option value="elevenlabs">ElevenLabs</option>
+        <option value="google" selected>Google Cloud TTS (Chirp3-HD)</option>
+      </select>
+
+      <!-- ElevenLabs Options -->
+      <div id="elevenlabsOptions" class="tts-options" style="display: none;">
+        <label for="hostName">Host Name:</label>
+        <input type="text" id="hostName" name="hostName" value="Harry">
+        <label for="hostVoiceId">Host Voice ID:</label>
+        <input type="text" id="hostVoiceId" name="hostVoiceId" placeholder="Enter ElevenLabs Host Voice ID">
+        <label for="speakerName">Speaker Name:</label>
+        <input type="text" id="speakerName" name="speakerName" value="Maya">
+        <label for="speakerVoiceId">Speaker Voice ID:</label>
+        <input type="text" id="speakerVoiceId" name="speakerVoiceId" placeholder="Enter ElevenLabs Speaker Voice ID">
+      </div>
+
+      <!-- Google TTS Options -->
+      <div id="googleOptions" class="tts-options">
+        <label for="googleHostName">Host Name:</label>
+        <input type="text" id="googleHostName" name="googleHostName" value="Harry">
+        <label for="googleHostVoice">Host Voice:</label>
+        <select id="googleHostVoice" name="googleHostVoice" style="width: 100%; padding: 0.7em; border-radius: 8px; border: 1px solid #444; background: #23272f; color: #f3f3f3; font-size: 1em;">
+          <option value="en-US-Chirp3-HD-Achird" selected>Chirp3-HD Achird (High Quality)</option>
+          <option value="en-US-Chirp3-HD-Aoede">Chirp3-HD Aoede (High Quality)</option>
+          <option value="en-US-Journey-D">Journey D (Male)</option>
+          <option value="en-US-Journey-F">Journey F (Female)</option>
+          <option value="en-US-Journey-O">Journey O (Male)</option>
+          <option value="en-US-Wavenet-A">Wavenet A (Female)</option>
+          <option value="en-US-Wavenet-B">Wavenet B (Male)</option>
+        </select>
+        <label for="googleSpeakerName">Speaker Name:</label>
+        <input type="text" id="googleSpeakerName" name="googleSpeakerName" value="Maya">
+        <label for="googleSpeakerVoice">Speaker Voice:</label>
+        <select id="googleSpeakerVoice" name="googleSpeakerVoice" style="width: 100%; padding: 0.7em; border-radius: 8px; border: 1px solid #444; background: #23272f; color: #f3f3f3; font-size: 1em;">
+          <option value="en-US-Chirp3-HD-Aoede" selected>Chirp3-HD Aoede (High Quality)</option>
+          <option value="en-US-Chirp3-HD-Achird">Chirp3-HD Achird (High Quality)</option>
+          <option value="en-US-Journey-F">Journey F (Female)</option>
+          <option value="en-US-Journey-D">Journey D (Male)</option>
+          <option value="en-US-Journey-O">Journey O (Male)</option>
+          <option value="en-US-Wavenet-A">Wavenet A (Female)</option>
+          <option value="en-US-Wavenet-B">Wavenet B (Male)</option>
+        </select>
+      </div>
       <label for="journeyName">Journey Name:</label>
       <input type="text" id="journeyName" name="journeyName" placeholder="Enter journey name" required>
       <div class="slider-label">
@@ -169,14 +232,41 @@
     // Initial render
     renderPromptInputs(Number(promptCount.value));
 
+    // Toggle TTS provider options
+    function toggleTTSOptions() {
+      const provider = document.getElementById('ttsProvider').value;
+      const elevenlabsOptions = document.getElementById('elevenlabsOptions');
+      const googleOptions = document.getElementById('googleOptions');
+      
+      if (provider === 'elevenlabs') {
+        elevenlabsOptions.style.display = 'block';
+        googleOptions.style.display = 'none';
+      } else {
+        elevenlabsOptions.style.display = 'none';
+        googleOptions.style.display = 'block';
+      }
+    }
+
     document.getElementById('promptForm').onsubmit = async function(e) {
       e.preventDefault();
       const context = document.getElementById('context').value;
       const journeyName = document.getElementById('journeyName').value.trim();
-      const hostName = document.getElementById('hostName').value;
-      const hostVoiceId = document.getElementById('hostVoiceId').value;
-      const speakerName = document.getElementById('speakerName').value;
-      const speakerVoiceId = document.getElementById('speakerVoiceId').value;
+      const ttsProvider = document.getElementById('ttsProvider').value;
+      
+      let hostName, hostVoiceId, speakerName, speakerVoiceId;
+      
+      if (ttsProvider === 'elevenlabs') {
+        hostName = document.getElementById('hostName').value;
+        hostVoiceId = document.getElementById('hostVoiceId').value;
+        speakerName = document.getElementById('speakerName').value;
+        speakerVoiceId = document.getElementById('speakerVoiceId').value;
+      } else {
+        hostName = document.getElementById('googleHostName').value;
+        hostVoiceId = document.getElementById('googleHostVoice').value;
+        speakerName = document.getElementById('googleSpeakerName').value;
+        speakerVoiceId = document.getElementById('googleSpeakerVoice').value;
+      }
+      
       const count = Number(promptCount.value);
       const prompts = [];
       for (let i = 1; i <= count; i++) {
@@ -191,17 +281,31 @@
         document.getElementById('status').innerText = 'Please enter at least one prompt.';
         return;
       }
-      document.getElementById('status').innerText = 'Running...';
-      const res = await fetch('/api/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context, journeyName, prompts, hostName, hostVoiceId, speakerName, speakerVoiceId })
-      });
-      const data = await res.json();
-      if (data.status === 'completed') {
-        document.getElementById('status').innerText = 'Done! Check outputs folder.';
-      } else {
-        document.getElementById('status').innerText = 'Error: ' + (data.error || 'Unknown');
+      document.getElementById('status').innerText = `Running with ${ttsProvider.toUpperCase()} TTS...`;
+      
+      try {
+        const res = await fetch('/api/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            context, 
+            journeyName, 
+            prompts, 
+            hostName, 
+            hostVoiceId, 
+            speakerName, 
+            speakerVoiceId,
+            provider: ttsProvider
+          })
+        });
+        const data = await res.json();
+        if (data.status === 'completed') {
+          document.getElementById('status').innerText = data.message || 'Done! Check outputs folder.';
+        } else {
+          document.getElementById('status').innerText = 'Error: ' + (data.error || 'Unknown');
+        }
+      } catch (error) {
+        document.getElementById('status').innerText = 'Error: ' + error.message;
       }
     };
   </script>

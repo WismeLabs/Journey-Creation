@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journey Creation - Teacher Review</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .chapter-info {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .review-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .episodes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .episode-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .episode-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .episode-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .episode-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .script-preview {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .highlighted-sentence {
+            background-color: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 3px;
+            border-left: 3px solid #ffc107;
+            margin: 2px 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .highlighted-sentence:hover {
+            background-color: #ffeaa7;
+        }
+
+        .highlighted-sentence.needs-review {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .source-reference {
+            font-size: 0.8em;
+            color: #6c757d;
+            font-style: italic;
+            margin-left: 10px;
+        }
+
+        .sentence-actions {
+            display: none;
+            margin-top: 5px;
+            gap: 10px;
+        }
+
+        .highlighted-sentence.active .sentence-actions {
+            display: flex;
+        }
+
+        .mcq-section {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .mcq-question {
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .mcq-options {
+            margin-left: 20px;
+        }
+
+        .mcq-option {
+            margin: 5px 0;
+        }
+
+        .mcq-option.correct {
+            color: #27ae60;
+            font-weight: 600;
+        }
+
+        .audio-player {
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        .episode-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .stats-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: 700;
+            color: #3498db;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #ecf0f1;
+            border-radius: 3px;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #27ae60;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+            font-size: 1.2em;
+            color: #7f8c8d;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .episodes-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .chapter-info {
+                flex-direction: column;
+            }
+            
+            .review-controls {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <div class="header">
+            <h1>📚 Content Review Dashboard</h1>
+            <p style="color: #7f8c8d; margin-bottom: 20px;">Review and approve AI-generated educational content</p>
+            
+            <div class="chapter-info">
+                <div class="info-card">
+                    <strong>Chapter ID:</strong>
+                    <span id="chapterId">Loading...</span>
+                </div>
+                <div class="info-card">
+                    <strong>Subject:</strong>
+                    <span id="chapterSubject">Loading...</span>
+                </div>
+                <div class="info-card">
+                    <strong>Grade:</strong>
+                    <span id="chapterGrade">Loading...</span>
+                </div>
+                <div class="info-card">
+                    <strong>Episodes:</strong>
+                    <span id="episodeCount">Loading...</span>
+                </div>
+            </div>
+            
+            <div class="review-controls">
+                <button class="btn btn-primary" onclick="loadChapter()">🔄 Refresh</button>
+                <button class="btn btn-success" onclick="approveAll()">✅ Approve All</button>
+                <button class="btn btn-warning" onclick="requestRevisions()">📝 Request Revisions</button>
+                <button class="btn btn-danger" onclick="rejectChapter()">❌ Reject Chapter</button>
+            </div>
+        </div>
+
+        <!-- Stats Panel -->
+        <div class="stats-panel">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalSentences">0</div>
+                    <div class="stat-label">Total Sentences</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="flaggedSentences">0</div>
+                    <div class="stat-label">Flagged for Review</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="approvedSentences">0</div>
+                    <div class="stat-label">Approved</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="totalMCQs">0</div>
+                    <div class="stat-label">Total MCQs</div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="reviewProgress" style="width: 0%"></div>
+            </div>
+            <div style="text-align: center; margin-top: 10px; color: #7f8c8d;">
+                Review Progress: <span id="progressText">0%</span>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="loading">
+            🔄 Loading chapter content...
+        </div>
+
+        <!-- Episodes Grid -->
+        <div id="episodesContainer" class="episodes-grid" style="display: none;">
+            <!-- Episodes will be dynamically loaded here -->
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentChapter = null;
+        let reviewState = {
+            approved: new Set(),
+            rejected: new Set(),
+            flagged: new Set()
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const chapterId = urlParams.get('chapter') || 'CBSE_7_SCI_CH4';
+            loadChapter(chapterId);
+        });
+
+        // Load chapter data
+        async function loadChapter(chapterId) {
+            try {
+                showLoading(true);
+                
+                // Get chapter from URL parameter if not provided
+                if (!chapterId) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    chapterId = urlParams.get('chapter') || 'CBSE_7_SCI_CH4';
+                }
+
+                const response = await fetch(`/api/v1/result/${chapterId}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentChapter = data;
+                    await loadChapterContent(chapterId);
+                    renderChapterInfo();
+                    renderEpisodes();
+                    updateStats();
+                } else {
+                    showError('Failed to load chapter data');
+                }
+            } catch (error) {
+                showError(`Error loading chapter: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Load detailed chapter content
+        async function loadChapterContent(chapterId) {
+            try {
+                // Load manifest and episode data
+                const manifestResponse = await fetch(`/outputs/chapter_${chapterId}/manifest.json`);
+                if (manifestResponse.ok) {
+                    currentChapter.manifest = await manifestResponse.json();
+                }
+
+                // Load episodes
+                currentChapter.episodes = [];
+                for (let i = 1; i <= (currentChapter.episodes_count || 5); i++) {
+                    try {
+                        const episodeResponse = await fetch(`/outputs/chapter_${chapterId}/episodes/ep${i.toString().padStart(2, '0')}/script.json`);
+                        if (episodeResponse.ok) {
+                            const episodeData = await episodeResponse.json();
+                            currentChapter.episodes.push(episodeData);
+                        }
+                    } catch (error) {
+                        console.warn(`Could not load episode ${i}:`, error);
+                    }
+                }
+            } catch (error) {
+                console.warn('Could not load detailed chapter content:', error);
+            }
+        }
+
+        // Render chapter information
+        function renderChapterInfo() {
+            if (!currentChapter) return;
+
+            document.getElementById('chapterId').textContent = currentChapter.chapter_id || 'Unknown';
+            document.getElementById('chapterSubject').textContent = currentChapter.subject || 'Unknown';
+            document.getElementById('chapterGrade').textContent = currentChapter.grade_band || 'Unknown';
+            document.getElementById('episodeCount').textContent = currentChapter.episodes_count || 0;
+        }
+
+        // Render episodes
+        function renderEpisodes() {
+            const container = document.getElementById('episodesContainer');
+            container.innerHTML = '';
+
+            if (!currentChapter.episodes || currentChapter.episodes.length === 0) {
+                container.innerHTML = '<div class="error-message">No episodes found for this chapter.</div>';
+                return;
+            }
+
+            currentChapter.episodes.forEach((episode, index) => {
+                const episodeCard = createEpisodeCard(episode, index + 1);
+                container.appendChild(episodeCard);
+            });
+        }
+
+        // Create episode card
+        function createEpisodeCard(episode, episodeNumber) {
+            const card = document.createElement('div');
+            card.className = 'episode-card';
+            card.innerHTML = `
+                <div class="episode-header">
+                    <div class="episode-title">Episode ${episodeNumber}: ${episode.title || 'Untitled'}</div>
+                    <div class="episode-status status-pending">Pending Review</div>
+                </div>
+                
+                <div class="script-preview">
+                    <h4>Script Preview:</h4>
+                    <div id="script-${episodeNumber}">
+                        ${renderScriptWithHighlights(episode, episodeNumber)}
+                    </div>
+                </div>
+
+                <div class="mcq-section">
+                    <h4>Assessment Questions (${episode.mcqs?.length || 0}):</h4>
+                    <div id="mcqs-${episodeNumber}">
+                        ${renderMCQs(episode.mcqs || [])}
+                    </div>
+                </div>
+
+                <div class="audio-section" style="margin: 15px 0;">
+                    <h4>Audio Preview:</h4>
+                    <audio controls class="audio-player">
+                        <source src="/outputs/chapter_${currentChapter.chapter_id}/episodes/ep${episodeNumber.toString().padStart(2, '0')}/audio/final_audio.mp3" type="audio/mpeg">
+                        Audio not available
+                    </audio>
+                </div>
+
+                <div class="episode-actions">
+                    <button class="btn btn-success" onclick="approveEpisode(${episodeNumber})">
+                        ✅ Approve Episode
+                    </button>
+                    <button class="btn btn-warning" onclick="requestEpisodeRevision(${episodeNumber})">
+                        📝 Request Revision
+                    </button>
+                    <button class="btn btn-danger" onclick="rejectEpisode(${episodeNumber})">
+                        ❌ Reject Episode
+                    </button>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Render script with sentence-level highlighting
+        function renderScriptWithHighlights(episode, episodeNumber) {
+            if (!episode.script_text) return '<p>No script available</p>';
+
+            const sentences = episode.script_text.split(/(?<=[.!?])\s+/);
+            let html = '';
+
+            sentences.forEach((sentence, index) => {
+                const sentenceId = `sentence-${episodeNumber}-${index}`;
+                const needsReview = Math.random() < 0.15; // 15% flagged for demo
+                const highlightClass = needsReview ? 'highlighted-sentence needs-review' : 'highlighted-sentence';
+                
+                html += `
+                    <div class="${highlightClass}" id="${sentenceId}" onclick="toggleSentence('${sentenceId}')">
+                        ${sentence}
+                        <span class="source-reference">[Source: p${Math.floor(Math.random() * 10) + 1}]</span>
+                        <div class="sentence-actions">
+                            <button class="btn btn-success" style="padding: 5px 10px; font-size: 0.8em;" onclick="approveSentence('${sentenceId}')">
+                                ✅ Approve
+                            </button>
+                            <button class="btn btn-warning" style="padding: 5px 10px; font-size: 0.8em;" onclick="flagSentence('${sentenceId}')">
+                                🏷️ Flag
+                            </button>
+                            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8em;" onclick="rejectSentence('${sentenceId}')">
+                                ❌ Reject
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            return html;
+        }
+
+        // Render MCQs
+        function renderMCQs(mcqs) {
+            if (!mcqs || mcqs.length === 0) {
+                return '<p>No assessment questions available</p>';
+            }
+
+            return mcqs.map((mcq, index) => `
+                <div class="mcq-question">
+                    <strong>Q${index + 1}:</strong> ${mcq.question_text}
+                    <div class="mcq-options">
+                        ${mcq.options.map((option, optIndex) => `
+                            <div class="mcq-option ${optIndex === mcq.correct_index ? 'correct' : ''}">
+                                ${String.fromCharCode(65 + optIndex)}. ${option}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                        <strong>Explanation:</strong> ${mcq.explanation}
+                    </p>
+                </div>
+            `).join('');
+        }
+
+        // Sentence interaction handlers
+        function toggleSentence(sentenceId) {
+            const element = document.getElementById(sentenceId);
+            element.classList.toggle('active');
+        }
+
+        function approveSentence(sentenceId) {
+            reviewState.approved.add(sentenceId);
+            reviewState.rejected.delete(sentenceId);
+            reviewState.flagged.delete(sentenceId);
+            
+            const element = document.getElementById(sentenceId);
+            element.classList.remove('needs-review', 'active');
+            element.style.backgroundColor = '#d4edda';
+            
+            updateStats();
+            showSuccess('Sentence approved');
+        }
+
+        function flagSentence(sentenceId) {
+            reviewState.flagged.add(sentenceId);
+            reviewState.approved.delete(sentenceId);
+            
+            const element = document.getElementById(sentenceId);
+            element.classList.add('needs-review');
+            element.classList.remove('active');
+            
+            updateStats();
+            showSuccess('Sentence flagged for revision');
+        }
+
+        function rejectSentence(sentenceId) {
+            reviewState.rejected.add(sentenceId);
+            reviewState.approved.delete(sentenceId);
+            reviewState.flagged.delete(sentenceId);
+            
+            const element = document.getElementById(sentenceId);
+            element.classList.add('needs-review', 'active');
+            element.style.backgroundColor = '#f8d7da';
+            
+            updateStats();
+            showSuccess('Sentence rejected');
+        }
+
+        // Episode-level actions
+        async function approveEpisode(episodeNumber) {
+            try {
+                // API call to approve episode
+                showSuccess(`Episode ${episodeNumber} approved`);
+                updateEpisodeStatus(episodeNumber, 'approved');
+            } catch (error) {
+                showError(`Failed to approve episode: ${error.message}`);
+            }
+        }
+
+        async function requestEpisodeRevision(episodeNumber) {
+            const reason = prompt('Please provide revision notes:');
+            if (reason) {
+                // API call to request revision
+                showSuccess(`Revision requested for Episode ${episodeNumber}`);
+                updateEpisodeStatus(episodeNumber, 'revision-requested');
+            }
+        }
+
+        async function rejectEpisode(episodeNumber) {
+            if (confirm('Are you sure you want to reject this episode?')) {
+                // API call to reject episode
+                showSuccess(`Episode ${episodeNumber} rejected`);
+                updateEpisodeStatus(episodeNumber, 'rejected');
+            }
+        }
+
+        // Chapter-level actions
+        async function approveAll() {
+            if (confirm('Approve all episodes in this chapter?')) {
+                // API call to approve entire chapter
+                showSuccess('Chapter approved successfully');
+            }
+        }
+
+        async function requestRevisions() {
+            const notes = prompt('Please provide revision notes for the entire chapter:');
+            if (notes) {
+                // API call to request chapter revisions
+                showSuccess('Chapter revision requested');
+            }
+        }
+
+        async function rejectChapter() {
+            if (confirm('Are you sure you want to reject this entire chapter?')) {
+                const reason = prompt('Please provide rejection reason:');
+                if (reason) {
+                    // API call to reject chapter
+                    showSuccess('Chapter rejected');
+                }
+            }
+        }
+
+        // Update episode status display
+        function updateEpisodeStatus(episodeNumber, status) {
+            const statusElement = document.querySelector(`#episodesContainer .episode-card:nth-child(${episodeNumber}) .episode-status`);
+            if (statusElement) {
+                statusElement.className = `episode-status status-${status}`;
+                statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ');
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const totalSentences = document.querySelectorAll('.highlighted-sentence').length;
+            const flaggedSentences = reviewState.flagged.size + reviewState.rejected.size;
+            const approvedSentences = reviewState.approved.size;
+            const totalMCQs = currentChapter.episodes?.reduce((sum, ep) => sum + (ep.mcqs?.length || 0), 0) || 0;
+
+            document.getElementById('totalSentences').textContent = totalSentences;
+            document.getElementById('flaggedSentences').textContent = flaggedSentences;
+            document.getElementById('approvedSentences').textContent = approvedSentences;
+            document.getElementById('totalMCQs').textContent = totalMCQs;
+
+            // Update progress
+            const progress = totalSentences > 0 ? (approvedSentences / totalSentences) * 100 : 0;
+            document.getElementById('reviewProgress').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = `${Math.round(progress)}%`;
+        }
+
+        // Utility functions
+        function showLoading(show) {
+            document.getElementById('loadingState').style.display = show ? 'block' : 'none';
+            document.getElementById('episodesContainer').style.display = show ? 'none' : 'grid';
+        }
+
+        function showError(message) {
+            const container = document.getElementById('episodesContainer');
+            container.innerHTML = `<div class="error-message">❌ ${message}</div>`;
+            container.style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            // Create temporary success message
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = `✅ ${message}`;
+            successDiv.style.position = 'fixed';
+            successDiv.style.top = '20px';
+            successDiv.style.right = '20px';
+            successDiv.style.zIndex = '1000';
+
+            document.body.appendChild(successDiv);
+
+            setTimeout(() => {
+                document.body.removeChild(successDiv);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

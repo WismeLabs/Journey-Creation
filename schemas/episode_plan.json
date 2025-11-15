@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Episode Plan Schema",
+  "type": "object",
+  "properties": {
+    "chapter_id": {
+      "type": "string"
+    },
+    "size_category": {
+      "type": "string",
+      "enum": ["small", "medium", "large"]
+    },
+    "episodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ep": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 3
+          },
+          "target_minutes": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 8
+          }
+        },
+        "required": ["ep", "concepts", "target_minutes"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["chapter_id", "size_category", "episodes"],
+  "additionalProperties": false
+}

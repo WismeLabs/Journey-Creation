@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Script Schema",
+  "type": "object",
+  "properties": {
+    "episode_index": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "estimated_duration_seconds": {
+      "type": "integer",
+      "minimum": 240,
+      "maximum": 480
+    },
+    "word_count": {
+      "type": "integer",
+      "minimum": 450,
+      "maximum": 1100
+    },
+    "style_lock": {
+      "type": "string",
+      "description": "Reference to style configuration file"
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": ["hook", "core1", "micro-example", "core2", "recall-break", "mini-summary"]
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "type": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["id", "start", "end", "type", "text"],
+        "additionalProperties": false
+      }
+    },
+    "concept_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "pronunciation_hints": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": ["episode_index", "title", "estimated_duration_seconds", "word_count", "sections", "concept_ids"],
+  "additionalProperties": false
+}

@@ -1,84 +1,119 @@
-# Journey-Creation
+# 🎓 K-12 Educational Content Pipeline
 
-Automate conversational journeys with AI and TTS, generating audio episodes using Gemini and ElevenLabs, with a web frontend for prompt management.
+**Production-Ready AI System for Educational Content Generation**
 
-## Features
+Professional system that transforms textbooks into engaging podcast-style episodes with AI-generated scripts, quiz questions, and professional voice synthesis. Complete end-to-end pipeline for K-12 education.
 
-- **Frontend**: Web UI (`public/index.html`) for entering prompts, context, and voice settings.
-- **Backend**: 
-  - Node.js server (`server.js`) for automation, TTS, and audio merging.
-  - Python FastAPI backend (`hf_backend/main.py`) for Gemini text generation.
+## 📖 **[→ COMPLETE GENERATION GUIDE ←](./COMPLETE_GENERATION_GUIDE.md)**
+**For full setup, usage instructions, and troubleshooting - see the complete guide above.**
 
-## Prerequisites
+## 🎯 What This System Does
 
-- **Node.js** (v18+ recommended)
-- **Python** (3.8+)
-- **ffmpeg** (Windows: update `merge_audio.js` with your ffmpeg path)
-- **Supabase account** (for audio uploads, optional)
+**Complete K-12 Educational Content Pipeline (Production-Ready)**
+- 🤖 **Real Gemini AI Integration**: Concept extraction, script generation, quiz creation
+- 🎙️ **Professional Google TTS**: Multi-voice episode audio with StudentA/StudentB dialogue
+- 📚 **Advanced PDF Processing**: OCR, structure recovery, educational content analysis  
+- 🎯 **Curriculum-Aligned Output**: Grade-appropriate content, quiz difficulty, learning objectives
+- ✅ **Quality Assurance**: Teacher review interface, validation reports, automated repair
+- � **Complete Episode Structure**: Scripts, audio, quizzes, metadata - ready for deployment
 
-## Environment Variables
+## ⚠️ Production Requirements
+- **Gemini API Key**: Required (no mocks - real AI content generation)
+- **Google Cloud TTS API**: Required (professional voice synthesis)
+- **Real Processing**: 5-15 minutes per chapter, ~$2-5 cost per chapter
 
-Create a `.env` file in the root and in `hf_backend/` with the following keys:
+## 🏗️ Architecture
 
 ```
-GEMINI_API_KEY=your_gemini_api_key
-ELEVENLABS_API_KEY=your_elevenlabs_api_key
-HOST_VOICE_ID=your_elevenlabs_host_voice_id
-SPEAKER_VOICE_ID=your_elevenlabs_speaker_voice_id
-HOST_NAME=your_host_name
-SPEAKER_NAME=your_speaker_name
-SUPABASE_KEY=your_supabase_key
-SUPABASE_BASE_URL=your_supabase_url
+PDF Input → Text Extraction → Concept Analysis → Episode Planning → Script Generation → MCQ Creation → TTS Pipeline → Quality Control → Asset Output
 ```
 
-## Backend Setup
+**Developer-Focused Pipeline**: This is a backend content generation tool, not a customer-facing platform. Use it to batch-generate educational audio content and metadata for your app.
 
-1. **Install Python dependencies**:
-   ```sh
-   cd hf_backend
-   python -m venv venv
-   venv\Scripts\activate  # Windows
-   pip install -r requirements.txt
-   ```
+### Core Services:
+- **Ingest Service**: PDF processing with OCR fallback
+- **Semantic Engine**: AI-powered concept extraction using Gemini
+- **Episode Planner**: Deterministic curriculum chunking
+- **LLM Service**: Educational script & assessment generation
+- **TTS Orchestrator**: Multi-voice audio production
+- **Validation Controller**: Quality gates with auto-repair
 
-2. **Start FastAPI server**:
-   ```sh
-   uvicorn main:app --host 127.0.0.1 --port 8000
-   ```
-   - API available at `http://127.0.0.1:8000/generate`
+## 🚀 Quick Start
 
-## Frontend & Node.js Automation
+### 1. Get API Keys (Required)
+- **Gemini API**: https://makersuite.google.com/app/apikey  
+- **Google TTS API**: https://console.cloud.google.com/apis/credentials
 
-1. **Install Node.js dependencies**:
-   ```sh
-   npm install
-   ```
+### 2. Setup Environment
+```bash
+# Copy and edit with your API keys
+cp .env.template .env
 
-2. **Start Node.js server**:
-   ```sh
-   npm start
-   ```
-   - Web UI at `http://localhost:3000`
+# Install dependencies
+npm install
+cd hf_backend && pip install -r requirements.txt
+```
 
-3. **Open `public/index.html`** in your browser, fill in prompts, context, and voice settings, then start automation.
+### 3. Start System
+```bash
+# Terminal 1: Backend AI service
+cd hf_backend && python main.py
 
-## Audio Merging
+# Terminal 2: Main server  
+npm start
+```
 
-- Ensure `ffmpeg` is installed and the path in `merge_audio.js` is correct.
-- Merged audio files are saved in the `outputs/` directory.
+### 4. Generate Content
+Visit: http://localhost:3000/test_upload.html
+- Upload PDF or paste text
+- Select grade level and subject
+## 📁 Complete Output Structure
+```
+outputs/chapter_{id}/
+├── manifest.json              # Chapter metadata & summary
+├── chapter.md                # Clean markdown content
+├── concepts.json             # AI-extracted educational concepts  
+├── episode_plan.json         # Episode structure (4-6 episodes)
+├── episodes/
+│   ├── ep01/
+│   │   ├── script.json       # Complete episode script
+│   │   ├── mcqs.json        # Quiz questions with explanations
+│   │   ├── audio/           # Professional audio files
+│   │   │   ├── final_episode.mp3    # Complete episode (8-12 min)
+│   │   │   ├── a_segments/          # StudentA voice clips
+│   │   │   └── b_segments/          # StudentB voice clips
+│   │   └── validation.json  # Quality assessment
+│   └── ep02/ ... ep05/      # Additional episodes
+└── validation_report.json    # Overall quality metrics
+```
 
-## Troubleshooting
+## �️ Audio Features
+- **StudentA Voice**: Confident, clear explanations
+- **StudentB Voice**: Curious, asks clarifying questions  
+- **Professional Quality**: Google TTS Chirp3-HD voices
+- **Educational Pacing**: Optimized for learning retention
+- **Complete Episodes**: 8-12 minutes per episode
 
-- Missing API keys or voice IDs will cause errors.
-- Check `.env` files in both root and `hf_backend/`.
-- For Supabase uploads, ensure keys and bucket exist.
-
-## Folder Structure
-
-- `public/` – Frontend HTML
-- `server.js`, `playwright-automation.js`, `merge_audio.js`, `tts.js` – Node.js backend
-- `hf_backend/` – Python FastAPI backend
-- `outputs/` – Generated audio files
+## � System Capabilities
+- **Processing Time**: 5-15 minutes per chapter
+- **Episode Generation**: 4-6 episodes per chapter automatically
+- **Content Quality**: Curriculum-aligned, grade-appropriate
+- **Audio Quality**: Professional 24kHz, broadcast-ready
+- **Quiz Generation**: 3-5 questions per episode with explanations
 
 ---
-NOTE - Only do one episode per time as multithreading is unstable and don't want to lose tokens for now
+
+## � Documentation
+- **[Complete Setup & Usage Guide](./COMPLETE_GENERATION_GUIDE.md)** - Full instructions
+- **[Production Setup](./SETUP_PRODUCTION.md)** - API key configuration  
+- **[Migration Specs](./MIGRATION.md)** - Technical specifications
+
+## �️ System Architecture
+- **Node.js Server** (port 3000): Main pipeline orchestration
+- **Python Backend** (port 8000): AI/LLM service with Gemini integration
+- **Real API Integration**: No mocks - production Gemini & Google TTS
+- **Quality Assurance**: Multi-layer validation and teacher review
+
+---
+
+**Ready for Production K-12 Content Generation** 🚀

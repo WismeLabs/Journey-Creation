@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCQ Schema",
+  "type": "object",
+  "properties": {
+    "mcqs": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "properties": {
+          "qid": {
+            "type": "string",
+            "description": "Unique question identifier"
+          },
+          "timestamp_ref": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Timestamp in seconds pointing to section start"
+          },
+          "concept_id": {
+            "type": "string",
+            "description": "Related concept from episode concepts"
+          },
+          "difficulty": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "type": {
+            "type": "string",
+            "enum": ["recall", "concept", "understanding", "application"]
+          },
+          "question_text": {
+            "type": "string",
+            "minLength": 10
+          },
+          "options": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "correct_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 10,
+            "description": "Short explanation for correct answer"
+          }
+        },
+        "required": ["qid", "timestamp_ref", "concept_id", "difficulty", "type", "question_text", "options", "correct_index", "explanation"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["mcqs"],
+  "additionalProperties": false
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Concepts Schema",
+  "type": "object",
+  "properties": {
+    "concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique concept identifier"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["definition", "process", "formula", "example", "application"]
+          },
+          "difficulty": {
+            "type": "string",
+            "enum": ["easy", "medium", "hard"]
+          },
+          "blooms": {
+            "type": "string",
+            "enum": ["remember", "understand", "apply", "analyze", "evaluate", "create"]
+          },
+          "source_excerpt": {
+            "type": "string",
+            "description": "Reference to source location like p3:lines 1-7"
+          },
+          "related": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of related concept IDs"
+          }
+        },
+        "required": ["id", "type", "difficulty", "blooms", "source_excerpt"],
+        "additionalProperties": false
+      }
+    },
+    "graph": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "type": "string"
+        }
+      },
+      "description": "Array of concept relationship pairs"
+    }
+  },
+  "required": ["concepts", "graph"],
+  "additionalProperties": false
+}

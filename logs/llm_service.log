@@ -1,0 +1,30 @@
+2025-11-16 00:25:17,567 - main - ERROR - GEMINI_API_KEY not found in environment
+2025-11-16 00:25:17,568 - main - ERROR - Regeneration failed for regen_tone_fix: 500: Gemini API not configured
+2025-11-16 00:28:30,243 - main - ERROR - GEMINI_API_KEY not found in environment
+2025-11-16 00:28:30,244 - main - ERROR - Concept extraction failed: 500: Gemini API not configured
+2025-11-16 00:28:30,265 - main - ERROR - GEMINI_API_KEY not found in environment
+2025-11-16 00:28:30,265 - main - ERROR - Script generation failed: 500: Gemini API not configured
+2025-11-16 00:28:30,272 - main - ERROR - GEMINI_API_KEY not found in environment
+2025-11-16 00:28:30,272 - main - ERROR - Regeneration failed for regen_tone_fix: 500: Gemini API not configured
+2025-11-16 00:32:03,313 - main - WARNING - GEMINI_API_KEY not found - using mock mode for development
+2025-11-16 00:32:03,314 - main - INFO - Using mock concept extraction for development
+2025-11-16 00:32:29,423 - main - WARNING - GEMINI_API_KEY not found - using mock mode for development
+2025-11-16 00:32:29,424 - main - INFO - Using mock concept extraction for development
+2025-11-16 00:32:29,425 - main - WARNING - GEMINI_API_KEY not found - using mock mode for development
+2025-11-16 00:32:29,426 - main - INFO - Using mock script generation for development
+2025-11-16 00:33:50,593 - main - WARNING - GEMINI_API_KEY not found - using mock mode for development
+2025-11-16 00:33:50,593 - main - INFO - Using mock concept extraction for development
+2025-11-16 00:33:50,615 - main - WARNING - GEMINI_API_KEY not found - using mock mode for development
+2025-11-16 00:33:50,615 - main - INFO - Using mock script generation for development
+2025-11-16 00:33:50,618 - main - WARNING - GEMINI_API_KEY not found - using mock mode for development
+2025-11-16 00:33:50,618 - main - INFO - Generating 3 MCQs
+2025-11-16 00:33:50,618 - main - ERROR - MCQ generation failed: 'str' object has no attribute 'generate_content'
+2025-11-16 00:33:50,624 - main - WARNING - GEMINI_API_KEY not found - using mock mode for development
+2025-11-16 00:33:50,624 - main - INFO - Running regeneration prompt: regen_tone_fix
+2025-11-16 00:33:50,624 - main - ERROR - Regeneration failed for regen_tone_fix: 'str' object has no attribute 'generate_content'
+2025-11-16 00:35:53,530 - main - WARNING - GEMINI_API_KEY not found - using mock mode for development
+2025-11-16 00:35:53,531 - main - INFO - Using mock MCQ generation for development
+2025-11-16 00:40:04,797 - main - WARNING - GEMINI_API_KEY not found - using mock mode for development
+2025-11-16 00:40:04,797 - main - INFO - Using mock MCQ generation for development
+2025-11-16 00:40:17,792 - main - WARNING - GEMINI_API_KEY not found - using mock mode for development
+2025-11-16 00:40:17,792 - main - INFO - Using mock MCQ generation for development

@@ -16,29 +16,192 @@ class TTSOrchestrator {
     this.googleTTSClient = null;
     this.initializeGoogleTTS();
     
-    // Voice configurations
-    this.voiceConfig = {
-      StudentA: {
-        name: 'en-US-Chirp3-HD-Achird', // Confident voice
-        personality: 'confident',
-        ssmlPrefix: '<prosody rate="medium" pitch="+0.5st">'
+    // Comprehensive Google TTS Voice Configuration
+    this.availableVoices = this.getAvailableVoices();
+    this.voiceConfig = this.getOptimalVoiceConfig();
+    this.audioConfig = this.getAudioConfiguration();
+    
+    // Language-specific voice mappings for K-12 education
+    this.educationalVoices = {
+      'en-US': {
+        StudentA: { name: 'en-US-Chirp3-HD-Achird', gender: 'MALE', personality: 'confident' },
+        StudentB: { name: 'en-US-Chirp3-HD-Aoede', gender: 'FEMALE', personality: 'curious' }
       },
-      StudentB: {
-        name: 'en-US-Chirp3-HD-Aoede', // Curious voice  
-        personality: 'curious',
-        ssmlPrefix: '<prosody rate="medium" pitch="-0.5st">'
+      'en-IN': {
+        StudentA: { name: 'en-IN-Chirp3-HD-Achird', gender: 'MALE', personality: 'confident' },
+        StudentB: { name: 'en-IN-Chirp3-HD-Aoede', gender: 'FEMALE', personality: 'curious' }
+      },
+      'en-GB': {
+        StudentA: { name: 'en-GB-Chirp3-HD-Achird', gender: 'MALE', personality: 'confident' },
+        StudentB: { name: 'en-GB-Chirp3-HD-Aoede', gender: 'FEMALE', personality: 'curious' }
+      },
+      'hi-IN': {
+        StudentA: { name: 'hi-IN-Chirp3-HD-Achird', gender: 'MALE', personality: 'confident' },
+        StudentB: { name: 'hi-IN-Chirp3-HD-Aoede', gender: 'FEMALE', personality: 'curious' }
       }
-    };
-
-    this.audioConfig = {
-      audioEncoding: 'MP3',
-      sampleRateHertz: 44100,
-      speakingRate: 1.0,
-      pitch: 0
     };
 
     // FFmpeg path - update for your system
     this.ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
+  }
+
+  /**
+   * Get comprehensive available voices from Google TTS
+   */
+  getAvailableVoices() {
+    return {
+      // Premium Chirp3 HD Voices (Best for Education)
+      chirp3_hd: {
+        'en-US': [
+          'en-US-Chirp3-HD-Achernar', 'en-US-Chirp3-HD-Achird', 'en-US-Chirp3-HD-Algenib',
+          'en-US-Chirp3-HD-Aoede', 'en-US-Chirp3-HD-Autonoe', 'en-US-Chirp3-HD-Callirrhoe',
+          'en-US-Chirp3-HD-Charon', 'en-US-Chirp3-HD-Despina', 'en-US-Chirp3-HD-Enceladus'
+        ],
+        'en-IN': [
+          'en-IN-Chirp3-HD-Achernar', 'en-IN-Chirp3-HD-Achird', 'en-IN-Chirp3-HD-Algenib',
+          'en-IN-Chirp3-HD-Aoede', 'en-IN-Chirp3-HD-Autonoe', 'en-IN-Chirp3-HD-Callirrhoe'
+        ],
+        'hi-IN': [
+          'hi-IN-Chirp3-HD-Achernar', 'hi-IN-Chirp3-HD-Achird', 'hi-IN-Chirp3-HD-Algenib',
+          'hi-IN-Chirp3-HD-Aoede', 'hi-IN-Chirp3-HD-Autonoe', 'hi-IN-Chirp3-HD-Callirrhoe'
+        ]
+      },
+      // Neural2 Voices (High Quality)
+      neural2: {
+        'en-US': ['en-US-Neural2-A', 'en-US-Neural2-C', 'en-US-Neural2-D', 'en-US-Neural2-E'],
+        'en-IN': ['en-IN-Neural2-A', 'en-IN-Neural2-B', 'en-IN-Neural2-C', 'en-IN-Neural2-D'],
+        'hi-IN': ['hi-IN-Neural2-A', 'hi-IN-Neural2-B', 'hi-IN-Neural2-C', 'hi-IN-Neural2-D']
+      },
+      // WaveNet Voices (Good Quality)
+      wavenet: {
+        'en-US': ['en-US-Wavenet-A', 'en-US-Wavenet-B', 'en-US-Wavenet-C', 'en-US-Wavenet-D'],
+        'en-IN': ['en-IN-Wavenet-A', 'en-IN-Wavenet-B', 'en-IN-Wavenet-C', 'en-IN-Wavenet-D'],
+        'hi-IN': ['hi-IN-Wavenet-A', 'hi-IN-Wavenet-B', 'hi-IN-Wavenet-C', 'hi-IN-Wavenet-D']
+      },
+      // Standard Voices (Cost Effective)
+      standard: {
+        'en-US': ['en-US-Standard-A', 'en-US-Standard-B', 'en-US-Standard-C', 'en-US-Standard-D'],
+        'en-IN': ['en-IN-Standard-A', 'en-IN-Standard-B', 'en-IN-Standard-C', 'en-IN-Standard-D'],
+        'hi-IN': ['hi-IN-Standard-A', 'hi-IN-Standard-B', 'hi-IN-Standard-C', 'hi-IN-Standard-D']
+      }
+    };
+  }
+
+  /**
+   * Get optimal voice configuration for K-12 education
+   */
+  getOptimalVoiceConfig() {
+    const language = process.env.TTS_LANGUAGE || 'en-IN';
+    const voiceType = process.env.TTS_VOICE_TYPE || 'chirp3_hd'; // chirp3_hd, neural2, wavenet, standard
+    
+    return {
+      language: language,
+      voiceType: voiceType,
+      StudentA: {
+        name: this.educationalVoices[language]?.StudentA?.name || 'en-IN-Chirp3-HD-Achird',
+        displayName: 'StudentA', // Default display name, can be customized
+        languageCode: language,
+        ssmlGender: this.educationalVoices[language]?.StudentA?.gender || 'MALE',
+        personality: 'confident',
+        role: 'student',
+        ssmlPrefix: '<prosody rate="medium" pitch="+0.5st" volume="+2dB">',
+        ssmlSuffix: '</prosody>'
+      },
+      StudentB: {
+        name: this.educationalVoices[language]?.StudentB?.name || 'en-IN-Chirp3-HD-Aoede',
+        displayName: 'StudentB', // Default display name, can be customized
+        languageCode: language,
+        ssmlGender: this.educationalVoices[language]?.StudentB?.gender || 'FEMALE',
+        personality: 'curious',
+        role: 'student',
+        ssmlPrefix: '<prosody rate="medium" pitch="-0.5st" volume="+1dB">',
+        ssmlSuffix: '</prosody>'
+      }
+    };
+  }
+
+  /**
+   * Get comprehensive audio configuration with all Google TTS options
+   */
+  getAudioConfiguration() {
+    return {
+      // Audio Encoding Options: LINEAR16, MP3, OGG_OPUS, MULAW, ALAW
+      audioEncoding: process.env.TTS_AUDIO_ENCODING || 'MP3',
+      
+      // Sample Rate (Hz) - must match encoding
+      sampleRateHertz: parseInt(process.env.TTS_SAMPLE_RATE) || 44100, // 8000, 16000, 22050, 24000, 44100, 48000
+      
+      // Speaking Rate: 0.25 to 4.0 (1.0 = normal)
+      speakingRate: parseFloat(process.env.TTS_SPEAKING_RATE) || 1.0,
+      
+      // Pitch: -20.0 to 20.0 semitones (0 = no change)
+      pitch: parseFloat(process.env.TTS_PITCH) || 0,
+      
+      // Volume Gain: -96.0 to 16.0 dB
+      volumeGainDb: parseFloat(process.env.TTS_VOLUME_GAIN) || 0,
+      
+      // Effects Profile for device optimization
+      effectsProfileId: process.env.TTS_EFFECTS_PROFILE || 'handset-class-device', // telephony-class-application, wearable-class-device, headphone-class-device, small-bluetooth-speaker-class-device, medium-bluetooth-speaker-class-device, large-home-entertainment-class-device, large-automotive-class-device
+      
+      // Advanced Chirp3 HD options
+      advancedVoiceOptions: {
+        lowLatencyJourneySynthesis: process.env.TTS_LOW_LATENCY === 'true' || false
+      }
+    };
+  }
+
+  /**
+   * Select best voice for language and personality
+   */
+  selectVoice(language, personality, preferredGender = null) {
+    const voiceType = this.voiceConfig.voiceType;
+    const availableVoices = this.availableVoices[voiceType][language];
+    
+    if (!availableVoices) {
+      logger.warn(`No ${voiceType} voices available for ${language}, falling back to en-US`);
+      return this.selectVoice('en-US', personality, preferredGender);
+    }
+    
+    // For educational content, use predefined optimal voices
+    if (this.educationalVoices[language]) {
+      return personality === 'confident' 
+        ? this.educationalVoices[language].StudentA
+        : this.educationalVoices[language].StudentB;
+    }
+    
+    // Fallback to first available voice
+    return {
+      name: availableVoices[0],
+      languageCode: language,
+      ssmlGender: preferredGender || 'NEUTRAL'
+    };
+  }
+
+  /**
+   * Customize voice parameters for specific content
+   */
+  customizeVoiceForContent(baseVoice, contentType, ageGroup) {
+    const customizations = {
+      hook: { pitch: '+1st', rate: '1.1', volume: '+3dB' },
+      explanation: { pitch: '0st', rate: '1.0', volume: '+1dB' },
+      example: { pitch: '-0.5st', rate: '0.95', volume: '+2dB' },
+      summary: { pitch: '+0.5st', rate: '0.9', volume: '+2dB' }
+    };
+    
+    const ageAdjustments = {
+      elementary: { rate: '0.9', pitch: '+0.5st' },
+      middle: { rate: '1.0', pitch: '0st' },
+      high: { rate: '1.1', pitch: '-0.5st' }
+    };
+    
+    const contentCustom = customizations[contentType] || {};
+    const ageCustom = ageAdjustments[ageGroup] || {};
+    
+    return {
+      ...baseVoice,
+      ssmlPrefix: `<prosody rate="${ageCustom.rate || contentCustom.rate || 'medium'}" pitch="${ageCustom.pitch || contentCustom.pitch || '0st'}" volume="${contentCustom.volume || '+1dB'}">`,
+      ssmlSuffix: '</prosody>'
+    };
   }
 
   /**
@@ -77,22 +240,54 @@ class TTSOrchestrator {
 
   async testTTSConnection() {
     try {
+      // Test with comprehensive configuration
+      const testConfig = this.voiceConfig.StudentA;
       const [response] = await this.googleTTSClient.synthesizeSpeech({
-        input: { text: 'Test' },
-        voice: { languageCode: 'en-US', name: 'en-US-Chirp3-HD-Achird' },
-        audioConfig: { audioEncoding: 'MP3' }
+        input: { text: 'Test synthesis for K-12 educational content pipeline.' },
+        voice: {
+          languageCode: testConfig.languageCode,
+          name: testConfig.name,
+          ssmlGender: testConfig.ssmlGender
+        },
+        audioConfig: {
+          audioEncoding: this.audioConfig.audioEncoding,
+          sampleRateHertz: this.audioConfig.sampleRateHertz,
+          speakingRate: this.audioConfig.speakingRate,
+          pitch: this.audioConfig.pitch
+        }
       });
+      
       logger.info('✅ Google TTS connection test successful');
+      logger.info(`✅ Voice: ${testConfig.name} (${testConfig.languageCode})`);
+      logger.info(`✅ Audio: ${this.audioConfig.audioEncoding} @ ${this.audioConfig.sampleRateHertz}Hz`);
+      
+      return {
+        success: true,
+        voiceConfig: testConfig,
+        audioConfig: this.audioConfig,
+        responseSize: response.audioContent.length
+      };
+      
     } catch (error) {
       logger.error(`❌ Google TTS connection test failed: ${error.message}`);
-      throw new Error('TTS API key appears to be invalid - connection test failed');
+      
+      // Provide specific error guidance
+      if (error.message.includes('API key')) {
+        throw new Error('Invalid Google TTS API key. Please check GOOGLE_TTS_API_KEY in .env file.');
+      } else if (error.message.includes('quota')) {
+        throw new Error('Google TTS quota exceeded. Please check your billing and usage limits.');
+      } else if (error.message.includes('voice')) {
+        throw new Error(`Voice not available: ${this.voiceConfig.StudentA.name}. Please check voice availability in your region.`);
+      } else {
+        throw new Error(`TTS configuration error: ${error.message}`);
+      }
     }
   }
 
   /**
    * Generate audio for complete episode
    */
-  async generateEpisodeAudio(episodeData, chapterId, episodeIndex) {
+  async generateEpisodeAudio(episodeData, chapterId, episodeIndex, metadata = {}) {
     try {
       logger.info(`Generating audio for chapter ${chapterId}, episode ${episodeIndex}`);
 
@@ -103,8 +298,24 @@ class TTSOrchestrator {
         );
       }
 
-      // Create episode directory
-      const episodeDir = path.join(__dirname, '../../outputs', `chapter_${chapterId}`, 'episodes', `ep${episodeIndex.toString().padStart(2, '0')}`);
+      // Use unified output structure per MIGRATION.md
+      const { grade_band = 'unknown', subject = 'unknown' } = metadata;
+      const curriculum = metadata.curriculum || 'CBSE';
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const generationId = metadata.generation_id || `gen_${timestamp}`;
+      
+      const episodeDir = path.join(
+        __dirname, 
+        '../../outputs', 
+        curriculum.toUpperCase(),
+        `Grade_${grade_band}`,
+        subject.toLowerCase(),
+        `chapter_${chapterId}`,
+        generationId,
+        'episodes', 
+        `ep${episodeIndex.toString().padStart(2, '0')}`
+      );
+      
       const audioDir = path.join(episodeDir, 'audio');
       
       if (!fs.existsSync(audioDir)) {
@@ -161,6 +372,89 @@ class TTSOrchestrator {
   }
 
   /**
+   * Get current TTS configuration for UI display
+   */
+  getCurrentConfiguration() {
+    return {
+      voices: {
+        StudentA: {
+          name: this.voiceConfig.StudentA.name,
+          displayName: this.voiceConfig.StudentA.displayName || 'StudentA',
+          language: this.voiceConfig.StudentA.languageCode,
+          gender: this.voiceConfig.StudentA.ssmlGender,
+          personality: this.voiceConfig.StudentA.personality,
+          role: this.voiceConfig.StudentA.role || 'student'
+        },
+        StudentB: {
+          name: this.voiceConfig.StudentB.name,
+          displayName: this.voiceConfig.StudentB.displayName || 'StudentB',
+          language: this.voiceConfig.StudentB.languageCode,
+          gender: this.voiceConfig.StudentB.ssmlGender,
+          personality: this.voiceConfig.StudentB.personality,
+          role: this.voiceConfig.StudentB.role || 'student'
+        }
+      },
+      audio: {
+        encoding: this.audioConfig.audioEncoding,
+        sampleRate: this.audioConfig.sampleRateHertz,
+        speakingRate: this.audioConfig.speakingRate,
+        pitch: this.audioConfig.pitch,
+        volumeGain: this.audioConfig.volumeGainDb,
+        effectsProfile: this.audioConfig.effectsProfileId
+      },
+      availableLanguages: Object.keys(this.educationalVoices),
+      availableVoiceTypes: Object.keys(this.availableVoices)
+    };
+  }
+
+  /**
+   * Update voice configuration dynamically
+   */
+  updateVoiceConfiguration(newConfig) {
+    try {
+      // Update speaker-specific configurations
+      if (newConfig.StudentA) {
+        this.voiceConfig.StudentA = {
+          ...this.voiceConfig.StudentA,
+          name: newConfig.StudentA.name || this.voiceConfig.StudentA.name,
+          displayName: newConfig.StudentA.displayName || this.voiceConfig.StudentA.displayName,
+          personality: newConfig.StudentA.personality || this.voiceConfig.StudentA.personality,
+          role: newConfig.StudentA.role || this.voiceConfig.StudentA.role
+        };
+        logger.info(`Updated StudentA configuration: ${this.voiceConfig.StudentA.displayName} (${this.voiceConfig.StudentA.name})`);
+      }
+      
+      if (newConfig.StudentB) {
+        this.voiceConfig.StudentB = {
+          ...this.voiceConfig.StudentB,
+          name: newConfig.StudentB.name || this.voiceConfig.StudentB.name,
+          displayName: newConfig.StudentB.displayName || this.voiceConfig.StudentB.displayName,
+          personality: newConfig.StudentB.personality || this.voiceConfig.StudentB.personality,
+          role: newConfig.StudentB.role || this.voiceConfig.StudentB.role
+        };
+        logger.info(`Updated StudentB configuration: ${this.voiceConfig.StudentB.displayName} (${this.voiceConfig.StudentB.name})`);
+      }
+      
+      // Update language settings
+      if (newConfig.language && this.educationalVoices[newConfig.language]) {
+        this.voiceConfig.language = newConfig.language;
+        logger.info(`Updated voice configuration for language: ${newConfig.language}`);
+      }
+      
+      // Update audio configuration
+      if (newConfig.audio) {
+        this.audioConfig = { ...this.audioConfig, ...newConfig.audio };
+        logger.info('Updated audio configuration:', newConfig.audio);
+      }
+      
+      return this.getCurrentConfiguration();
+    } catch (error) {
+      logger.error('Failed to update voice configuration:', error);
+      throw new Error(`Voice configuration update failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Parse script text into individual audio segments
    */
   parseScriptIntoSegments(scriptData, pronunciationHints = {}) {
@@ -172,20 +466,42 @@ class TTSOrchestrator {
       const lines = section.text.split('\n').filter(line => line.trim().length > 0);
       
       for (const line of lines) {
-        const speakerMatch = line.match(/^(Student[AB]):\s*(.+)$/);
+        // Match both hardcoded format (StudentA/StudentB) and custom speaker names
+        const speakerMatch = line.match(/^([^:]+):\s*(.+)$/);
         if (speakerMatch) {
-          const speaker = speakerMatch[1];
+          const speakerName = speakerMatch[1].trim();
           let text = speakerMatch[2].trim();
+          
+          // Map custom speaker names to internal IDs
+          let internalSpeaker = 'StudentA'; // default
+          if (this.voiceConfig.StudentA && (
+            speakerName === this.voiceConfig.StudentA.displayName || 
+            speakerName === this.voiceConfig.StudentA.name ||
+            speakerName === 'StudentA'
+          )) {
+            internalSpeaker = 'StudentA';
+          } else if (this.voiceConfig.StudentB && (
+            speakerName === this.voiceConfig.StudentB.displayName || 
+            speakerName === this.voiceConfig.StudentB.name ||
+            speakerName === 'StudentB'
+          )) {
+            internalSpeaker = 'StudentB';
+          } else {
+            // If no match, assign based on order (first speaker = A, second = B)
+            internalSpeaker = segments.filter(s => s.speaker === 'StudentA').length <= 
+                             segments.filter(s => s.speaker === 'StudentB').length ? 'StudentA' : 'StudentB';
+          }
           
           // Apply pronunciation hints
           text = this.applyPronunciationHints(text, pronunciationHints);
           
           // Add SSML formatting
-          const ssmlText = this.generateSSML(text, speaker, section);
+          const ssmlText = this.generateSSML(text, internalSpeaker, section);
           
           segments.push({
             segmentIndex: segmentIndex++,
-            speaker: speaker,
+            speaker: internalSpeaker,
+            originalSpeakerName: speakerName,
             text: text,
             ssmlText: ssmlText,
             sectionId: section.id,
@@ -214,37 +530,79 @@ class TTSOrchestrator {
   }
 
   /**
-   * Generate SSML markup for enhanced speech
+   * Generate comprehensive SSML markup with all available features
    */
-  generateSSML(text, speaker, section) {
+  generateSSML(text, speaker, section, metadata = {}) {
     const voiceConfig = this.voiceConfig[speaker];
-    let ssml = `<speak>`;
+    const ageGroup = metadata.age_group || 'middle';
+    const contentType = section.id;
     
-    // Add speaker-specific prosody
-    ssml += voiceConfig.ssmlPrefix;
+    // Customize voice for specific content and age
+    const customVoice = this.customizeVoiceForContent(voiceConfig, contentType, ageGroup);
     
-    // Add section-specific breaks
-    if (section.id === 'hook') {
-      ssml += '<emphasis level="moderate">';
+    let ssml = '<speak>';
+    
+    // Add comprehensive prosody with all options
+    ssml += customVoice.ssmlPrefix;
+    
+    // Add section-specific emphasis and breaks
+    switch (section.id) {
+      case 'hook':
+        ssml += '<emphasis level="strong">';
+        break;
+      case 'core1':
+      case 'core2':
+        ssml += '<emphasis level="moderate">';
+        break;
+      case 'mini-summary':
+        ssml += '<emphasis level="reduced"><prosody rate="0.9">';
+        break;
     }
     
-    // Add the text content
-    ssml += text;
+    // Add natural pauses for readability
+    const processedText = this.addNaturalPauses(text);
+    ssml += processedText;
     
-    // Close emphasis if added
-    if (section.id === 'hook') {
-      ssml += '</emphasis>';
+    // Close section-specific tags
+    switch (section.id) {
+      case 'hook':
+      case 'core1':
+      case 'core2':
+        ssml += '</emphasis>';
+        break;
+      case 'mini-summary':
+        ssml += '</prosody></emphasis>';
+        break;
     }
     
-    // Add section break
-    if (section.id !== 'mini-summary') {
-      ssml += '<break time="300ms"/>';
+    // Add section transition breaks
+    const sectionBreaks = {
+      hook: '<break time="500ms"/>',
+      core1: '<break time="300ms"/>',
+      core2: '<break time="300ms"/>',
+      'mini-summary': '<break time="200ms"/>'
+    };
+    
+    if (sectionBreaks[section.id]) {
+      ssml += sectionBreaks[section.id];
     }
     
-    // Close prosody and speak tags
-    ssml += '</prosody></speak>';
+    // Close main prosody and speak tags
+    ssml += customVoice.ssmlSuffix + '</speak>';
     
     return ssml;
+  }
+
+  /**
+   * Add natural pauses for better speech flow
+   */
+  addNaturalPauses(text) {
+    return text
+      .replace(/([.!?])\s+/g, '$1<break time="400ms"/> ') // Long pause after sentences
+      .replace(/([,;])\s+/g, '$1<break time="200ms"/> ') // Short pause after commas
+      .replace(/([:-])\s+/g, '$1<break time="300ms"/> ') // Medium pause after colons
+      .replace(/\b(however|therefore|moreover|furthermore|additionally)\b/gi, '<break time="250ms"/>$1') // Pause before transition words
+      .replace(/\b(for example|such as|in other words)\b/gi, '<break time="300ms"/>$1<break time="200ms"/>');
   }
 
   /**
@@ -274,14 +632,25 @@ class TTSOrchestrator {
         return outputPath;
       }
 
-      // Prepare TTS request
+      // Prepare comprehensive TTS request with all Google TTS options
       const request = {
         input: { ssml: segment.ssmlText },
         voice: {
-          languageCode: 'en-US',
-          name: voiceConfig.name
+          languageCode: voiceConfig.languageCode,
+          name: voiceConfig.name,
+          ssmlGender: voiceConfig.ssmlGender
         },
-        audioConfig: this.audioConfig
+        audioConfig: {
+          audioEncoding: this.audioConfig.audioEncoding,
+          sampleRateHertz: this.audioConfig.sampleRateHertz,
+          speakingRate: this.audioConfig.speakingRate,
+          pitch: this.audioConfig.pitch,
+          volumeGainDb: this.audioConfig.volumeGainDb,
+          effectsProfileId: [this.audioConfig.effectsProfileId]
+        },
+        ...(this.audioConfig.advancedVoiceOptions && {
+          advancedVoiceOptions: this.audioConfig.advancedVoiceOptions
+        })
       };
 
       logger.info(`Generating TTS for ${segment.speaker}: "${segment.text.substring(0, 50)}..."`);
@@ -298,6 +667,53 @@ class TTSOrchestrator {
     } catch (error) {
       logger.error(`Failed to generate segment audio: ${error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * Synthesize text with custom configuration (for previews and testing)
+   */
+  async synthesizeText(text, customConfig = {}) {
+    try {
+      if (!this.googleTTSClient) {
+        throw new Error('Google TTS client not initialized. Please check your credentials.');
+      }
+
+      // Use custom config or fall back to default
+      const voiceConfig = customConfig.voice || {
+        name: this.voiceConfig.StudentA.name,
+        languageCode: this.voiceConfig.StudentA.languageCode,
+        ssmlGender: this.voiceConfig.StudentA.ssmlGender
+      };
+
+      const audioConfig = customConfig.audioConfig || this.audioConfig;
+
+      // Prepare TTS request
+      const request = {
+        input: { text: text },
+        voice: voiceConfig,
+        audioConfig: {
+          audioEncoding: audioConfig.audioEncoding || 'MP3',
+          sampleRateHertz: audioConfig.sampleRateHertz || 22050,
+          speakingRate: audioConfig.speakingRate || 1.0,
+          pitch: audioConfig.pitch || 0.0,
+          volumeGainDb: audioConfig.volumeGainDb || 0.0,
+          ...(audioConfig.effectsProfileId && {
+            effectsProfileId: [audioConfig.effectsProfileId]
+          })
+        }
+      };
+
+      logger.info(`Synthesizing text with voice: ${voiceConfig.name}`);
+
+      // Call Google TTS
+      const [response] = await this.googleTTSClient.synthesizeSpeech(request);
+      
+      return response.audioContent;
+
+    } catch (error) {
+      logger.error(`Text synthesis failed: ${error.message}`);
+      throw new Error(`Failed to synthesize text: ${error.message}`);
     }
   }
 
@@ -499,6 +915,61 @@ class TTSOrchestrator {
 
     return validation;
   }
+
+  /**
+   * Validate voice availability and list alternatives
+   */
+  async validateAndListVoices(language = null) {
+    try {
+      const [result] = await this.googleTTSClient.listVoices({
+        languageCode: language
+      });
+      
+      const availableVoices = result.voices.map(voice => ({
+        name: voice.name,
+        languages: voice.languageCodes,
+        gender: voice.ssmlGender,
+        sampleRate: voice.naturalSampleRateHertz
+      }));
+      
+      logger.info(`Found ${availableVoices.length} available voices${language ? ` for ${language}` : ''}`);
+      
+      return availableVoices;
+      
+    } catch (error) {
+      logger.error(`Failed to list voices: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Get TTS configuration status and recommendations
+   */
+  getConfigurationStatus() {
+    const status = {
+      configured: !!this.googleTTSClient,
+      voiceLanguage: this.voiceConfig.language,
+      voiceType: this.voiceConfig.voiceType,
+      audioEncoding: this.audioConfig.audioEncoding,
+      sampleRate: this.audioConfig.sampleRateHertz,
+      recommendations: []
+    };
+    
+    // Add configuration recommendations
+    if (this.voiceConfig.voiceType === 'standard') {
+      status.recommendations.push('Consider upgrading to Chirp3 HD voices for better educational content quality');
+    }
+    
+    if (this.audioConfig.sampleRateHertz < 22050) {
+      status.recommendations.push('Consider using higher sample rate (44100Hz) for better audio quality');
+    }
+    
+    if (!this.audioConfig.effectsProfileId) {
+      status.recommendations.push('Set audio effects profile for device-optimized playback');
+    }
+    
+    return status;
+  }
 }
 
-module.exports = new TTSOrchestrator();
+module.exports = TTSOrchestrator;

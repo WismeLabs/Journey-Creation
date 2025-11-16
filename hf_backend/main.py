@@ -5,9 +5,14 @@ import json
 import logging
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
+from pathlib import Path
 import time
 import hashlib
 
+# Ensure we load environment variables from the repository root (.env)
+ROOT_DIR = Path(__file__).resolve().parents[1]
+load_dotenv(ROOT_DIR / '.env')
+# Also respect any environment variables already set (fallback to default search)
 load_dotenv()
 
 from google import generativeai as genai
@@ -80,6 +85,14 @@ class ScriptGenerationRequest(BaseModel):
     subject: str
     duration_minutes: int
     source_content: str
+    speaker_config: Optional[Dict[str, str]] = {
+        "speaker1_name": "StudentA",
+        "speaker2_name": "StudentB",
+        "speaker1_role": "student",
+        "speaker2_role": "student",
+        "speaker1_personality": "confident",
+        "speaker2_personality": "curious"
+    }
 
 class MCQGenerationRequest(BaseModel):
     concepts: List[Dict[str, Any]]
@@ -142,12 +155,20 @@ Return valid JSON only:
 """,
 
     "episode_script": """
-SYSTEM: You are a K-12 educational script writer. Generate peer-to-peer dialogue between two students.
+SYSTEM: You are a K-12 educational script writer with strict source alignment. Generate peer-to-peer dialogue between two students.
 INPUT: episode_config, concepts, chapter_content
 CONSTRAINTS: 
 - Only StudentA (confident) and StudentB (curious) voices
 - Word count: 450-1100 words, target 500-900
 - Sections: hook(10-20s), core1, micro-example(≤30s), core2, recall-break, mini-summary(≤30s)
+- CRITICAL: Attach source_reference to every factual statement or mark as inferred:true
+
+SOURCE ALIGNMENT RULES (MANDATORY per MIGRATION.md):
+- Every assertive sentence must include source_reference field
+- source_reference format: "p[page]:lines [start]-[end]" or "block_[id]"  
+- If no direct source found, mark as "inferred": true with soft language
+- Use "Scientists think...", "It is believed that..." for inferred content
+- Never make high-confidence claims without source reference
 - Grade {grade_band} appropriate vocabulary
 - No teacher voice, no narrator, no intros/outros
 - Stories only if memory-aiding, ≤30s
@@ -170,14 +191,14 @@ Return valid JSON only:
       "start": 0,
       "end": 18,
       "type": "hook",
-      "text": "StudentA: Hey, have you ever wondered why...?\\nStudentB: Actually, yes! I was just thinking about that..."
+      "text": "{speaker1_name}: Hey, have you ever wondered why...?\n{speaker2_name}: Actually, yes! I was just thinking about that..."
     }},
     {{
       "id": "core1", 
       "start": 18,
       "end": 120,
       "type": "core",
-      "text": "StudentA: So let me explain...\\nStudentB: That makes sense, but what about..."
+      "text": "{speaker1_name}: So let me explain...\n{speaker2_name}: That makes sense, but what about..."
     }}
   ],
   "concept_ids": {concept_ids},
@@ -217,7 +238,7 @@ Return valid JSON only:
         "Method of plant growth"
       ],
       "correct_index": 0,
-      "explanation": "As StudentA explained, photosynthesis is the process plants use to make their own food using sunlight."
+      "explanation": "As {speaker1_name} explained, photosynthesis is the process plants use to make their own food using sunlight."
     }}
   ]
 }}
@@ -229,8 +250,8 @@ REGENERATION_PROMPTS = {
     "regen_short_script": """
 SYSTEM: You are a script editor for a K-12 educational audio episode. 
 INPUT: episode_plan, style_lock, chapter_concepts, current_script. 
-CONSTRAINTS: two speakers only (StudentA, StudentB). TARGET_WORD_MIN: 450. TARGET_WORD_MAX: 1100. 
-TONE: peer-to-peer, StudentA confident, StudentB curious. NO teacher voice. 
+CONSTRAINTS: two speakers only ({speaker1_name}, {speaker2_name}). TARGET_WORD_MIN: 450. TARGET_WORD_MAX: 1100. 
+TONE: peer-to-peer, {speaker1_name} {speaker1_personality}, {speaker2_name} {speaker2_personality}. NO teacher voice. 
 STORY allowed only if memory-aiding, <=30s. 
 OUTPUT: produce a revised script that expands content organically to hit at least 450 words while preserving existing correct statements and all source references. 
 Do not invent new high-confidence facts; any added factual claims must be traced to chapter_concepts or marked as "inferred" with low-certainty phrasing. 
@@ -385,6 +406,13 @@ async def generate_script(request: ScriptGenerationRequest):
         concept_ids = [c.get('id', 'unknown') for c in request.concepts]
         duration_seconds = request.duration_minutes * 60
 
+        # Get speaker configuration with defaults
+        speaker_config = request.speaker_config or {}
+        speaker1_name = speaker_config.get('speaker1_name', 'StudentA')
+        speaker2_name = speaker_config.get('speaker2_name', 'StudentB')
+        speaker1_personality = speaker_config.get('speaker1_personality', 'confident')
+        speaker2_personality = speaker_config.get('speaker2_personality', 'curious')
+
         prompt = EDUCATIONAL_PROMPTS["episode_script"].format(
             concepts=concept_names,
             episode_title=request.episode_title,
@@ -392,7 +420,11 @@ async def generate_script(request: ScriptGenerationRequest):
             duration_minutes=request.duration_minutes,
             duration_seconds=duration_seconds,
             concept_ids=concept_ids,
-            chapter_content=request.source_content[:3000]
+            chapter_content=request.source_content[:3000],
+            speaker1_name=speaker1_name,
+            speaker2_name=speaker2_name,
+            speaker1_personality=speaker1_personality,
+            speaker2_personality=speaker2_personality
         )
 
         response = model.generate_content(

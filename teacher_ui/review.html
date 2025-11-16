@@ -332,6 +332,12 @@
                     <strong>Episodes:</strong>
                     <span id="episodeCount">Loading...</span>
                 </div>
+                <div class="info-card">
+                    <strong>Generation:</strong>
+                    <select id="generationSelector" onchange="switchGeneration()">
+                        <option value="latest">Latest</option>
+                    </select>
+                </div>
             </div>
             
             <div class="review-controls">
@@ -339,6 +345,14 @@
                 <button class="btn btn-success" onclick="approveAll()">✅ Approve All</button>
                 <button class="btn btn-warning" onclick="requestRevisions()">📝 Request Revisions</button>
                 <button class="btn btn-danger" onclick="rejectChapter()">❌ Reject Chapter</button>
+            </div>
+            
+            <div class="episode-filters" style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
+                <span style="font-weight: 600;">Filter Episodes:</span>
+                <button class="btn" onclick="filterEpisodes('all')" style="padding: 8px 16px; background: #3498db; color: white;">All</button>
+                <button class="btn" onclick="filterEpisodes('pending')" style="padding: 8px 16px; background: #f39c12; color: white;">Pending</button>
+                <button class="btn" onclick="filterEpisodes('approved')" style="padding: 8px 16px; background: #27ae60; color: white;">Approved</button>
+                <button class="btn" onclick="filterEpisodes('flagged')" style="padding: 8px 16px; background: #e74c3c; color: white;">Needs Review</button>
             </div>
         </div>
 
@@ -384,6 +398,9 @@
     <script>
         // Global state
         let currentChapter = null;
+        let availableGenerations = [];
+        let currentGeneration = 'latest';
+        let currentFilter = 'all';
         let reviewState = {
             approved: new Set(),
             rejected: new Set(),
@@ -737,6 +754,59 @@
             setTimeout(() => {
                 document.body.removeChild(successDiv);
             }, 3000);
+        }
+
+        // Generation management
+        function switchGeneration() {
+            const selector = document.getElementById('generationSelector');
+            currentGeneration = selector.value;
+            loadChapter();
+            showSuccess(`Switched to ${currentGeneration} generation`);
+        }
+
+        function populateGenerations(generations) {
+            const selector = document.getElementById('generationSelector');
+            selector.innerHTML = generations.map(gen => 
+                `<option value="${gen.id}" ${gen.id === currentGeneration ? 'selected' : ''}>
+                    ${gen.id} (${new Date(gen.timestamp).toLocaleDateString()})
+                </option>`
+            ).join('');
+        }
+
+        // Episode filtering
+        function filterEpisodes(filterType) {
+            currentFilter = filterType;
+            const episodeCards = document.querySelectorAll('.episode-card');
+            
+            episodeCards.forEach(card => {
+                const status = card.querySelector('.episode-status').textContent.toLowerCase();
+                let show = false;
+                
+                switch(filterType) {
+                    case 'all':
+                        show = true;
+                        break;
+                    case 'pending':
+                        show = status.includes('pending');
+                        break;
+                    case 'approved':
+                        show = status.includes('approved');
+                        break;
+                    case 'flagged':
+                        show = status.includes('rejected') || status.includes('revision');
+                        break;
+                }
+                
+                card.style.display = show ? 'block' : 'none';
+            });
+            
+            // Update filter button states
+            document.querySelectorAll('.episode-filters .btn').forEach(btn => {
+                btn.style.opacity = '0.7';
+            });
+            event.target.style.opacity = '1';
+            
+            showSuccess(`Filtered to show ${filterType} episodes`);
         }
     </script>
 </body>

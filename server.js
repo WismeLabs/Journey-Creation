@@ -47,15 +47,48 @@ app.use(fileUpload({
 app.use('/outputs', express.static(path.join(__dirname, 'outputs')));
 app.use('/teacher', express.static(path.join(__dirname, 'teacher_ui')));
 
+// API Routes
+const voiceConfigRoutes = require('./routes/voice-config');
+app.use('/api/v1/tts', voiceConfigRoutes);
+
 // Job tracking in memory (in production, use Redis or DB)
 const jobs = new Map();
+const jobQueue = [];
+let isProcessing = false;
+
+// Production metrics tracking per MIGRATION.md
+const metrics = {
+  totalJobs: 0,
+  successfulJobs: 0,
+  failedJobs: 0,
+  averageProcessingTime: 0,
+  hallucinations: 0,
+  teacherReviews: 0
+};
 
 /**
- * Save data to MIGRATION.md compliant output structure
+ * Save data to optimized curriculum-grade-subject-chapter structure with generation versioning
  */
-async function saveToOutputStructure(chapterId, filename, data) {
+async function saveToOutputStructure(chapterId, filename, data, metadata = {}) {
   const fs = require('fs');
-  const chapterDir = path.join(__dirname, 'outputs', `chapter_${chapterId}`);
+  
+  // Create optimized folder structure: curriculum-grade-subject-chapter-generation
+  const { grade_band = 'unknown', subject = 'unknown' } = metadata;
+  const curriculum = metadata.curriculum || 'CBSE';
+  
+  // Add generation timestamp to prevent overwrites
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const generationId = metadata.generation_id || `gen_${timestamp}`;
+  
+  const chapterDir = path.join(
+    __dirname, 
+    'outputs', 
+    curriculum.toUpperCase(),
+    `Grade_${grade_band}`,
+    subject.toLowerCase(),
+    `chapter_${chapterId}`,
+    generationId
+  );
   
   if (!fs.existsSync(chapterDir)) {
     fs.mkdirSync(chapterDir, { recursive: true });
@@ -64,25 +97,52 @@ async function saveToOutputStructure(chapterId, filename, data) {
   const filePath = path.join(chapterDir, filename);
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
   
-  logger.info(`Saved ${filename} to ${filePath}`);
+  logger.info(`Saved ${filename} to optimized structure: ${filePath}`);
+  return filePath;
 }
 
 /**
- * Save episode files per MIGRATION.md output contract
+ * Save episode files per MIGRATION.md output contract with optimized structure and generation versioning
  */
-async function saveEpisodeFiles(chapterId, episodeIndex, episodeData) {
+async function saveEpisodeFiles(chapterId, episodeIndex, episodeData, metadata = {}) {
   const fs = require('fs');
-  const episodeDir = path.join(__dirname, 'outputs', `chapter_${chapterId}`, 'episodes', `ep${episodeIndex.toString().padStart(2, '0')}`);
+  
+  // Use optimized folder structure with generation versioning
+  const { grade_band = 'unknown', subject = 'unknown' } = metadata;
+  const curriculum = metadata.curriculum || 'CBSE';
+  
+  // Add generation timestamp to prevent overwrites
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const generationId = metadata.generation_id || `gen_${timestamp}`;
+  
+  const episodeDir = path.join(
+    __dirname, 
+    'outputs', 
+    curriculum.toUpperCase(),
+    `Grade_${grade_band}`,
+    subject.toLowerCase(),
+    `chapter_${chapterId}`,
+    generationId,
+    'episodes', 
+    `ep${episodeIndex.toString().padStart(2, '0')}`
+  );
   
   if (!fs.existsSync(episodeDir)) {
     fs.mkdirSync(episodeDir, { recursive: true });
   }
   
-  // Create audio directory
+  // Create audio directory structure per MIGRATION.md
   const audioDir = path.join(episodeDir, 'audio');
-  if (!fs.existsSync(audioDir)) {
-    fs.mkdirSync(audioDir, { recursive: true });
-  }
+  const segmentDirs = [
+    path.join(audioDir, 'a_segments'),
+    path.join(audioDir, 'b_segments')
+  ];
+  
+  segmentDirs.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
 
   // Save script.json (structured format per MIGRATION.md)
   const scriptJsonPath = path.join(episodeDir, 'script.json');
@@ -101,9 +161,14 @@ async function saveEpisodeFiles(chapterId, episodeIndex, episodeData) {
   const metadataPath = path.join(episodeDir, 'metadata.json');
   fs.writeFileSync(metadataPath, JSON.stringify(episodeData.metadata, null, 2), 'utf8');
 
-  // Save cues.json (placeholder for now, will be generated after TTS)
+  // Save cues.json (use actual cues from TTS if available, otherwise placeholder)
   const cuesPath = path.join(episodeDir, 'cues.json');
-  const cues = { sections: [], timestamps: [], audio_file: `ep${episodeIndex.toString().padStart(2, '0')}_final.mp3` };
+  const cues = episodeData.audio?.cues || { 
+    sections: [], 
+    timestamps: [], 
+    audio_file: `ep${episodeIndex.toString().padStart(2, '0')}_final.mp3`,
+    note: 'Cues will be generated after TTS audio production'
+  };
   fs.writeFileSync(cuesPath, JSON.stringify(cues, null, 2), 'utf8');
 
   logger.info(`Saved episode ${episodeIndex} files to ${episodeDir}`);
@@ -131,22 +196,65 @@ function updateJobStatus(jobId, status, progress = null, error = null, result = 
   }
 }
 
-// API Routes
+// Job queue processor
+async function processJobQueue() {
+  if (isProcessing || jobQueue.length === 0) return;
+  
+  isProcessing = true;
+  const job = jobQueue.shift();
+  
+  try {
+    logger.info(`Processing job ${job.jobId} from queue`);
+    await processChapterJob(job);
+  } catch (error) {
+    logger.error(`Job ${job.jobId} failed:`, error);
+    updateJobStatus(job.jobId, 'failed', null, error.message);
+    metrics.failedJobs++;
+  } finally {
+    isProcessing = false;
+    // Process next job if available
+    if (jobQueue.length > 0) {
+      setTimeout(processJobQueue, 100);
+    }
+  }
+}
+
+// Process individual chapter job
+async function processChapterJob(job) {
+  const startTime = Date.now();
+  const { jobId, pdfFile, metadata } = job;
+  
+  updateJobStatus(jobId, 'processing', 0);
+  
+  // Call the existing processChapter function with proper error handling
+  await processChapter(jobId, pdfFile, metadata);
+  
+  const processingTime = Date.now() - startTime;
+  metrics.averageProcessingTime = 
+    (metrics.averageProcessingTime * metrics.successfulJobs + processingTime) / 
+    (metrics.successfulJobs + 1);
+  metrics.successfulJobs++;
+}
+
+// Complete REST API per MIGRATION.md section 15
 
 /**
  * POST /api/v1/generate
- * Starts chapter processing pipeline
+ * Payload: {chapter_id, chapter_file_url or upload, grade_band, subject, language, teacher_review}
+ * Returns: {job_id}
  */
 app.post('/api/v1/generate', async (req, res) => {
   const jobId = uuidv4();
   
   try {
-    // Validate required fields
+    // Validate required fields per MIGRATION.md
     const { chapter_id, grade_band, subject, language = 'en-IN', teacher_review = false } = req.body;
     
     if (!chapter_id || !grade_band || !subject) {
       return res.status(400).json({ 
-        error: 'Missing required fields: chapter_id, grade_band, subject' 
+        error: 'Missing required fields: chapter_id, grade_band, subject',
+        required_fields: ['chapter_id', 'grade_band', 'subject'],
+        optional_fields: ['language', 'teacher_review', 'curriculum']
       });
     }
 
@@ -161,39 +269,308 @@ app.post('/api/v1/generate', async (req, res) => {
       return res.status(400).json({ error: 'No PDF file provided' });
     }
 
-    // Initialize job tracking
-    jobs.set(jobId, {
+    // Create job entry
+    const jobData = {
       jobId,
-      chapterId: chapter_id,
-      status: 'started',
+      status: 'queued',
       progress: 0,
-      startTime: new Date(),
+      createdAt: new Date(),
       lastUpdated: new Date(),
-      metadata: { chapter_id, grade_band, subject, language, teacher_review }
-    });
-
-    logger.info(`Starting chapter processing for ${chapter_id}`, { jobId, metadata: jobs.get(jobId).metadata });
-
-    // Start async processing
-    processChapter(jobId, pdfFile, { chapter_id, grade_band, subject, language, teacher_review });
-
-    res.json({ 
-      job_id: jobId,
-      status: 'started',
-      message: 'Chapter processing initiated'
-    });
-
+      metadata: { chapter_id, grade_band, subject, language, teacher_review, curriculum: req.body.curriculum || 'CBSE' }
+    };
+    
+    jobs.set(jobId, jobData);
+    metrics.totalJobs++;
+    
+    // Add to queue for processing
+    jobQueue.push({ jobId, pdfFile, metadata: jobData.metadata });
+    
+    // Start processing if not already running
+    if (!isProcessing) {
+      setTimeout(processJobQueue, 100);
+    }
+    
+    logger.info(`Job ${jobId} queued for chapter ${chapter_id}`);
+    
+    res.json({ job_id: jobId });
+    
   } catch (error) {
-    logger.error('Error starting chapter processing', { error: error.message, jobId });
-    res.status(500).json({ error: 'Failed to start processing: ' + error.message });
+    logger.error('Generate API error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
 /**
  * GET /api/v1/status/{job_id}
- * Returns job progress and status
+ * Returns progress + errors per MIGRATION.md
  */
 app.get('/api/v1/status/:jobId', (req, res) => {
+  const { jobId } = req.params;
+  const job = jobs.get(jobId);
+  
+  if (!job) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+  
+  res.json({
+    job_id: jobId,
+    status: job.status,
+    progress: job.progress,
+    created_at: job.createdAt,
+    last_updated: job.lastUpdated,
+    error: job.error || null,
+    metadata: job.metadata
+  });
+});
+
+/**
+ * GET /api/v1/result/{chapter_id}
+ * Returns manifest URL or error_report per MIGRATION.md with generation support
+ */
+app.get('/api/v1/result/:chapter_id', (req, res) => {
+  const { chapter_id } = req.params;
+  const { generation } = req.query; // Optional generation parameter
+  const fs = require('fs');
+  
+  try {
+    // Find the chapter in optimized structure
+    const outputsDir = path.join(__dirname, 'outputs');
+    
+    function findChapterPath(dir) {
+      if (!fs.existsSync(dir)) return null;
+      
+      const items = fs.readdirSync(dir, { withFileTypes: true });
+      for (const item of items) {
+        if (item.isDirectory()) {
+          const itemPath = path.join(dir, item.name);
+          if (item.name === `chapter_${chapter_id}`) {
+            // Found chapter folder, now find generation
+            return findLatestGeneration(itemPath, generation);
+          }
+          const found = findChapterPath(itemPath);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+    
+    function findLatestGeneration(chapterPath, targetGeneration = null) {
+      if (!fs.existsSync(chapterPath)) return null;
+      
+      const generations = fs.readdirSync(chapterPath, { withFileTypes: true })
+        .filter(item => item.isDirectory() && item.name.startsWith('gen_'))
+        .sort((a, b) => b.name.localeCompare(a.name)); // Sort by timestamp desc
+      
+      if (generations.length === 0) return null;
+      
+      // Return specific generation or latest
+      const selectedGen = targetGeneration 
+        ? generations.find(g => g.name === targetGeneration)
+        : generations[0];
+      
+      return selectedGen ? path.join(chapterPath, selectedGen.name) : null;
+    }
+    
+    const generationPath = findChapterPath(outputsDir);
+    if (!generationPath) {
+      return res.status(404).json({ error: 'Chapter not found' });
+    }
+    
+    const manifestPath = path.join(generationPath, 'manifest.json');
+    const errorReportPath = path.join(generationPath, 'error_report.json');
+    
+    if (fs.existsSync(errorReportPath)) {
+      const errorReport = JSON.parse(fs.readFileSync(errorReportPath, 'utf8'));
+      return res.json({ error_report: errorReport });
+    }
+    
+    if (fs.existsSync(manifestPath)) {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      const relativePath = path.relative(path.join(__dirname, 'outputs'), manifestPath).replace(/\\\\/g, '/');
+      
+      // Also return available generations
+      const chapterPath = path.dirname(generationPath);
+      const availableGenerations = fs.readdirSync(chapterPath, { withFileTypes: true })
+        .filter(item => item.isDirectory() && item.name.startsWith('gen_'))
+        .map(item => ({
+          id: item.name,
+          timestamp: item.name.replace('gen_', '').replace(/-/g, ':')
+        }))
+        .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+      
+      return res.json({ 
+        manifest_url: `/outputs/${relativePath}`,
+        manifest: manifest,
+        current_generation: path.basename(generationPath),
+        available_generations: availableGenerations
+      });
+    }
+    
+    res.status(404).json({ error: 'No results found for chapter' });
+    
+  } catch (error) {
+    logger.error('Result API error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/regenerate_episode
+ * For manual triggers (accepts seed & episode_index) per MIGRATION.md
+ */
+app.post('/api/v1/regenerate_episode', async (req, res) => {
+  try {
+    const { chapter_id, episode_index, regeneration_type, seed } = req.body;
+    
+    if (!chapter_id || !episode_index || !regeneration_type) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: chapter_id, episode_index, regeneration_type' 
+      });
+    }
+    
+    const jobId = uuidv4();
+    const jobData = {
+      jobId,
+      status: 'processing',
+      progress: 0,
+      createdAt: new Date(),
+      lastUpdated: new Date(),
+      metadata: { chapter_id, episode_index, trigger: 'manual_regeneration', seed }
+    };
+    
+    jobs.set(jobId, jobData);
+    
+    // Call regeneration service
+    const regenerationResult = await callRegenerationService({
+      chapter_id,
+      episode_index,
+      prompt_type: regeneration_type,
+      seed
+    });
+    
+    updateJobStatus(jobId, 'completed', 100, null, regenerationResult);
+    
+    res.json({ 
+      job_id: jobId,
+      result: regenerationResult 
+    });
+    
+  } catch (error) {
+    logger.error('Regenerate episode API error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/preview/{chapter_id}/{episode_index}
+ * Returns script preview & audio URL (for teacher) per MIGRATION.md
+ */
+app.get('/api/v1/preview/:chapter_id/:episode_index', (req, res) => {
+  const { chapter_id, episode_index } = req.params;
+  const fs = require('fs');
+  
+  try {
+    // Find episode in optimized structure
+    const outputsDir = path.join(__dirname, 'outputs');
+    
+    function findEpisodePath(dir) {
+      if (!fs.existsSync(dir)) return null;
+      
+      const items = fs.readdirSync(dir, { withFileTypes: true });
+      for (const item of items) {
+        if (item.isDirectory()) {
+          const itemPath = path.join(dir, item.name);
+          if (item.name === `chapter_${chapter_id}`) {
+            const episodePath = path.join(itemPath, 'episodes', `ep${episode_index.toString().padStart(2, '0')}`);
+            return fs.existsSync(episodePath) ? episodePath : null;
+          }
+          const found = findEpisodePath(itemPath);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+    
+    const episodePath = findEpisodePath(outputsDir);
+    if (!episodePath) {
+      return res.status(404).json({ error: 'Episode not found' });
+    }
+    
+    const scriptPath = path.join(episodePath, 'script.json');
+    const audioPath = path.join(episodePath, 'audio', 'final_audio.mp3');
+    
+    let scriptPreview = null;
+    let audioUrl = null;
+    
+    if (fs.existsSync(scriptPath)) {
+      scriptPreview = JSON.parse(fs.readFileSync(scriptPath, 'utf8'));
+    }
+    
+    if (fs.existsSync(audioPath)) {
+      const relativePath = path.relative(path.join(__dirname, 'outputs'), audioPath).replace(/\\\\/g, '/');
+      audioUrl = `/outputs/${relativePath}`;
+    }
+    
+    res.json({
+      chapter_id,
+      episode_index: parseInt(episode_index),
+      script_preview: scriptPreview,
+      audio_url: audioUrl,
+      status: audioUrl ? 'completed' : 'processing'
+    });
+    
+  } catch (error) {
+    logger.error('Preview API error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/metrics
+ * Production metrics per MIGRATION.md
+ */
+app.get('/api/v1/metrics', (req, res) => {
+  const uptime = process.uptime();
+  
+  res.json({
+    uptime_seconds: uptime,
+    total_jobs: metrics.totalJobs,
+    successful_jobs: metrics.successfulJobs,
+    failed_jobs: metrics.failedJobs,
+    success_rate: metrics.totalJobs > 0 ? (metrics.successfulJobs / metrics.totalJobs) : 0,
+    review_rate: metrics.totalJobs > 0 ? (metrics.teacherReviews / metrics.totalJobs) : 0,
+    average_processing_time_ms: metrics.averageProcessingTime,
+    hallucination_rate: metrics.totalJobs > 0 ? (metrics.hallucinations / metrics.totalJobs) : 0,
+    queue_length: jobQueue.length,
+    is_processing: isProcessing
+  });
+});
+
+// Helper function for regeneration service calls
+async function callRegenerationService(params) {
+  try {
+    const response = await fetch(`${process.env.LLM_SERVICE_URL || 'http://127.0.0.1:8000'}/regenerate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt_type: params.prompt_type,
+        input_data: params,
+        temperature: 0.0
+      })
+    });
+    
+    return await response.json();
+  } catch (error) {
+    logger.error('Regeneration service call failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Legacy endpoint - keeping for backward compatibility
+ * GET /api/v1/status/{job_id} (old format)
+ */
+app.get('/api/v1/status_legacy/:jobId', (req, res) => {
   const { jobId } = req.params;
   const job = jobs.get(jobId);
   
@@ -212,88 +589,8 @@ app.get('/api/v1/status/:jobId', (req, res) => {
 });
 
 /**
- * GET /api/v1/result/{chapter_id}
- * Returns processing results
- */
-app.get('/api/v1/result/:chapterId', (req, res) => {
-  const { chapterId } = req.params;
-  
-  // Find job by chapter ID
-  let targetJob = null;
-  for (const [jobId, job] of jobs.entries()) {
-    if (job.chapterId === chapterId && job.status === 'completed') {
-      targetJob = job;
-      break;
-    }
-  }
-
-  if (!targetJob) {
-    return res.status(404).json({ error: 'No completed job found for chapter' });
-  }
-
-  if (targetJob.result) {
-    res.json(targetJob.result);
-  } else {
-    res.status(500).json({ error: 'Job completed but no result available' });
-  }
-});
-
-/**
- * GET /api/v1/preview/{chapter_id}/{episode_index}
- * Returns script preview & audio URL for teacher review
- */
-app.get('/api/v1/preview/:chapterId/:episodeIndex', (req, res) => {
-  const { chapterId, episodeIndex } = req.params;
-  
-  try {
-    const outputDir = path.join(__dirname, 'outputs', `chapter_${chapterId}`);
-    const episodeDir = path.join(outputDir, 'episodes', `ep${episodeIndex.padStart(2, '0')}`);
-    
-    // Check if episode exists
-    if (!fs.existsSync(episodeDir)) {
-      return res.status(404).json({ error: 'Episode not found' });
-    }
-
-    // Load episode data
-    const scriptPath = path.join(episodeDir, 'script.json');
-    const mcqsPath = path.join(episodeDir, 'mcqs.json');
-    const audioPath = path.join(episodeDir, 'audio', 'final_audio.mp3');
-
-    const preview = {
-      chapter_id: chapterId,
-      episode_index: parseInt(episodeIndex),
-      script: null,
-      mcqs: null,
-      audio_url: null,
-      metadata: null
-    };
-
-    // Load script if exists
-    if (fs.existsSync(scriptPath)) {
-      preview.script = JSON.parse(fs.readFileSync(scriptPath, 'utf8'));
-    }
-
-    // Load MCQs if exists
-    if (fs.existsSync(mcqsPath)) {
-      preview.mcqs = JSON.parse(fs.readFileSync(mcqsPath, 'utf8'));
-    }
-
-    // Check for audio
-    if (fs.existsSync(audioPath)) {
-      preview.audio_url = `/outputs/chapter_${chapterId}/episodes/ep${episodeIndex.padStart(2, '0')}/audio/final_audio.mp3`;
-    }
-
-    res.json(preview);
-
-  } catch (error) {
-    logger.error(`Preview generation failed: ${error.message}`);
-    res.status(500).json({ error: 'Failed to generate preview' });
-  }
-});
-
-/**
  * POST /api/v1/regenerate_episode
- * Manually trigger episode regeneration
+ * For manual triggers (accepts seed & episode_index) per MIGRATION.md
  */
 app.post('/api/v1/regenerate_episode', async (req, res) => {
   const { chapter_id, episode_index, seed, reason } = req.body;
@@ -407,6 +704,64 @@ app.post('/api/v1/teacher/review', async (req, res) => {
 });
 
 /**
+ * Save error report per MIGRATION.md structure
+ */
+async function saveErrorReport(chapterId, episodeIndex, errorReport, metadata = {}) {
+  const fs = require('fs');
+  
+  const { grade_band = 'unknown', subject = 'unknown' } = metadata;
+  const curriculum = metadata.curriculum || 'CBSE';
+  
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const generationId = metadata.generation_id || `gen_${timestamp}`;
+  
+  const errorReportPath = path.join(
+    __dirname, 
+    'outputs', 
+    curriculum.toUpperCase(),
+    `Grade_${grade_band}`,
+    subject.toLowerCase(),
+    `chapter_${chapterId}`,
+    generationId,
+    episodeIndex ? `episodes/ep${episodeIndex.toString().padStart(2, '0')}/error_report.json` : 'error_report.json'
+  );
+  
+  const errorDir = path.dirname(errorReportPath);
+  if (!fs.existsSync(errorDir)) {
+    fs.mkdirSync(errorDir, { recursive: true });
+  }
+  
+  fs.writeFileSync(errorReportPath, JSON.stringify(errorReport, null, 2), 'utf8');
+  logger.info(`Error report saved: ${errorReportPath}`);
+  
+  return errorReportPath;
+}
+
+/**
+ * Sync MCQ timestamps with actual audio cues per MIGRATION.md REGEN_TIME_SYNC
+ */
+async function syncMCQTimestamps(mcqs, cues) {
+  if (!cues || !cues.sections || !Array.isArray(mcqs)) return mcqs;
+  
+  return mcqs.map(mcq => {
+    // Find matching section for this MCQ
+    const matchingSection = cues.sections.find(section => 
+      Math.abs(section.start - mcq.timestamp_ref) < 30 // Within 30 seconds
+    );
+    
+    if (matchingSection) {
+      return {
+        ...mcq,
+        timestamp_ref: matchingSection.start, // Update to actual audio timestamp
+        timestamp_source: 'audio_sync'
+      };
+    }
+    
+    return mcq;
+  });
+}
+
+/**
  * Main chapter processing pipeline
  */
 async function processChapter(jobId, pdfFile, metadata) {
@@ -429,7 +784,7 @@ async function processChapter(jobId, pdfFile, metadata) {
     const rawText = pdfProcessingResult.rawText;
     
     // Save chapter data per MIGRATION.md output structure
-    await ingestService.saveChapterData(chapter_id, pdfProcessingResult);
+    await ingestService.saveChapterData(chapter_id, pdfProcessingResult, metadata);
     
     updateJobStatus(jobId, 'analyzing_content', 30);
 
@@ -439,12 +794,12 @@ async function processChapter(jobId, pdfFile, metadata) {
     const concepts = conceptExtractionResult.concepts; // Extract concepts array
     const conceptGraph = conceptExtractionResult.graph;
     
-    // Save concepts.json per MIGRATION.md output structure
+    // Save concepts.json per MIGRATION.md output structure with optimized folders
     const conceptsOutput = {
       concepts: concepts,
       graph: conceptGraph
     };
-    await saveToOutputStructure(chapter_id, 'concepts.json', conceptsOutput);
+    await saveToOutputStructure(chapter_id, 'concepts.json', conceptsOutput, metadata);
     
     updateJobStatus(jobId, 'planning_episodes', 40);
 
@@ -460,8 +815,8 @@ async function processChapter(jobId, pdfFile, metadata) {
     
     const episodePlan = await plannerService.planEpisodes(concepts, chapterMetadata);
     
-    // Save episode_plan.json per MIGRATION.md output structure
-    await saveToOutputStructure(chapter_id, 'episode_plan.json', episodePlan);
+    // Save episode_plan.json per MIGRATION.md output structure with optimized folders
+    await saveToOutputStructure(chapter_id, 'episode_plan.json', episodePlan, metadata);
     
     updateJobStatus(jobId, 'generating_scripts', 50);
 
@@ -506,7 +861,21 @@ async function processChapter(jobId, pdfFile, metadata) {
       concepts,
       episodePlan,
       episodes
-    });
+    }, metadata);
+    
+    // Track metrics per MIGRATION.md section 12
+    const requiresReview = episodes.some(ep => ep.metadata?.validation_status === 'requires_review');
+    if (requiresReview) {
+      metrics.teacherReviews++;
+    }
+    
+    // Track hallucinations (episodes with inferred/unsourced content)
+    const hasHallucinations = episodes.some(ep => 
+      ep.error_report?.fail_reasons?.includes('hallucination')
+    );
+    if (hasHallucinations) {
+      metrics.hallucinations++;
+    }
 
     updateJobStatus(jobId, 'completed', 100, null, results);
     logger.info(`Chapter processing completed for ${chapter_id}`, { jobId });
@@ -527,10 +896,37 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
   try {
     logs.push({ step: `episode_${episodeIndex}_generation`, status: 'started', timestamp: new Date().toISOString() });
     
+    // Get current voice configuration for custom speaker names
+    let speakerConfig = {
+      speaker1: { name: 'StudentA' },
+      speaker2: { name: 'StudentB' }
+    };
+    
+    // Try to get voice configuration from TTS orchestrator
+    try {
+      const currentTTSConfig = ttsService.getCurrentConfiguration();
+      if (currentTTSConfig && currentTTSConfig.voices) {
+        speakerConfig = {
+          speaker1: {
+            name: currentTTSConfig.voices.StudentA?.displayName || 'StudentA',
+            role: 'student',
+            personality: currentTTSConfig.voices.StudentA?.personality || 'confident'
+          },
+          speaker2: {
+            name: currentTTSConfig.voices.StudentB?.displayName || 'StudentB',
+            role: 'student',
+            personality: currentTTSConfig.voices.StudentB?.personality || 'curious'
+          }
+        };
+      }
+    } catch (error) {
+      logger.warn('Could not load voice configuration from TTS service, using defaults:', error.message);
+    }
+    
     // Get episode-specific concepts from episode config
     const episodeConcepts = episodeConfig.concepts || [];
     
-    // Generate script using enhanced backend
+    // Generate script using enhanced backend with custom speaker names
     const scriptResponse = await fetch(`${process.env.HF_BACKEND_URL || 'http://localhost:8000'}/generate_script`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -540,7 +936,15 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
         grade: metadata.grade_band || metadata.grade,
         subject: metadata.subject,
         duration_minutes: episodeConfig.target_minutes || 8,
-        source_content: markdown.substring(0, 5000) // Context window
+        source_content: markdown.substring(0, 5000), // Context window
+        speaker_config: {
+          speaker1_name: speakerConfig.speaker1.name || 'StudentA',
+          speaker2_name: speakerConfig.speaker2.name || 'StudentB',
+          speaker1_role: speakerConfig.speaker1.role || 'student',
+          speaker2_role: speakerConfig.speaker2.role || 'student',
+          speaker1_personality: speakerConfig.speaker1.personality || 'confident',
+          speaker2_personality: speakerConfig.speaker2.personality || 'curious'
+        }
       })
     });
 
@@ -586,20 +990,27 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
     };
 
     // Validate episode
-    const validationResult = await validator.validateEpisode(episodeData);
+    const validationResult = await validationService.validateEpisode(episodeData, episodeConfig);
     
     if (!validationResult.isValid) {
-      // Attempt auto-repair
-      const repairResult = await validator.repairEpisode(episodeData, validationResult.errors);
+      // Attempt auto-repair with retry logic per MIGRATION.md
+      const repairResult = await validationService.repairEpisodeWithRetries(episodeData, episodeConfig);
       if (repairResult.success) {
         episodeData.script = repairResult.repairedEpisode.script;
         episodeData.mcqs = repairResult.repairedEpisode.mcqs;
         episodeData.metadata.validation_status = 'auto_repaired';
-        logs.push({ step: 'validation', status: 'auto_repaired', errors_fixed: validationResult.errors.length });
+        episodeData.metadata.repair_log = repairResult.repairLog;
+        logs.push({ step: 'validation', status: 'auto_repaired', attempts: repairResult.repairLog.totalAttempts });
       } else {
         episodeData.metadata.validation_status = 'requires_review';
         episodeData.metadata.validation_errors = validationResult.errors;
+        episodeData.error_report = repairResult.errorReport;
         logs.push({ step: 'validation', status: 'requires_review', errors: validationResult.errors.length });
+        
+        // Save error_report.json per MIGRATION.md
+        if (repairResult.errorReport) {
+          await saveErrorReport(metadata.chapter_id, episodeIndex, repairResult.errorReport, metadata);
+        }
       }
     } else {
       episodeData.metadata.validation_status = 'validated';
@@ -609,9 +1020,14 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
     // Generate audio if validation passed
     if (episodeData.metadata.validation_status !== 'requires_review') {
       try {
-        const audioResult = await ttsOrchestrator.generateEpisodeAudio(episodeData);
+        const audioResult = await ttsService.generateEpisodeAudio(episodeData, metadata.chapter_id, episodeIndex);
         episodeData.audio = audioResult;
         logs.push({ step: 'audio_generation', status: 'completed', audioFile: audioResult.finalAudioPath });
+        
+        // Update MCQ timestamps with actual audio timing per MIGRATION.md REGEN_TIME_SYNC
+        if (audioResult.cues && episodeData.mcqs) {
+          episodeData.mcqs = await syncMCQTimestamps(episodeData.mcqs, audioResult.cues);
+        }
       } catch (audioError) {
         console.error(`Audio generation failed for episode ${episodeIndex}:`, audioError);
         episodeData.metadata.audio_error = audioError.message;
@@ -619,8 +1035,8 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
       }
     }
 
-    // Save episode files per MIGRATION.md output structure
-    await saveEpisodeFiles(metadata.chapter_id, episodeIndex, episodeData);
+    // Save episode files per MIGRATION.md output structure with optimized folders
+    await saveEpisodeFiles(metadata.chapter_id, episodeIndex, episodeData, metadata);
     
     logs.push({ step: `episode_${episodeIndex}_generation`, status: 'completed', timestamp: new Date().toISOString() });
     episodeData.logs = logs;
@@ -648,21 +1064,47 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
 /**
  * Package final results per MIGRATION.md manifest requirements
  */
-async function packageResults(chapterId, data) {
+async function packageResults(chapterId, data, metadata = {}) {
   const fs = require('fs');
-  const outputDir = path.join(__dirname, 'outputs', `chapter_${chapterId}`);
+  const crypto = require('crypto');
+  
+  // Generate deterministic seed per MIGRATION.md section 6
+  const deterministicSeed = crypto.createHash('md5').update(chapterId).digest('hex');
+  
+  const { grade_band = 'unknown', subject = 'unknown' } = metadata;
+  const curriculum = metadata.curriculum || 'CBSE';
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const generationId = metadata.generation_id || `gen_${timestamp}`;
+  
+  const outputDir = path.join(
+    __dirname,
+    'outputs',
+    curriculum.toUpperCase(),
+    `Grade_${grade_band}`,
+    subject.toLowerCase(),
+    `chapter_${chapterId}`,
+    generationId
+  );
   
   // Create manifest.json per MIGRATION.md requirements
   const manifest = {
     chapter_id: chapterId,
-    generation_version: 'content_pipeline_v1',
+    generation_version: 'school_pipeline_v1',
+    generation_seed: deterministicSeed,
     timestamp: new Date().toISOString(),
     status: 'completed',
+    metadata: {
+      curriculum: curriculum,
+      grade_band: grade_band,
+      subject: subject,
+      language: metadata.language || 'en-IN',
+      teacher_review: metadata.teacher_review || false
+    },
     processing_summary: {
       total_concepts: data.concepts?.length || 0,
       total_episodes: data.episodes?.length || 0,
       word_count: data.markdown?.length || 0,
-      curriculum: 'CBSE'
+      curriculum: curriculum
     },
     files: {
       "chapter.md": "cleaned markdown",
@@ -676,7 +1118,8 @@ async function packageResults(chapterId, data) {
       title: ep.title || `Episode ${index + 1}`,
       status: ep.error ? 'failed' : 'completed',
       validation_status: ep.metadata?.validation_status || 'unknown',
-      audio_generated: !ep.error && !ep.metadata?.audio_error
+      audio_generated: !ep.error && !ep.metadata?.audio_error,
+      requires_teacher_review: ep.metadata?.validation_status === 'requires_review'
     })) || []
   };
 
@@ -687,10 +1130,12 @@ async function packageResults(chapterId, data) {
   logger.info(`Generated manifest for chapter ${chapterId} with ${data.episodes?.length || 0} episodes`);
 
   return {
-    manifest_url: `/outputs/chapter_${chapterId}/manifest.json`,
-    chapter_url: `/outputs/chapter_${chapterId}/chapter.md`,
+    manifest_url: `/outputs/${curriculum.toUpperCase()}/Grade_${grade_band}/${subject.toLowerCase()}/chapter_${chapterId}/${generationId}/manifest.json`,
+    chapter_url: `/outputs/${curriculum.toUpperCase()}/Grade_${grade_band}/${subject.toLowerCase()}/chapter_${chapterId}/${generationId}/chapter.md`,
     episodes_count: data.episodes?.length || 0,
     teacher_review_url: `/teacher/review.html?chapter=${chapterId}`,
+    generation_id: generationId,
+    deterministic_seed: deterministicSeed,
     status: 'completed'
   };
 }

@@ -39,6 +39,266 @@ class ValidationController {
   }
 
   /**
+   * Auto-repair orchestration per MIGRATION.md - fully idempotent with retry limits
+   */
+  async repairEpisodeWithRetries(episodeContent, episodeConfig) {
+    const maxRetries = this.maxRetries;
+    const repairLog = {
+      attempts: [],
+      finalStatus: 'unknown',
+      totalAttempts: 0,
+      errorCount: 0
+    };
+    
+    let currentContent = { ...episodeContent };
+    let allErrors = [];
+    
+    try {
+      // Initial validation
+      let validationResult = await this.validateEpisode(currentContent, episodeConfig);
+      
+      if (validationResult.isValid) {
+        repairLog.finalStatus = 'no_repair_needed';
+        return { success: true, repairedEpisode: currentContent, repairLog };
+      }
+      
+      // Track unique error types to avoid infinite loops
+      const seenErrorTypes = new Set();
+      let retryCount = 0;
+      
+      while (!validationResult.isValid && retryCount < maxRetries) {
+        retryCount++;
+        repairLog.totalAttempts++;
+        
+        const attemptLog = {
+          attempt: retryCount,
+          errors: validationResult.errors,
+          repairs: [],
+          result: 'unknown'
+        };
+        
+        let repairedAny = false;
+        
+        // Group errors by type for batch processing
+        const errorTypes = this.categorizeErrors(validationResult.errors);
+        
+        // Process each error type with appropriate regeneration prompt
+        for (const [errorType, errors] of Object.entries(errorTypes)) {
+          if (errors.length === 0) continue;
+          
+          // Skip if we've seen this error type too many times
+          const errorKey = `${errorType}_${errors.join('|')}`;
+          if (seenErrorTypes.has(errorKey)) {
+            attemptLog.repairs.push({ errorType, result: 'skipped_duplicate' });
+            continue;
+          }
+          seenErrorTypes.add(errorKey);
+          
+          try {
+            const repairResult = await this.executeRepair(errorType, currentContent, errors, episodeConfig);
+            
+            if (repairResult.success) {
+              currentContent = repairResult.repairedContent;
+              repairedAny = true;
+              attemptLog.repairs.push({ 
+                errorType, 
+                result: 'success', 
+                prompt: repairResult.promptUsed,
+                changesSummary: repairResult.changesSummary 
+              });
+            } else {
+              attemptLog.repairs.push({ 
+                errorType, 
+                result: 'failed', 
+                error: repairResult.error 
+              });
+            }
+            
+          } catch (repairError) {
+            logger.error(`Repair failed for ${errorType}:`, repairError);
+            attemptLog.repairs.push({ 
+              errorType, 
+              result: 'error', 
+              error: repairError.message 
+            });
+          }
+        }
+        
+        // Re-validate after repairs
+        if (repairedAny) {
+          validationResult = await this.validateEpisode(currentContent, episodeConfig);
+          attemptLog.result = validationResult.isValid ? 'validation_passed' : 'validation_failed';
+        } else {
+          attemptLog.result = 'no_repairs_applied';
+          break; // No point continuing if no repairs were applied
+        }
+        
+        repairLog.attempts.push(attemptLog);
+        allErrors.push(...validationResult.errors);
+        
+        // Break if validation passes
+        if (validationResult.isValid) {
+          break;
+        }
+      }
+      
+      // Final status determination
+      if (validationResult.isValid) {
+        repairLog.finalStatus = 'repaired_successfully';
+        return { success: true, repairedEpisode: currentContent, repairLog };
+      } else {
+        repairLog.finalStatus = 'repair_failed_max_retries';
+        repairLog.errorCount = allErrors.length;
+        
+        // Generate error report per MIGRATION.md
+        const errorReport = this.generateErrorReport(episodeConfig, allErrors, repairLog);
+        
+        return { 
+          success: false, 
+          repairedEpisode: currentContent, 
+          repairLog,
+          errorReport,
+          requiresTeacherReview: true 
+        };
+      }
+      
+    } catch (error) {
+      logger.error('Auto-repair orchestration failed:', error);
+      repairLog.finalStatus = 'orchestration_error';
+      repairLog.error = error.message;
+      
+      return { 
+        success: false, 
+        repairedEpisode: currentContent, 
+        repairLog,
+        error: error.message 
+      };
+    }
+  }
+  
+  /**
+   * Categorize validation errors by type for appropriate regeneration prompts
+   */
+  categorizeErrors(errors) {
+    const categories = {
+      script_length: [],
+      tone_issues: [],
+      mcq_sync: [],
+      hallucination: [],
+      pronunciation: [],
+      structure: [],
+      other: []
+    };
+    
+    for (const error of errors) {
+      const errorText = error.toLowerCase();
+      
+      if (errorText.includes('too short') || errorText.includes('word count')) {
+        categories.script_length.push(error);
+      } else if (errorText.includes('forbidden') || errorText.includes('tone') || errorText.includes('teacher')) {
+        categories.tone_issues.push(error);
+      } else if (errorText.includes('mcq') || errorText.includes('timestamp')) {
+        categories.mcq_sync.push(error);
+      } else if (errorText.includes('source') || errorText.includes('hallucination')) {
+        categories.hallucination.push(error);
+      } else if (errorText.includes('pronunciation')) {
+        categories.pronunciation.push(error);
+      } else if (errorText.includes('structure') || errorText.includes('section')) {
+        categories.structure.push(error);
+      } else {
+        categories.other.push(error);
+      }
+    }
+    
+    return categories;
+  }
+  
+  /**
+   * Execute specific repair using appropriate regeneration prompt
+   */
+  async executeRepair(errorType, content, errors, episodeConfig) {
+    const promptMap = {
+      script_length: errors[0].includes('too short') ? 'regen_short_script' : 'regen_long_script',
+      tone_issues: 'regen_tone_fix',
+      mcq_sync: 'regen_mcq_sync',
+      hallucination: 'regen_remove_hallucination',
+      pronunciation: 'regen_pronunciation_map',
+      structure: 'regen_structure_fix'
+    };
+    
+    const promptType = promptMap[errorType] || 'regen_dedup';
+    
+    try {
+      const response = await fetch(`${this.llmServiceUrl}/regenerate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt_type: promptType,
+          input_data: {
+            current_content: content,
+            errors: errors,
+            episode_config: episodeConfig
+          },
+          temperature: 0.0 // Deterministic regeneration per MIGRATION.md
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Regeneration API failed: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      return {
+        success: true,
+        repairedContent: result.repaired_content || content,
+        promptUsed: promptType,
+        changesSummary: result.change_log || 'No change log provided'
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+  
+  /**
+   * Generate error report per MIGRATION.md structure
+   */
+  generateErrorReport(episodeConfig, errors, repairLog) {
+    return {
+      chapter_id: episodeConfig.chapter_id || 'unknown',
+      episode_index: episodeConfig.ep || 'unknown',
+      failed_stage: 'validation_and_repair',
+      fail_reasons: [...new Set(errors.map(e => this.categorizeError(e)))],
+      attempts: repairLog.attempts,
+      suggested_action: 'teacher_review_required',
+      timestamp: new Date().toISOString(),
+      total_attempts: repairLog.totalAttempts,
+      final_error_count: errors.length
+    };
+  }
+  
+  /**
+   * Categorize single error for reporting
+   */
+  categorizeError(error) {
+    const errorText = error.toLowerCase();
+    
+    if (errorText.includes('too short')) return 'too_short';
+    if (errorText.includes('too long')) return 'too_long';
+    if (errorText.includes('hallucination') || errorText.includes('source')) return 'hallucination';
+    if (errorText.includes('forbidden') || errorText.includes('tone')) return 'tone_drift';
+    if (errorText.includes('mcq')) return 'mcq_mismatch';
+    if (errorText.includes('pronunciation')) return 'pronunciation';
+    if (errorText.includes('structure')) return 'structure_issues';
+    
+    return 'other';
+  }
+
+  /**
    * Validate complete episode content
    */
   async validateEpisode(episodeContent, episodeConfig) {
@@ -311,20 +571,45 @@ class ValidationController {
     };
 
     try {
-      // This would integrate with audio analysis tools
-      // For now, basic file existence check
       const fs = require('fs');
+      const { execSync } = require('child_process');
+      
       if (!fs.existsSync(audioPath)) {
         validation.errors.push('Audio file does not exist');
         validation.isValid = false;
         return validation;
       }
 
-      // Duration validation would go here
-      // Silence detection would go here  
-      // RMS level validation would go here
-
-      validation.warnings.push('Audio validation not fully implemented');
+      // Get audio metadata using ffprobe (if available)
+      try {
+        const ffprobeCmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${audioPath}"`;
+        const durationOutput = execSync(ffprobeCmd, { encoding: 'utf8' });
+        const actualDuration = parseFloat(durationOutput.trim());
+        
+        // Validate duration within ±10% of estimated per MIGRATION.md
+        const estimatedDuration = scriptData.estimated_duration_seconds || 360;
+        const durationVariance = Math.abs(actualDuration - estimatedDuration) / estimatedDuration;
+        
+        if (durationVariance > this.validationRules.audio.maxDurationVariance) {
+          validation.errors.push(
+            `Audio duration variance too high: ${(durationVariance * 100).toFixed(1)}% ` +
+            `(expected ${estimatedDuration}s, got ${actualDuration.toFixed(1)}s)`
+          );
+        }
+        
+        // Check for silence detection (placeholder - requires audio analysis library)
+        // In production, use libraries like audiowaveform or custom FFmpeg silence detect
+        validation.warnings.push('Silence detection requires additional audio analysis tools');
+        
+        // Check RMS normalization (placeholder - requires audio analysis)
+        validation.warnings.push('RMS level validation requires audio analysis tools');
+        
+      } catch (ffprobeError) {
+        validation.warnings.push(
+          'Audio validation limited - ffprobe not available. ' +
+          'Install FFmpeg for full audio quality checks.'
+        );
+      }
 
     } catch (error) {
       validation.isValid = false;
@@ -468,12 +753,139 @@ class ValidationController {
   }
 
   /**
-   * Helper: Check source alignment (hallucination guard)
+   * Helper: Check source alignment (hallucination guard) per MIGRATION.md
    */
-  async checkSourceAlignment(scriptText, episodeConfig) {
-    // Placeholder for hallucination detection
-    // In production, this would check factual claims against source material
-    return { issues: [] };
+  async checkSourceAlignment(scriptData, episodeConfig) {
+    const issues = [];
+    
+    try {
+      // Check if script has source reference structure
+      if (!scriptData.sections) {
+        issues.push('Script missing sections structure for source alignment');
+        return { issues };
+      }
+      
+      let totalFactualStatements = 0;
+      let sourcedStatements = 0;
+      let inferredStatements = 0;
+      let unsourcedStatements = 0;
+      
+      // Analyze each section for source alignment
+      for (const section of scriptData.sections) {
+        const sectionText = section.text || '';
+        const sectionRefs = section.source_references || [];
+        const sectionInferred = section.inferred_statements || [];
+        
+        // Extract assertive sentences (potential factual statements)
+        const sentences = this.extractAssertiveSentences(sectionText);
+        totalFactualStatements += sentences.length;
+        
+        // Check source references
+        if (sectionRefs.length > 0) {
+          sourcedStatements += Math.min(sentences.length, sectionRefs.length);
+        }
+        
+        // Check inferred statements
+        if (sectionInferred.length > 0) {
+          inferredStatements += sectionInferred.length;
+          
+          // Validate soft language for inferred statements
+          for (const inferredText of sectionInferred) {
+            if (!this.hasSoftLanguage(inferredText)) {
+              issues.push(`Inferred statement lacks soft language: "${inferredText}"`);
+            }
+          }
+        }
+        
+        // Calculate unsourced statements
+        const sectionUnsourced = sentences.length - sectionRefs.length - sectionInferred.length;
+        if (sectionUnsourced > 0) {
+          unsourcedStatements += sectionUnsourced;
+          issues.push(`Section "${section.id}" has ${sectionUnsourced} unsourced factual statements`);
+        }
+      }
+      
+      // Calculate alignment metrics
+      const sourcedPercentage = totalFactualStatements > 0 ? sourcedStatements / totalFactualStatements : 1;
+      const unsourcedPercentage = totalFactualStatements > 0 ? unsourcedStatements / totalFactualStatements : 0;
+      
+      // Apply MIGRATION.md thresholds
+      if (unsourcedPercentage > 0.1) { // More than 10% unsourced
+        issues.push(`High unsourced statement rate: ${(unsourcedPercentage * 100).toFixed(1)}% (${unsourcedStatements}/${totalFactualStatements})`);
+      }
+      
+      // If teacher_review=false and high-confidence factual mismatch exists, reject
+      if (episodeConfig.teacher_review === false && unsourcedPercentage > 0.05) {
+        issues.push('High-confidence factual mismatches detected - requires teacher review or regeneration');
+      }
+      
+      // Store alignment metadata for metrics
+      if (scriptData.source_alignment) {
+        scriptData.source_alignment.total_factual_statements = totalFactualStatements;
+        scriptData.source_alignment.sourced_statements = sourcedStatements;
+        scriptData.source_alignment.inferred_statements = inferredStatements;
+      }
+      
+    } catch (error) {
+      issues.push(`Source alignment check failed: ${error.message}`);
+    }
+    
+    return { issues };
+  }
+  
+  /**
+   * Extract assertive sentences that could contain factual claims
+   */
+  extractAssertiveSentences(text) {
+    const sentences = text
+      .split(/[.!?]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 10);
+    
+    // Filter for assertive/declarative sentences (excluding questions and greetings)
+    return sentences.filter(sentence => {
+      const lower = sentence.toLowerCase();
+      
+      // Skip questions and conversational elements
+      if (lower.includes('?') || 
+          lower.startsWith('hey') || 
+          lower.startsWith('hi') ||
+          lower.startsWith('so,') ||
+          lower.includes('i think') ||
+          lower.includes('i believe')) {
+        return false;
+      }
+      
+      // Include statements with scientific/educational content
+      return lower.includes('is ') || 
+             lower.includes('are ') || 
+             lower.includes('causes') ||
+             lower.includes('results') ||
+             lower.includes('contains') ||
+             lower.includes('occurs') ||
+             lower.includes('happens');
+    });
+  }
+  
+  /**
+   * Check if text uses soft language for inferred content
+   */
+  hasSoftLanguage(text) {
+    const softPhrases = [
+      'scientists think',
+      'it is believed',
+      'researchers suggest',
+      'studies indicate', 
+      'it appears',
+      'may be',
+      'could be',
+      'might be',
+      'seems to',
+      'appears to'
+    ];
+    
+    const lower = text.toLowerCase();
+    return softPhrases.some(phrase => lower.includes(phrase));
   }
 
   /**

@@ -4,8 +4,11 @@
 
 Professional system that transforms textbooks into engaging podcast-style episodes with AI-generated scripts, quiz questions, and professional voice synthesis. Complete end-to-end pipeline for K-12 education.
 
-## 📖 **[→ COMPLETE GENERATION GUIDE ←](./COMPLETE_GENERATION_GUIDE.md)**
-**For full setup, usage instructions, and troubleshooting - see the complete guide above.**
+## 📖 **DOCUMENTATION**
+- **[→ USER GUIDE ←](./USER_GUIDE.md)** - ⭐ **START HERE** - Simple step-by-step guide for everyone
+- **[→ COMPLETE GENERATION GUIDE ←](./COMPLETE_GENERATION_GUIDE.md)** - Developer setup and technical details
+- **[→ COMPREHENSIVE AUDIT ←](./COMPREHENSIVE_AUDIT.md)** - System status, gaps, and production readiness
+- **[→ MIGRATION SPEC ←](./MIGRATION.md)** - Technical specification and requirements
 
 ## 🎯 What This System Does
 

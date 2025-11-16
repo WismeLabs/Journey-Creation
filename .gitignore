@@ -1,0 +1,68 @@
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Output & Generated Files
+outputs/
+temp/
+Chapter_PDF/
+*.mp3
+*.wav
+*.pdf
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# OS Files
+Thumbs.db
+.DS_Store
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Package manager locks (keep package-lock.json, ignore others)
+yarn.lock
+pnpm-lock.yaml
+
+# Tesseract training data (keep eng.traineddata in repo)
+# *.traineddata
+
+# API Keys & Credentials
+*.pem
+*.key
+service-account*.json
+*-key.json
+
+# Temporary files
+*.tmp
+*.bak
+*.cache

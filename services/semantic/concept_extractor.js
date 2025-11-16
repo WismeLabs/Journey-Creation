@@ -2,6 +2,7 @@ const winston = require('winston');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const fetch = require('node-fetch');
 
 // Configure logger per MIGRATION.md requirements
 const logger = winston.createLogger({

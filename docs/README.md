@@ -1,6 +1,6 @@
 # 🎓 K-12 Educational Content Pipeline
 
-**Production-Ready AI System for Educational Content Generation**
+**Production-Ready System for Educational Content Generation**
 
 Professional system that transforms textbooks into engaging podcast-style episodes with AI-generated scripts, quiz questions, and professional voice synthesis. Complete end-to-end pipeline for K-12 education.
 

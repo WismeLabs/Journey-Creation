@@ -67,27 +67,24 @@ const metrics = {
 };
 
 /**
- * Save data to optimized curriculum-grade-subject-chapter structure with generation versioning
+ * Save data to clean curriculum-grade-chapter structure
  */
 async function saveToOutputStructure(chapterId, filename, data, metadata = {}) {
   const fs = require('fs');
   
-  // Create optimized folder structure: curriculum-grade-subject-chapter-generation
+  // Clean folder structure: CBSE/Grade-8/Chapter-Name/
   const { grade_band = 'unknown', subject = 'unknown' } = metadata;
   const curriculum = metadata.curriculum || 'CBSE';
   
-  // Add generation timestamp to prevent overwrites
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const generationId = metadata.generation_id || `gen_${timestamp}`;
+  // Format chapter name nicely
+  const chapterName = chapterId.replace(/_/g, '-').replace(/^chapter-/, '');
   
   const chapterDir = path.join(
     __dirname, 
     'outputs', 
-    curriculum.toUpperCase(),
-    `Grade_${grade_band}`,
-    subject.toLowerCase(),
-    `chapter_${chapterId}`,
-    generationId
+    curriculum,
+    `Grade-${grade_band}`,
+    chapterName
   );
   
   if (!fs.existsSync(chapterDir)) {
@@ -97,52 +94,41 @@ async function saveToOutputStructure(chapterId, filename, data, metadata = {}) {
   const filePath = path.join(chapterDir, filename);
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
   
-  logger.info(`Saved ${filename} to optimized structure: ${filePath}`);
+  logger.info(`Saved ${filename} to: ${filePath}`);
   return filePath;
 }
 
 /**
- * Save episode files per MIGRATION.md output contract with optimized structure and generation versioning
+ * Save episode files in clean structure: CBSE/Grade-8/Chapter-Name/Episode-1/
  */
 async function saveEpisodeFiles(chapterId, episodeIndex, episodeData, metadata = {}) {
   const fs = require('fs');
   
-  // Use optimized folder structure with generation versioning
+  // Clean folder structure
   const { grade_band = 'unknown', subject = 'unknown' } = metadata;
   const curriculum = metadata.curriculum || 'CBSE';
   
-  // Add generation timestamp to prevent overwrites
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const generationId = metadata.generation_id || `gen_${timestamp}`;
+  // Format chapter name nicely
+  const chapterName = chapterId.replace(/_/g, '-').replace(/^chapter-/, '');
   
   const episodeDir = path.join(
     __dirname, 
     'outputs', 
-    curriculum.toUpperCase(),
-    `Grade_${grade_band}`,
-    subject.toLowerCase(),
-    `chapter_${chapterId}`,
-    generationId,
-    'episodes', 
-    `ep${episodeIndex.toString().padStart(2, '0')}`
+    curriculum,
+    `Grade-${grade_band}`,
+    chapterName,
+    `Episode-${episodeIndex}`
   );
   
   if (!fs.existsSync(episodeDir)) {
     fs.mkdirSync(episodeDir, { recursive: true });
   }
   
-  // Create audio directory structure per MIGRATION.md
+  // Create audio directory for segments
   const audioDir = path.join(episodeDir, 'audio');
-  const segmentDirs = [
-    path.join(audioDir, 'a_segments'),
-    path.join(audioDir, 'b_segments')
-  ];
-  
-  segmentDirs.forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  });
+  if (!fs.existsSync(audioDir)) {
+    fs.mkdirSync(audioDir, { recursive: true });
+  }
 
   // Save script.json (structured format per MIGRATION.md)
   const scriptJsonPath = path.join(episodeDir, 'script.json');

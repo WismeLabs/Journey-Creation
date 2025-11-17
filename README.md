@@ -125,26 +125,27 @@ TTS_SAMPLE_RATE=44100
 
 ## Output Structure
 
-Generated content organized by curriculum:
+Generated content organized cleanly by curriculum and grade:
 
 ```
 outputs/
 └── CBSE/
-    └── Grade_6/
-        └── science/
-            └── chapter_photosynthesis/
-                └── gen_2025-11-17T12-30-45/
-                    ├── concepts.json
-                    ├── episode_plan.json
-                    └── episodes/
-                        ├── ep01/
-                        │   ├── script.json
-                        │   ├── mcqs.json
-                        │   └── audio/
-                        │       ├── audio.mp3
-                        │       └── segments/
-                        ├── ep02/
-                        └── ...
+    └── Grade-8/
+        └── photosynthesis/
+            ├── concepts.json
+            ├── episode_plan.json
+            ├── Episode-1/
+            │   ├── script.json
+            │   ├── script.txt
+            │   ├── mcqs.json
+            │   ├── metadata.json
+            │   ├── cues.json
+            │   └── audio/
+            │       ├── audio.mp3
+            │       └── segments/
+            ├── Episode-2/
+            ├── Episode-3/
+            └── ...
 ```
 
 ## License

@@ -304,22 +304,20 @@ class TTSOrchestrator {
         );
       }
 
-      // Use unified output structure per MIGRATION.md
-      const { grade_band = 'unknown', subject = 'unknown' } = metadata;
+      // Clean output structure: CBSE/Grade-8/Chapter-Name/Episode-1/
+      const { grade_band = 'unknown' } = metadata;
       const curriculum = metadata.curriculum || 'CBSE';
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const generationId = metadata.generation_id || `gen_${timestamp}`;
+      
+      // Format chapter name nicely
+      const chapterName = chapterId.replace(/_/g, '-').replace(/^chapter-/, '');
       
       const episodeDir = path.join(
         __dirname, 
         '../../outputs', 
-        curriculum.toUpperCase(),
-        `Grade_${grade_band}`,
-        subject.toLowerCase(),
-        `chapter_${chapterId}`,
-        generationId,
-        'episodes', 
-        `ep${episodeIndex.toString().padStart(2, '0')}`
+        curriculum,
+        `Grade-${grade_band}`,
+        chapterName,
+        `Episode-${episodeIndex}`
       );
       
       const audioDir = path.join(episodeDir, 'audio');

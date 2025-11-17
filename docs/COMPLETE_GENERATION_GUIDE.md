@@ -83,9 +83,9 @@ npm start
 
 ### Step 3: Verify System Health
 Open browser and visit:
-- **Main Interface**: http://localhost:3000/test_upload.html
+- **Upload Interface**: http://localhost:3000/teacher/upload.html
 - **API Health**: http://localhost:8000/docs (FastAPI documentation)
-- **Backend Status**: Check Terminal 1 for "✅ Gemini API" messages
+- **Backend Status**: Check Terminal 1 for "[OK] Gemini API" messages
 
 ---
 
@@ -106,7 +106,7 @@ Open browser and visit:
 
 1. **Open Upload Interface**
    ```
-   http://localhost:3000/test_upload.html
+   http://localhost:3000/teacher/upload.html
    ```
 
 2. **Fill Form Details:**
@@ -550,7 +550,7 @@ A successful generation should have:
 ## 🔗 Quick Reference Links
 
 ### System URLs
-- **Upload Interface**: http://localhost:3000/test_upload.html  
+- **Upload Interface**: http://localhost:3000/teacher/upload.html  
 - **API Documentation**: http://localhost:8000/docs
 - **Server Status**: http://localhost:3000/api/health
 

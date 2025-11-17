@@ -5,7 +5,6 @@
 
 const express = require('express');
 const router = express.Router();
-const TTSOrchestrator = require('../services/tts/tts_orchestrator');
 const winston = require('winston');
 
 const logger = winston.createLogger({
@@ -21,13 +20,8 @@ const logger = winston.createLogger({
   ]
 });
 
-// Initialize TTS orchestrator
-let ttsOrchestrator;
-try {
-  ttsOrchestrator = new TTSOrchestrator();
-} catch (error) {
-  logger.error('Failed to initialize TTS Orchestrator:', error.message);
-}
+// Initialize TTS orchestrator (now exported as an instance)
+const ttsOrchestrator = require('../services/tts/tts_orchestrator');
 
 // In-memory storage for user configurations (use database in production)
 const userConfigurations = new Map();

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-12 Content Generation - Upload Chapter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .form-container {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 20px;
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload-label:hover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+
+        .file-upload-label .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .progress.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .status-message {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .tab-container {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            background: white;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .result.active {
+            display: block;
+        }
+
+        .error {
+            margin-top: 20px;
+            padding: 20px;
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 K-12 Content Generation Pipeline</h1>
+            <p>Transform textbook content into engaging educational episodes</p>
+        </div>
+
+        <div class="form-container">
+            <div class="tab-container">
+                <button class="tab active" onclick="switchTab('pdf')">📄 PDF Upload</button>
+                <button class="tab" onclick="switchTab('text')">📝 Text Input</button>
+            </div>
+
+            <form id="uploadForm">
+                <!-- Common Fields -->
+                <div class="form-group">
+                    <label for="chapterId">Chapter ID *</label>
+                    <input type="text" id="chapterId" name="chapter_id" required 
+                           placeholder="e.g., math_grade8_chapter5_linear_equations">
+                    <div class="help-text">Unique identifier for this chapter (alphanumeric and underscores)</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="grade">Grade Level *</label>
+                    <select id="grade" name="grade" required>
+                        <option value="">Select grade...</option>
+                        <option value="1">Grade 1</option>
+                        <option value="2">Grade 2</option>
+                        <option value="3">Grade 3</option>
+                        <option value="4">Grade 4</option>
+                        <option value="5">Grade 5</option>
+                        <option value="6">Grade 6</option>
+                        <option value="7">Grade 7</option>
+                        <option value="8">Grade 8</option>
+                        <option value="9">Grade 9</option>
+                        <option value="10">Grade 10</option>
+                        <option value="11">Grade 11</option>
+                        <option value="12">Grade 12</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="subject">Subject *</label>
+                    <input type="text" id="subject" name="subject" required 
+                           placeholder="e.g., Mathematics, Science, Social Studies">
+                </div>
+
+                <div class="form-group">
+                    <label for="curriculum">Curriculum</label>
+                    <select id="curriculum" name="curriculum">
+                        <option value="CBSE">CBSE</option>
+                        <option value="ICSE">ICSE</option>
+                        <option value="State Board">State Board</option>
+                        <option value="IB">IB</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="language">Language</label>
+                    <select id="language" name="language">
+                        <option value="en-IN">English (India)</option>
+                        <option value="en-US">English (US)</option>
+                        <option value="hi-IN">Hindi</option>
+                    </select>
+                </div>
+
+                <!-- PDF Upload Tab -->
+                <div id="pdfTab" class="tab-content active">
+                    <div class="form-group">
+                        <label>Upload Chapter PDF *</label>
+                        <div class="file-upload">
+                            <input type="file" id="pdfFile" name="pdf_file" accept=".pdf" onchange="updateFileName(this)">
+                            <label for="pdfFile" class="file-upload-label">
+                                <div class="icon">📄</div>
+                                <div id="fileName">Click to select PDF or drag and drop</div>
+                                <div class="help-text">Maximum file size: 50MB</div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Text Input Tab -->
+                <div id="textTab" class="tab-content">
+                    <div class="form-group">
+                        <label for="textContent">Paste Chapter Content *</label>
+                        <textarea id="textContent" name="text_content" 
+                                  placeholder="Paste your chapter content here..."></textarea>
+                        <div class="help-text">Markdown formatting supported</div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn">
+                    🚀 Generate Educational Content
+                </button>
+            </form>
+
+            <div class="progress" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-bar-fill" id="progressBar"></div>
+                </div>
+                <div class="status-message" id="statusMessage">Processing...</div>
+            </div>
+
+            <div class="result" id="resultContainer">
+                <h3>✅ Generation Complete!</h3>
+                <p id="resultMessage"></p>
+            </div>
+
+            <div class="error" id="errorContainer">
+                <h3>❌ Error</h3>
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'pdf';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            if (tab === 'pdf') {
+                document.getElementById('pdfTab').classList.add('active');
+                document.getElementById('pdfFile').required = true;
+                document.getElementById('textContent').required = false;
+            } else {
+                document.getElementById('textTab').classList.add('active');
+                document.getElementById('pdfFile').required = false;
+                document.getElementById('textContent').required = true;
+            }
+        }
+
+        function updateFileName(input) {
+            const fileName = input.files[0]?.name || 'Click to select PDF or drag and drop';
+            document.getElementById('fileName').textContent = fileName;
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const chapterId = document.getElementById('chapterId').value;
+            const grade = document.getElementById('grade').value;
+            const subject = document.getElementById('subject').value;
+            const curriculum = document.getElementById('curriculum').value;
+            const language = document.getElementById('language').value;
+            
+            // Hide previous results
+            document.getElementById('resultContainer').classList.remove('active');
+            document.getElementById('errorContainer').classList.remove('active');
+            
+            // Show progress
+            document.getElementById('progressContainer').classList.add('active');
+            document.getElementById('submitBtn').disabled = true;
+            
+            try {
+                updateProgress(10, 'Preparing upload...');
+                
+                const formData = new FormData();
+                formData.append('chapter_id', chapterId);
+                formData.append('grade_band', grade);
+                formData.append('subject', subject);
+                formData.append('curriculum', curriculum);
+                formData.append('language', language);
+                
+                if (currentTab === 'pdf') {
+                    const pdfFile = document.getElementById('pdfFile').files[0];
+                    if (!pdfFile) {
+                        throw new Error('Please select a PDF file');
+                    }
+                    formData.append('chapter_file', pdfFile);
+                } else {
+                    const textContent = document.getElementById('textContent').value;
+                    if (!textContent) {
+                        throw new Error('Please enter chapter content');
+                    }
+                    formData.append('markdown_content', textContent);
+                }
+                
+                updateProgress(20, 'Uploading to server...');
+                
+                const response = await fetch('/api/v1/generate', {
+                    method: 'POST',
+                    body: formData  // Send as multipart/form-data
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Generation failed');
+                }
+                
+                const result = await response.json();
+                
+                updateProgress(100, 'Processing complete!');
+                
+                setTimeout(() => {
+                    document.getElementById('progressContainer').classList.remove('active');
+                    document.getElementById('resultContainer').classList.add('active');
+                    document.getElementById('resultMessage').innerHTML = `
+                        <strong>Chapter ID:</strong> ${result.chapter_id}<br>
+                        <strong>Episodes Generated:</strong> ${result.total_episodes || 'Processing...'}<br>
+                        <strong>Output Path:</strong> <code>${result.output_path || 'outputs/' + chapterId}</code><br>
+                        <br>
+                        <a href="/teacher/review.html?chapter=${chapterId}" target="_blank" style="color: #667eea;">
+                            📝 Review Generated Content →
+                        </a>
+                    `;
+                    document.getElementById('submitBtn').disabled = false;
+                }, 1000);
+                
+            } catch (error) {
+                document.getElementById('progressContainer').classList.remove('active');
+                document.getElementById('errorContainer').classList.add('active');
+                document.getElementById('errorMessage').textContent = error.message;
+                document.getElementById('submitBtn').disabled = false;
+            }
+        });
+        
+        function updateProgress(percent, message) {
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('statusMessage').textContent = message;
+        }
+    </script>
+</body>
+</html>

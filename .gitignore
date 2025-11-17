@@ -12,6 +12,8 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+pip-log.txt
+pip-delete-this-directory.txt
 
 # IDE & Editors
 .vscode/
@@ -61,8 +63,14 @@ pnpm-lock.yaml
 *.key
 service-account*.json
 *-key.json
+google-credentials*.json
 
 # Temporary files
 *.tmp
 *.bak
 *.cache
+
+# Test files
+test_*.js
+test_*.md
+test.json

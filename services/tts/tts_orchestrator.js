@@ -14,12 +14,9 @@ const logger = winston.createLogger({
 class TTSOrchestrator {
   constructor() {
     this.googleTTSClient = null;
-    this.initializeGoogleTTS();
     
-    // Comprehensive Google TTS Voice Configuration
+    // Initialize voice configurations BEFORE TTS client
     this.availableVoices = this.getAvailableVoices();
-    this.voiceConfig = this.getOptimalVoiceConfig();
-    this.audioConfig = this.getAudioConfiguration();
     
     // Language-specific voice mappings for K-12 education
     this.educationalVoices = {
@@ -43,6 +40,13 @@ class TTSOrchestrator {
 
     // FFmpeg path - update for your system
     this.ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
+    
+    // Initialize voice and audio configurations
+    this.voiceConfig = this.getOptimalVoiceConfig();
+    this.audioConfig = this.getAudioConfiguration();
+    
+    // Initialize TTS client AFTER configurations are set
+    this.initializeGoogleTTS();
   }
 
   /**
@@ -229,8 +233,10 @@ class TTSOrchestrator {
         );
       }
 
-      // Test the TTS connection
-      this.testTTSConnection();
+      // Test the TTS connection asynchronously (don't await in constructor)
+      this.testTTSConnection().catch(err => {
+        logger.error(`❌ TTS connection test failed: ${err.message}`);
+      });
       
     } catch (error) {
       logger.error(`❌ Google TTS initialization failed: ${error.message}`);
@@ -972,4 +978,4 @@ class TTSOrchestrator {
   }
 }
 
-module.exports = TTSOrchestrator;
+module.exports = new TTSOrchestrator();

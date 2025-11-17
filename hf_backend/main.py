@@ -16,24 +16,36 @@ load_dotenv(ROOT_DIR / '.env')
 load_dotenv()
 
 from google import generativeai as genai
+from contextlib import asynccontextmanager
 
 # Configure structured logging per MIGRATION.md
+import sys
+
+# Create logs directory if it doesn't exist
+log_dir = os.path.join(os.path.dirname(__file__), '..', 'logs')
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, 'llm_service.log')
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('../logs/llm_service.log')
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(log_file, encoding='utf-8')
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Fix Windows console encoding for emojis
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8')
 
 def get_gemini_model():
     """Get configured Gemini model - REQUIRES valid API key for production"""
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key or api_key.strip() == "":
         error_msg = (
-            "❌ GEMINI_API_KEY is required for the K-12 educational content pipeline. "
+            "[ERROR] GEMINI_API_KEY is required for the K-12 educational content pipeline. "
             "Please:\n"
             "1. Get your API key from: https://makersuite.google.com/app/apikey\n"
             "2. Add it to your .env file: GEMINI_API_KEY=your_actual_key_here\n"
@@ -55,11 +67,11 @@ def get_gemini_model():
         if not test_response or not test_response.text:
             raise ValueError("API key validation failed")
             
-        logger.info("✅ Gemini API configured and validated successfully")
+        logger.info("[OK] Gemini API configured and validated successfully")
         return model, api_key
         
     except Exception as e:
-        logger.error(f"❌ Gemini API setup failed: {str(e)}")
+        logger.error(f"[ERROR] Gemini API setup failed: {str(e)}")
         raise HTTPException(
             status_code=500, 
             detail=f"Gemini API configuration error: {str(e)}"
@@ -67,10 +79,23 @@ def get_gemini_model():
 
 # Mock content generation removed - system now requires real Gemini API integration
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager - validates Gemini API on startup"""
+    try:
+        get_gemini_model()
+        logger.info("[OK] LLM Service started successfully - all systems operational")
+    except Exception as e:
+        logger.error(f"[WARNING] Startup validation failed - service may not function correctly: {str(e)}")
+    yield
+    # Cleanup on shutdown (if needed)
+    logger.info("[SHUTDOWN] LLM Service shutting down")
+
 app = FastAPI(
     title="Journey Creation Content Pipeline LLM Service", 
     version="2.0.0",
-    description="Complete LLM service with all 13 regeneration prompts per MIGRATION.md"
+    description="Complete LLM service with all 13 regeneration prompts per MIGRATION.md",
+    lifespan=lifespan
 )
 
 # Request/Response Models per MIGRATION.md requirements
@@ -238,7 +263,7 @@ Return valid JSON only:
         "Method of plant growth"
       ],
       "correct_index": 0,
-      "explanation": "As {speaker1_name} explained, photosynthesis is the process plants use to make their own food using sunlight."
+      "explanation": "As StudentA explained, photosynthesis is the process plants use to make their own food using sunlight."
     }}
   ]
 }}

@@ -222,12 +222,12 @@ async function processJobQueue() {
 // Process individual chapter job
 async function processChapterJob(job) {
   const startTime = Date.now();
-  const { jobId, pdfFile, metadata } = job;
+  const { jobId, pdfFile, markdownContent, metadata } = job;
   
   updateJobStatus(jobId, 'processing', 0);
   
   // Call the existing processChapter function with proper error handling
-  await processChapter(jobId, pdfFile, metadata);
+  await processChapter(jobId, pdfFile, markdownContent, metadata);
   
   const processingTime = Date.now() - startTime;
   metrics.averageProcessingTime = 
@@ -258,15 +258,19 @@ app.post('/api/v1/generate', async (req, res) => {
       });
     }
 
-    // Check for uploaded file or file URL
+    // Check for uploaded file, file URL, or markdown content
     let pdfFile = null;
+    let markdownContent = null;
+    
     if (req.files && req.files.chapter_file) {
       pdfFile = req.files.chapter_file;
+    } else if (req.body.markdown_content) {
+      markdownContent = req.body.markdown_content;
     } else if (req.body.chapter_file_url) {
       // Handle URL-based upload later
       return res.status(400).json({ error: 'URL-based upload not yet implemented' });
     } else {
-      return res.status(400).json({ error: 'No PDF file provided' });
+      return res.status(400).json({ error: 'No PDF file or markdown content provided' });
     }
 
     // Create job entry
@@ -283,7 +287,7 @@ app.post('/api/v1/generate', async (req, res) => {
     metrics.totalJobs++;
     
     // Add to queue for processing
-    jobQueue.push({ jobId, pdfFile, metadata: jobData.metadata });
+    jobQueue.push({ jobId, pdfFile, markdownContent, metadata: jobData.metadata });
     
     // Start processing if not already running
     if (!isProcessing) {
@@ -764,24 +768,42 @@ async function syncMCQTimestamps(mcqs, cues) {
 /**
  * Main chapter processing pipeline
  */
-async function processChapter(jobId, pdfFile, metadata) {
+async function processChapter(jobId, pdfFile, markdownContent, metadata) {
   try {
     const { chapter_id, grade_band, subject, language, teacher_review } = metadata;
     
     updateJobStatus(jobId, 'processing', 10);
 
-    // Step 1: PDF Ingestion and text extraction
-    logger.info(`Step 1: Processing PDF for ${chapter_id}`);
-    updateJobStatus(jobId, 'extracting_text', 20);
+    let cleanedMarkdown, rawText, pdfProcessingResult;
     
-    const pdfProcessingResult = await ingestService.processChapter(pdfFile, chapter_id, metadata);
-    
-    if (!pdfProcessingResult.success) {
-      throw new Error(`PDF processing failed: ${JSON.stringify(pdfProcessingResult.errorReport)}`);
+    if (markdownContent) {
+      // Direct markdown input (text paste)
+      logger.info(`Step 1: Using provided markdown content for ${chapter_id}`);
+      updateJobStatus(jobId, 'processing_text', 20);
+      cleanedMarkdown = markdownContent;
+      rawText = markdownContent;
+      pdfProcessingResult = {
+        success: true,
+        markdown: cleanedMarkdown,
+        rawText: rawText,
+        metadata: { word_count: markdownContent.split(/\s+/).length }
+      };
+    } else if (pdfFile) {
+      // PDF file processing
+      logger.info(`Step 1: Processing PDF for ${chapter_id}`);
+      updateJobStatus(jobId, 'extracting_text', 20);
+      
+      pdfProcessingResult = await ingestService.processChapter(pdfFile, chapter_id, metadata);
+      
+      if (!pdfProcessingResult.success) {
+        throw new Error(`PDF processing failed: ${JSON.stringify(pdfProcessingResult.errorReport)}`);
+      }
+      
+      cleanedMarkdown = pdfProcessingResult.markdown;
+      rawText = pdfProcessingResult.rawText;
+    } else {
+      throw new Error('No PDF file or markdown content provided');
     }
-    
-    const cleanedMarkdown = pdfProcessingResult.markdown;
-    const rawText = pdfProcessingResult.rawText;
     
     // Save chapter data per MIGRATION.md output structure
     await ingestService.saveChapterData(chapter_id, pdfProcessingResult, metadata);

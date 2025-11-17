@@ -28,3 +28,889 @@
 2025-11-16 00:40:04,797 - main - INFO - Using mock MCQ generation for development
 2025-11-16 00:40:17,792 - main - WARNING - GEMINI_API_KEY not found - using mock mode for development
 2025-11-16 00:40:17,792 - main - INFO - Using mock MCQ generation for development
+2025-11-17 22:52:55,227 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 22:52:55,238 - __main__ - INFO - [OK] LLM Service started successfully - all systems operational
+2025-11-17 23:06:02,557 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-17 23:06:15,117 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:06:15,118 - __main__ - INFO - [OK] LLM Service started successfully - all systems operational
+2025-11-17 23:07:14,529 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-17 23:07:24,936 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:07:24,937 - __main__ - INFO - [OK] LLM Service started successfully - all systems operational
+2025-11-17 23:07:46,032 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-17 23:12:01,622 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:12:01,623 - __main__ - INFO - [OK] LLM Service started successfully - all systems operational
+2025-11-17 23:12:33,540 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-17 23:12:43,230 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:12:43,231 - __main__ - INFO - [OK] LLM Service started successfully - all systems operational
+2025-11-17 23:13:23,002 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-17 23:16:26,012 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:16:26,014 - __main__ - INFO - [OK] LLM Service started successfully - all systems operational
+2025-11-17 23:17:03,117 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:18:56,391 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:20:09,753 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:20:33,985 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:20:35,059 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:20:35,060 - __main__ - INFO - Extracting concepts for Science content using Gemini API
+2025-11-17 23:20:38,290 - __main__ - INFO - Successfully extracted 4 concepts
+2025-11-17 23:20:39,208 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:20:39,208 - __main__ - INFO - Generating script for episode: Science - Episode 1 using Gemini API
+2025-11-17 23:20:48,112 - __main__ - INFO - Successfully generated script with 6 sections
+2025-11-17 23:20:49,035 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:20:49,036 - __main__ - INFO - Generating 3 MCQs using Gemini API
+2025-11-17 23:20:49,037 - __main__ - ERROR - MCQ generation failed: 'speaker1_name'
+2025-11-17 23:20:49,969 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:20:49,971 - __main__ - INFO - Running regeneration prompt: regen_tone_fix
+2025-11-17 23:20:51,588 - __main__ - INFO - Successfully completed regeneration: regen_tone_fix
+2025-11-17 23:20:52,387 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:20:52,387 - __main__ - INFO - Generating script for episode: Science - Episode 2 using Gemini API
+2025-11-17 23:21:02,555 - __main__ - INFO - Successfully generated script with 6 sections
+2025-11-17 23:21:03,631 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:21:03,632 - __main__ - INFO - Generating 1 MCQs using Gemini API
+2025-11-17 23:21:03,633 - __main__ - ERROR - MCQ generation failed: 'speaker1_name'
+2025-11-17 23:21:04,691 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:21:04,693 - __main__ - INFO - Running regeneration prompt: regen_tone_fix
+2025-11-17 23:21:06,313 - __main__ - INFO - Successfully completed regeneration: regen_tone_fix
+2025-11-17 23:21:14,639 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:21:15,692 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:21:15,693 - __main__ - INFO - Extracting concepts for Science content using Gemini API
+2025-11-17 23:21:19,372 - __main__ - INFO - Successfully extracted 5 concepts
+2025-11-17 23:21:20,396 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:21:20,396 - __main__ - INFO - Generating script for episode: Science - Episode 1 using Gemini API
+2025-11-17 23:21:28,960 - __main__ - INFO - Successfully generated script with 6 sections
+2025-11-17 23:21:29,895 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:21:29,896 - __main__ - INFO - Generating 1 MCQs using Gemini API
+2025-11-17 23:21:29,896 - __main__ - ERROR - MCQ generation failed: 'speaker1_name'
+2025-11-17 23:21:31,058 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:21:31,059 - __main__ - INFO - Running regeneration prompt: regen_tone_fix
+2025-11-17 23:21:32,517 - __main__ - INFO - Successfully completed regeneration: regen_tone_fix
+2025-11-17 23:21:32,829 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 27
+}
+]
+2025-11-17 23:21:32,830 - __main__ - ERROR - Script generation failed: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 27
+}
+]
+2025-11-17 23:21:32,982 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 27
+}
+]
+2025-11-17 23:21:32,985 - __main__ - ERROR - Regeneration failed for regen_tone_fix: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 27
+}
+]
+2025-11-17 23:21:33,280 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 26
+}
+]
+2025-11-17 23:21:33,281 - __main__ - ERROR - Script generation failed: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 26
+}
+]
+2025-11-17 23:21:33,599 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 26
+}
+]
+2025-11-17 23:21:33,601 - __main__ - ERROR - Regeneration failed for regen_tone_fix: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 26
+}
+]
+2025-11-17 23:21:33,919 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 26
+}
+]
+2025-11-17 23:21:33,919 - __main__ - ERROR - Script generation failed: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 26
+}
+]
+2025-11-17 23:21:34,190 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 25
+}
+]
+2025-11-17 23:21:34,192 - __main__ - ERROR - Regeneration failed for regen_tone_fix: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 25
+}
+]
+2025-11-17 23:21:34,515 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 25
+}
+]
+2025-11-17 23:21:34,515 - __main__ - ERROR - Script generation failed: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 25
+}
+]
+2025-11-17 23:21:34,816 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 25
+}
+]
+2025-11-17 23:21:34,817 - __main__ - ERROR - Regeneration failed for regen_tone_fix: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 25
+}
+]
+2025-11-17 23:22:54,680 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:25:40,021 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:28:37,978 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:28:39,085 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:28:39,085 - __main__ - INFO - Extracting concepts for Science content using Gemini API
+2025-11-17 23:28:42,763 - __main__ - INFO - Successfully extracted 4 concepts
+2025-11-17 23:28:43,829 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:28:43,829 - __main__ - INFO - Generating script for episode: Science - Episode 1 using Gemini API
+2025-11-17 23:28:52,722 - __main__ - INFO - Successfully generated script with 6 sections
+2025-11-17 23:28:53,807 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:28:53,808 - __main__ - INFO - Generating 3 MCQs using Gemini API
+2025-11-17 23:28:53,809 - __main__ - ERROR - MCQ generation failed: 'speaker1_name'
+2025-11-17 23:28:54,780 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:28:54,780 - __main__ - INFO - Running regeneration prompt: regen_tone_fix
+2025-11-17 23:28:55,898 - __main__ - INFO - Successfully completed regeneration: regen_tone_fix
+2025-11-17 23:28:56,862 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:28:56,863 - __main__ - INFO - Generating script for episode: Science - Episode 2 using Gemini API
+2025-11-17 23:29:05,321 - __main__ - INFO - Successfully generated script with 6 sections
+2025-11-17 23:29:06,289 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:29:06,290 - __main__ - INFO - Generating 1 MCQs using Gemini API
+2025-11-17 23:29:06,290 - __main__ - ERROR - MCQ generation failed: 'speaker1_name'
+2025-11-17 23:29:07,383 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:29:07,384 - __main__ - INFO - Running regeneration prompt: regen_tone_fix
+2025-11-17 23:29:09,764 - __main__ - INFO - Successfully completed regeneration: regen_tone_fix
+2025-11-17 23:34:00,737 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:34:00,738 - __main__ - INFO - [OK] LLM Service started successfully - all systems operational
+2025-11-17 23:35:22,749 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-17 23:36:34,800 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:36:34,800 - __main__ - INFO - [OK] LLM Service started successfully - all systems operational
+2025-11-17 23:36:47,145 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-17 23:37:05,051 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:37:05,054 - __main__ - INFO - [OK] LLM Service started successfully - all systems operational
+2025-11-17 23:37:21,432 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:40:56,789 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:40:58,107 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:40:58,110 - __main__ - INFO - Extracting concepts for Science content using Gemini API
+2025-11-17 23:41:02,644 - __main__ - INFO - Successfully extracted 5 concepts
+2025-11-17 23:41:03,708 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:41:03,709 - __main__ - INFO - Generating script for episode: Science - Episode 1 using Gemini API
+2025-11-17 23:41:12,124 - __main__ - INFO - Successfully generated script with 6 sections
+2025-11-17 23:41:13,056 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:41:13,058 - __main__ - INFO - Generating 1 MCQs using Gemini API
+2025-11-17 23:41:14,810 - __main__ - INFO - Successfully generated 1 MCQs
+2025-11-17 23:41:15,871 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:41:15,873 - __main__ - INFO - Running regeneration prompt: regen_mcq_sync
+2025-11-17 23:41:21,464 - __main__ - INFO - Successfully completed regeneration: regen_mcq_sync
+2025-11-17 23:41:22,259 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:41:22,261 - __main__ - INFO - Running regeneration prompt: regen_remove_hallucination
+2025-11-17 23:41:28,098 - __main__ - INFO - Successfully completed regeneration: regen_remove_hallucination
+2025-11-17 23:41:28,905 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:41:28,905 - __main__ - INFO - Running regeneration prompt: regen_dedup
+2025-11-17 23:41:45,068 - __main__ - INFO - Successfully completed regeneration: regen_dedup
+2025-11-17 23:41:45,850 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-17 23:41:45,850 - __main__ - INFO - Running regeneration prompt: regen_tone_fix
+2025-11-17 23:41:45,956 - __main__ - ERROR - Regeneration failed for regen_tone_fix: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 14
+}
+]
+2025-11-17 23:41:46,269 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 13
+}
+]
+2025-11-17 23:41:46,270 - __main__ - ERROR - Regeneration failed for regen_remove_hallucination: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 13
+}
+]
+2025-11-17 23:41:46,592 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 13
+}
+]
+2025-11-17 23:41:46,592 - __main__ - ERROR - Regeneration failed for regen_tone_fix: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 13
+}
+]
+2025-11-17 23:41:46,747 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 13
+}
+]
+2025-11-17 23:41:46,749 - __main__ - ERROR - Script generation failed: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 13
+}
+]
+2025-11-17 23:41:47,058 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 12
+}
+]
+2025-11-17 23:41:47,059 - __main__ - ERROR - Regeneration failed for regen_tone_fix: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 12
+}
+]
+2025-11-17 23:41:47,212 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 12
+}
+]
+2025-11-17 23:41:47,212 - __main__ - ERROR - Script generation failed: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 12
+}
+]
+2025-11-17 23:41:47,509 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 12
+}
+]
+2025-11-17 23:41:47,510 - __main__ - ERROR - Regeneration failed for regen_tone_fix: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 12
+}
+]
+2025-11-17 23:41:47,828 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 12
+}
+]
+2025-11-17 23:41:47,829 - __main__ - ERROR - Script generation failed: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 12
+}
+]
+2025-11-17 23:41:48,132 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 11
+}
+]
+2025-11-17 23:41:48,133 - __main__ - ERROR - Regeneration failed for regen_tone_fix: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 11
+}
+]
+2025-11-17 23:41:48,459 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 11
+}
+]
+2025-11-17 23:41:48,460 - __main__ - ERROR - Script generation failed: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 11
+}
+]
+2025-11-17 23:41:48,763 - __main__ - ERROR - [ERROR] Gemini API setup failed: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 11
+}
+]
+2025-11-17 23:41:48,764 - __main__ - ERROR - Regeneration failed for regen_tone_fix: 500: Gemini API configuration error: 429 You exceeded your current quota. Please migrate to Gemini 2.0 Flash Preview (Image Generation) (models/gemini-2.0-flash-preview-image-generation) for higher quota limits. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_requests_per_model"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-2.0-flash-exp"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 10
+}
+, retry_delay {
+  seconds: 11
+}
+]

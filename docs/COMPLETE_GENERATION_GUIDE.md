@@ -93,12 +93,17 @@ Open browser and visit:
 
 ### Step 1: Prepare Your Educational Content
 **Supported Formats:**
-- PDF files (textbooks, worksheets, study materials)
+- PDF files (text-based PDFs recommended)
 - Text content (direct paste)
 
+**Important PDF Notes:**
+- ⚠️ **Text-based PDFs work best** - PDFs with selectable text extract fastest
+- 🖼️ **Image-only PDFs** - Scanned/image PDFs require OCR (slower, may have errors)
+- 📄 **For best results** - Use PDFs exported from Word/Google Docs rather than scanned documents
+
 **Best Practices:**
-- Use clear, well-structured PDFs
-- Ensure text is not image-only (OCR available as fallback)
+- Use clear, well-structured PDFs with selectable text
+- Ensure content is not image-only unless necessary
 - 5-50 pages per chapter works best
 - Include grade level and subject information
 
@@ -106,7 +111,7 @@ Open browser and visit:
 
 1. **Open Upload Interface**
    ```
-   http://localhost:3000/teacher/upload.html
+   http://localhost:3002/teacher/upload.html
    ```
 
 2. **Fill Form Details:**
@@ -114,14 +119,16 @@ Open browser and visit:
    - **Grade**: Student grade level (1-12)
    - **Subject**: Subject area (Mathematics, Science, etc.)
    - **Language**: Content language (en-IN, en-US, etc.)
+   - **Speaker Names**: Customize dialogue speaker names (e.g., "Riya" and "Arjun")
+   - **Voice Selection**: Choose TTS voices for each speaker (Chirp3-HD, Neural2, etc.)
    - **Teacher Review**: Enable for human review step
 
 3. **Upload Methods:**
-   - **PDF Upload**: Select your PDF file
+   - **PDF Upload**: Select your PDF file (text-based PDFs work best)
    - **Text Input**: Paste content directly
 
 4. **Submit Processing**
-   - Click "Upload and Process"
+   - Click "Generate Educational Content"
    - Note the Job ID for tracking
 
 ### Step 3: Monitor Processing Pipeline
@@ -550,9 +557,9 @@ A successful generation should have:
 ## 🔗 Quick Reference Links
 
 ### System URLs
-- **Upload Interface**: http://localhost:3000/teacher/upload.html  
+- **Upload Interface**: http://localhost:3002/teacher/upload.html  
 - **API Documentation**: http://localhost:8000/docs
-- **Server Status**: http://localhost:3000/api/health
+- **Server Status**: http://localhost:3002/api/health
 
 ### Configuration Files
 - **Main Config**: `.env`

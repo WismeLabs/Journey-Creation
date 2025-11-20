@@ -343,6 +343,7 @@
             <div class="review-controls">
                 <button class="btn btn-primary" onclick="loadChapter()">🔄 Refresh</button>
                 <button class="btn btn-success" onclick="approveAll()">✅ Approve All</button>
+                <button class="btn" onclick="generateAudio()" style="background: #9b59b6; color: white;">🔊 Generate Audio</button>
                 <button class="btn btn-warning" onclick="requestRevisions()">📝 Request Revisions</button>
                 <button class="btn btn-danger" onclick="rejectChapter()">❌ Reject Chapter</button>
             </div>
@@ -425,12 +426,11 @@
                     chapterId = urlParams.get('chapter') || 'CBSE_7_SCI_CH4';
                 }
 
-                const response = await fetch(`/api/v1/result/${chapterId}`);
+                const response = await fetch(`/api/v1/chapter/${chapterId}`);
                 
                 if (response.ok) {
                     const data = await response.json();
                     currentChapter = data;
-                    await loadChapterContent(chapterId);
                     renderChapterInfo();
                     renderEpisodes();
                     updateStats();
@@ -444,41 +444,14 @@
             }
         }
 
-        // Load detailed chapter content
-        async function loadChapterContent(chapterId) {
-            try {
-                // Load manifest and episode data
-                const manifestResponse = await fetch(`/outputs/chapter_${chapterId}/manifest.json`);
-                if (manifestResponse.ok) {
-                    currentChapter.manifest = await manifestResponse.json();
-                }
-
-                // Load episodes
-                currentChapter.episodes = [];
-                for (let i = 1; i <= (currentChapter.episodes_count || 5); i++) {
-                    try {
-                        const episodeResponse = await fetch(`/outputs/chapter_${chapterId}/episodes/ep${i.toString().padStart(2, '0')}/script.json`);
-                        if (episodeResponse.ok) {
-                            const episodeData = await episodeResponse.json();
-                            currentChapter.episodes.push(episodeData);
-                        }
-                    } catch (error) {
-                        console.warn(`Could not load episode ${i}:`, error);
-                    }
-                }
-            } catch (error) {
-                console.warn('Could not load detailed chapter content:', error);
-            }
-        }
-
         // Render chapter information
         function renderChapterInfo() {
             if (!currentChapter) return;
 
             document.getElementById('chapterId').textContent = currentChapter.chapter_id || 'Unknown';
-            document.getElementById('chapterSubject').textContent = currentChapter.subject || 'Unknown';
-            document.getElementById('chapterGrade').textContent = currentChapter.grade_band || 'Unknown';
-            document.getElementById('episodeCount').textContent = currentChapter.episodes_count || 0;
+            document.getElementById('chapterSubject').textContent = currentChapter.metadata?.chapter_name || 'Unknown';
+            document.getElementById('chapterGrade').textContent = `Grade ${currentChapter.metadata?.grade_band || 'Unknown'}`;
+            document.getElementById('episodeCount').textContent = currentChapter.total_episodes || 0;
         }
 
         // Render episodes
@@ -680,6 +653,70 @@
                 // API call to approve entire chapter
                 showSuccess('Chapter approved successfully');
             }
+        }
+
+        async function generateAudio() {
+            if (!currentChapter || !currentChapter.chapter_id) {
+                showError('No chapter loaded');
+                return;
+            }
+
+            if (!confirm('Generate audio for all approved episodes in this chapter?')) {
+                return;
+            }
+
+            try {
+                showSuccess('Starting audio generation...');
+
+                const response = await fetch('/api/v1/generate-audio', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        chapter_id: currentChapter.chapter_id,
+                        metadata: currentChapter.metadata
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess(`Audio generation started! Job ID: ${data.job_id}`);
+                    
+                    // Poll for job status
+                    pollAudioGenerationStatus(data.job_id);
+                } else {
+                    showError(`Failed to start audio generation: ${data.error}`);
+                }
+            } catch (error) {
+                showError(`Error starting audio generation: ${error.message}`);
+            }
+        }
+
+        async function pollAudioGenerationStatus(jobId) {
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/v1/status/${jobId}`);
+                    const data = await response.json();
+
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        showSuccess('Audio generation completed successfully!');
+                    } else if (data.status === 'failed') {
+                        clearInterval(pollInterval);
+                        showError(`Audio generation failed: ${data.error || 'Unknown error'}`);
+                    } else if (data.status === 'generating_audio') {
+                        // Show progress if available
+                        if (data.progress !== undefined) {
+                            showSuccess(`Generating audio... ${data.progress}% complete`);
+                        }
+                    }
+                } catch (error) {
+                    clearInterval(pollInterval);
+                    showError(`Error checking audio generation status: ${error.message}`);
+                }
+            }, 3000); // Poll every 3 seconds
         }
 
         async function requestRevisions() {

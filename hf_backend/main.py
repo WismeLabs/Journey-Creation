@@ -56,7 +56,7 @@ def get_gemini_model():
     
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash-exp")
+        model = genai.GenerativeModel("gemini-1.5-pro-latest")
         
         # Test API connectivity 
         test_response = model.generate_content(
@@ -183,7 +183,8 @@ Return valid JSON only:
 SYSTEM: You are a K-12 educational script writer with strict source alignment. Generate peer-to-peer dialogue between two students.
 INPUT: episode_config, concepts, chapter_content
 CONSTRAINTS: 
-- Only StudentA (confident) and StudentB (curious) voices
+- MUST use ONLY these speaker names: {speaker1_name} ({speaker1_personality}) and {speaker2_name} ({speaker2_personality})
+- DO NOT use "StudentA" or "StudentB" - use the exact names provided above
 - Word count: 450-1100 words, target 500-900
 - Sections: hook(10-20s), core1, micro-example(≤30s), core2, recall-break, mini-summary(≤30s)
 - CRITICAL: Attach source_reference to every factual statement or mark as inferred:true
@@ -202,6 +203,7 @@ SOURCE ALIGNMENT RULES (MANDATORY per MIGRATION.md):
 Concepts to cover: {concepts}
 Target duration: {duration_minutes} minutes
 Source content: {chapter_content}
+REQUIRED Speakers (use these exact names): {speaker1_name} ({speaker1_personality}), {speaker2_name} ({speaker2_personality})
 
 Return valid JSON only:
 {{
@@ -216,14 +218,14 @@ Return valid JSON only:
       "start": 0,
       "end": 18,
       "type": "hook",
-      "text": "{speaker1_name}: Hey, have you ever wondered why...?\n{speaker2_name}: Actually, yes! I was just thinking about that..."
+      "text": "{speaker1_name}: Hey, have you ever wondered why...?\\n{speaker2_name}: Actually, yes! I was just thinking about that..."
     }},
     {{
       "id": "core1", 
       "start": 18,
       "end": 120,
       "type": "core",
-      "text": "{speaker1_name}: So let me explain...\n{speaker2_name}: That makes sense, but what about..."
+      "text": "{speaker1_name}: So let me explain...\\n{speaker2_name}: That makes sense, but what about..."
     }}
   ],
   "concept_ids": {concept_ids},
@@ -232,19 +234,35 @@ Return valid JSON only:
 """,
 
     "mcq_generation": """
-SYSTEM: You are an MCQ generator for educational content.
+SYSTEM: You are an MCQ generator for educational content. Generate high-quality, thoughtful questions that test understanding, not trivial recall.
 INPUT: final_script, concept_list, episode_duration
 RULES:
-- Generate {count} MCQs strictly from script content
+- Generate EXACTLY {count} MCQs strictly from script content
 - 4 options each, exactly 1 correct
 - Include timestamp_ref pointing to section start seconds  
-- Types: 40% recall, 30% understanding, 30% application
-- Plausible distractors from common confusions
-- Grade appropriate language
-- Each MCQ must reference content that appears in the script
+- Types: 20% recall (basic facts), 40% understanding (concepts), 40% application (real-world scenarios)
+- Plausible distractors from common student misconceptions
+- Grade-appropriate language
+- Each MCQ must reference substantial content from the script, not trivial details
+- Focus on WHY and HOW questions, not just WHAT questions
+- Use speaker names from script: {speaker1_name} and {speaker2_name}
+- Avoid questions about speaker names themselves or literal phrases
+
+AVOID:
+- Questions like "According to the script, what term is used..."
+- Questions that test only memorization of specific phrases
+- Questions about who said what
+- Trivial literal recall
+
+PREFER:
+- Questions that test conceptual understanding
+- Application to new scenarios
+- Analysis and reasoning
+- Making connections between concepts
 
 Script: {script}
 Concepts: {concepts}
+Speakers: {speaker1_name}, {speaker2_name}
 
 Return valid JSON only:
 {{
@@ -254,16 +272,16 @@ Return valid JSON only:
       "timestamp_ref": 45,
       "concept_id": "photosynthesis",
       "difficulty": 3,
-      "type": "recall",
-      "question_text": "According to the conversation, what is photosynthesis?",
+      "type": "understanding",
+      "question_text": "Based on the conversation, why do plants need sunlight for photosynthesis?",
       "options": [
-        "Process plants use to make food",
-        "Way plants reproduce", 
-        "How plants move water",
-        "Method of plant growth"
+        "Sunlight provides energy to convert water and CO2 into glucose",
+        "Sunlight heats the plant to make it grow faster", 
+        "Sunlight attracts insects that help plants",
+        "Sunlight changes the color of leaves to green"
       ],
       "correct_index": 0,
-      "explanation": "As StudentA explained, photosynthesis is the process plants use to make their own food using sunlight."
+      "explanation": "{speaker1_name} explained that sunlight provides the energy plants need to convert water and carbon dioxide into glucose during photosynthesis."
     }}
   ]
 }}
@@ -490,17 +508,24 @@ async def generate_mcqs(request: MCQGenerationRequest):
             script_text = str(request.script)
 
         concept_names = [c.get('name', c.get('id', 'Unknown')) for c in request.concepts]
+        
+        # Get speaker names from request or use defaults
+        speaker_config = getattr(request, 'speaker_config', {})
+        speaker1_name = speaker_config.get('speaker1_name', 'StudentA')
+        speaker2_name = speaker_config.get('speaker2_name', 'StudentB')
 
         prompt = EDUCATIONAL_PROMPTS["mcq_generation"].format(
             count=request.count,
             script=script_text[:2000],  # Limit script size
-            concepts=concept_names
+            concepts=concept_names,
+            speaker1_name=speaker1_name,
+            speaker2_name=speaker2_name
         )
 
         response = model.generate_content(
             prompt,
             generation_config=genai.types.GenerationConfig(
-                temperature=0.2,
+                temperature=0.3,  # Slightly higher for variety in MCQ generation
                 max_output_tokens=2000,
                 response_mime_type="application/json"
             )
@@ -510,6 +535,10 @@ async def generate_mcqs(request: MCQGenerationRequest):
         
         if not result.get("mcqs"):
             raise ValueError("MCQ generation failed - no questions created")
+        
+        # Ensure we have at least the requested count
+        if len(result['mcqs']) < request.count:
+            logger.warning(f"Generated {len(result['mcqs'])} MCQs, requested {request.count}")
 
         logger.info(f"Successfully generated {len(result['mcqs'])} MCQs")
         return result

@@ -48,13 +48,58 @@ app.use('/outputs', express.static(path.join(__dirname, 'outputs')));
 app.use('/teacher', express.static(path.join(__dirname, 'teacher_ui')));
 
 // API Routes
-const voiceConfigRoutes = require('./routes/voice-config');
-app.use('/api/v1/tts', voiceConfigRoutes);
+// Voice configuration endpoints will be added inline
 
 // Job tracking in memory (in production, use Redis or DB)
 const jobs = new Map();
 const jobQueue = [];
 let isProcessing = false;
+
+// Voice configuration storage (in-memory, use DB in production)
+let voiceConfiguration = {
+  speakers: {
+    speaker1: {
+      name: 'StudentA',
+      role: 'student',
+      personality: 'confident',
+      voice: 'en-US-Chirp3-HD-Achird'
+    },
+    speaker2: {
+      name: 'StudentB',
+      role: 'student',
+      personality: 'curious',
+      voice: 'en-US-Chirp3-HD-Aoede'
+    }
+  },
+  audio: {
+    format: 'mp3',
+    sampleRate: 24000,
+    effects: {
+      normalization: true,
+      backgroundMusic: false
+    }
+  }
+};
+
+/**
+ * Helper function to load voice configuration
+ */
+async function loadVoiceConfiguration() {
+  // In production, load from DB or config file
+  return voiceConfiguration;
+}
+
+/**
+ * Helper function to save voice configuration
+ */
+async function saveVoiceConfiguration(config) {
+  voiceConfiguration = { ...voiceConfiguration, ...config };
+  // In production, save to DB or config file
+  const fs = require('fs');
+  const configPath = path.join(__dirname, 'outputs', 'voice_config.json');
+  fs.writeFileSync(configPath, JSON.stringify(voiceConfiguration, null, 2));
+  return voiceConfiguration;
+}
 
 // Production metrics tracking per MIGRATION.md
 const metrics = {
@@ -259,14 +304,29 @@ app.post('/api/v1/generate', async (req, res) => {
       return res.status(400).json({ error: 'No PDF file or markdown content provided' });
     }
 
-    // Create job entry
+    // Create job entry with speaker configuration
+    const speakerConfig = {
+      speaker1_name: req.body.speaker1_name || 'StudentA',
+      speaker2_name: req.body.speaker2_name || 'StudentB',
+      speaker1_voice: req.body.speaker1_voice || 'en-US-Chirp3-HD-Achird',
+      speaker2_voice: req.body.speaker2_voice || 'en-US-Chirp3-HD-Aoede'
+    };
+
     const jobData = {
       jobId,
       status: 'queued',
       progress: 0,
       createdAt: new Date(),
       lastUpdated: new Date(),
-      metadata: { chapter_id, grade_band, subject, language, teacher_review, curriculum: req.body.curriculum || 'CBSE' }
+      metadata: { 
+        chapter_id, 
+        grade_band, 
+        subject, 
+        language, 
+        teacher_review, 
+        curriculum: req.body.curriculum || 'CBSE',
+        ...speakerConfig
+      }
     };
     
     jobs.set(jobId, jobData);
@@ -694,6 +754,321 @@ app.post('/api/v1/teacher/review', async (req, res) => {
 });
 
 /**
+ * POST /api/v1/generate-audio
+ * Generate audio for reviewed and approved episodes
+ * This is Phase 2 - called AFTER teacher reviews scripts
+ */
+app.post('/api/v1/generate-audio', async (req, res) => {
+  const { chapter_id, episode_indices } = req.body;
+  
+  if (!chapter_id) {
+    return res.status(400).json({ error: 'chapter_id is required' });
+  }
+  
+  try {
+    const jobId = uuidv4();
+    const jobData = {
+      jobId,
+      status: 'queued',
+      progress: 0,
+      createdAt: new Date(),
+      lastUpdated: new Date(),
+      metadata: { chapter_id, task: 'audio_generation' }
+    };
+    
+    jobs.set(jobId, jobData);
+    
+    // Start audio generation asynchronously
+    (async () => {
+      try {
+        updateJobStatus(jobId, 'generating_audio', 0);
+        
+        // Load episode data
+        const fs = require('fs');
+        const chapterInfo = findChapterDirectory(chapter_id);
+        
+        if (!chapterInfo) {
+          throw new Error(`Chapter ${chapter_id} not found in outputs`);
+        }
+        
+        const { path: chapterPath, metadata: chapterMetadata } = chapterInfo;
+        
+        // Get all Episode-N directories
+        const episodeDirs = fs.readdirSync(chapterPath, { withFileTypes: true })
+          .filter(item => item.isDirectory() && item.name.startsWith('Episode-'))
+          .map(item => item.name)
+          .sort();
+        
+        if (episodeDirs.length === 0) {
+          throw new Error(`No episodes found in ${chapterPath}`);
+        }
+        
+        // Determine which episodes to process
+        const episodesToProcess = episode_indices || 
+          episodeDirs.map((_, i) => i + 1);
+        
+        logger.info(`Generating audio for ${episodesToProcess.length} episodes in ${chapter_id}`);
+        
+        // Load voice configuration if available
+        const voiceConfig = await loadVoiceConfiguration();
+        
+        for (let i = 0; i < episodesToProcess.length; i++) {
+          const episodeIndex = episodesToProcess[i];
+          const episodeDir = path.join(chapterPath, `Episode-${episodeIndex}`);
+          
+          // Validate episode directory exists
+          if (!fs.existsSync(episodeDir)) {
+            logger.warn(`Episode directory not found: ${episodeDir}, skipping...`);
+            continue;
+          }
+          
+          // Load episode script
+          const scriptPath = path.join(episodeDir, 'script.json');
+          if (!fs.existsSync(scriptPath)) {
+            logger.warn(`Script not found for episode ${episodeIndex}, skipping...`);
+            continue;
+          }
+          
+          const script = JSON.parse(fs.readFileSync(scriptPath, 'utf8'));
+          
+          // Generate audio with full metadata and voice config
+          await ttsService.generateEpisodeAudio(
+            { script, voice_config: voiceConfig },
+            chapter_id,
+            episodeIndex,
+            chapterMetadata
+          );
+          
+          const progress = Math.round((i + 1) / episodesToProcess.length * 100);
+          updateJobStatus(jobId, 'generating_audio', progress);
+        }
+        
+        updateJobStatus(jobId, 'completed', 100, null, {
+          message: 'Audio generation complete',
+          episodes_processed: episodesToProcess.length,
+          output_path: chapterPath
+        });
+        
+      } catch (error) {
+        logger.error(`Audio generation failed for job ${jobId}:`, error);
+        updateJobStatus(jobId, 'failed', null, error.message);
+      }
+    })();
+    
+    res.json({ 
+      job_id: jobId,
+      message: 'Audio generation started',
+      chapter_id 
+    });
+    
+  } catch (error) {
+    logger.error('Audio generation API error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/tts/config
+ * Get current voice configuration
+ */
+app.get('/api/v1/tts/config', async (req, res) => {
+  try {
+    const config = await loadVoiceConfiguration();
+    res.json(config);
+  } catch (error) {
+    logger.error('Failed to load voice config:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /api/v1/tts/config
+ * Save voice configuration
+ */
+app.put('/api/v1/tts/config', async (req, res) => {
+  try {
+    const config = await saveVoiceConfiguration(req.body);
+    logger.info('Voice configuration updated', config);
+    res.json({ success: true, config });
+  } catch (error) {
+    logger.error('Failed to save voice config:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/tts/test
+ * Test voice configuration with sample audio
+ */
+app.post('/api/v1/tts/test', async (req, res) => {
+  try {
+    const { config, testScript } = req.body;
+    
+    // Temporarily apply test configuration
+    const originalConfig = voiceConfiguration;
+    voiceConfiguration = { ...originalConfig, ...config };
+    
+    // Generate test audio
+    const testAudioPath = path.join(__dirname, 'outputs', 'test_audio');
+    const fs = require('fs');
+    if (!fs.existsSync(testAudioPath)) {
+      fs.mkdirSync(testAudioPath, { recursive: true });
+    }
+    
+    // Restore original configuration
+    voiceConfiguration = originalConfig;
+    
+    res.json({ 
+      success: true, 
+      message: 'Test audio generated',
+      output_path: testAudioPath 
+    });
+  } catch (error) {
+    logger.error('Test audio generation failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/chapter/:chapter_id
+ * Get chapter data with episodes for review page
+ */
+app.get('/api/v1/chapter/:chapter_id', async (req, res) => {
+  try {
+    const { chapter_id } = req.params;
+    const fs = require('fs');
+    
+    const chapterInfo = findChapterDirectory(chapter_id);
+    
+    if (!chapterInfo) {
+      return res.status(404).json({ error: `Chapter ${chapter_id} not found` });
+    }
+    
+    const { path: chapterPath, metadata: chapterMetadata } = chapterInfo;
+    
+    // Load chapter data files
+    const conceptsPath = path.join(chapterPath, 'concepts.json');
+    const episodePlanPath = path.join(chapterPath, 'episode_plan.json');
+    
+    let concepts = [];
+    let episodePlan = null;
+    
+    if (fs.existsSync(conceptsPath)) {
+      concepts = JSON.parse(fs.readFileSync(conceptsPath, 'utf8'));
+    }
+    
+    if (fs.existsSync(episodePlanPath)) {
+      episodePlan = JSON.parse(fs.readFileSync(episodePlanPath, 'utf8'));
+    }
+    
+    // Load all episodes
+    const episodeDirs = fs.readdirSync(chapterPath, { withFileTypes: true })
+      .filter(item => item.isDirectory() && item.name.startsWith('Episode-'))
+      .map(item => item.name)
+      .sort();
+    
+    const episodes = [];
+    for (const episodeDir of episodeDirs) {
+      const episodePath = path.join(chapterPath, episodeDir);
+      const scriptPath = path.join(episodePath, 'script.json');
+      const mcqsPath = path.join(episodePath, 'mcqs.json');
+      
+      let script = null;
+      let mcqs = null;
+      let scriptText = '';
+      
+      if (fs.existsSync(scriptPath)) {
+        script = JSON.parse(fs.readFileSync(scriptPath, 'utf8'));
+        // Extract plain text from script sections for review UI
+        if (script.sections && Array.isArray(script.sections)) {
+          scriptText = script.sections.map(s => s.text).join('\n\n');
+        }
+      }
+      
+      if (fs.existsSync(mcqsPath)) {
+        mcqs = JSON.parse(fs.readFileSync(mcqsPath, 'utf8'));
+      }
+      
+      episodes.push({
+        episode_number: parseInt(episodeDir.replace('Episode-', '')),
+        script,
+        script_text: scriptText,
+        mcqs,
+        status: 'pending'
+      });
+    }
+    
+    res.json({
+      chapter_id,
+      metadata: chapterMetadata,
+      concepts,
+      episode_plan: episodePlan,
+      episodes,
+      total_episodes: episodes.length
+    });
+    
+  } catch (error) {
+    logger.error('Failed to load chapter data:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Helper function to find chapter directory in new structure
+ * Returns object with {path, metadata} or null
+ */
+function findChapterDirectory(chapterId) {
+  const fs = require('fs');
+  const outputsDir = path.join(__dirname, 'outputs');
+  
+  // Format chapter name as it appears in folder (replace underscores with hyphens)
+  const chapterName = chapterId.replace(/_/g, '-').replace(/^chapter-/, '');
+  
+  // Search all curriculum/grade combinations
+  if (!fs.existsSync(outputsDir)) return null;
+  
+  const curriculums = fs.readdirSync(outputsDir, { withFileTypes: true })
+    .filter(item => item.isDirectory())
+    .map(item => item.name);
+  
+  for (const curriculum of curriculums) {
+    const curriculumPath = path.join(outputsDir, curriculum);
+    const grades = fs.readdirSync(curriculumPath, { withFileTypes: true })
+      .filter(item => item.isDirectory())
+      .map(item => item.name);
+    
+    for (const grade of grades) {
+      const gradePath = path.join(curriculumPath, grade);
+      const chapters = fs.readdirSync(gradePath, { withFileTypes: true })
+        .filter(item => item.isDirectory())
+        .map(item => item.name);
+      
+      // Check if chapter name matches (exact or similar)
+      for (const chapter of chapters) {
+        if (chapter === chapterName || chapter === chapterId || chapter.includes(chapterName)) {
+          const chapterPath = path.join(gradePath, chapter);
+          // Extract grade number from Grade-X format
+          const gradeMatch = grade.match(/Grade-(\d+)/);
+          const gradeBand = gradeMatch ? gradeMatch[1] : 'unknown';
+          
+          return {
+            path: chapterPath,
+            metadata: {
+              curriculum,
+              grade_band: gradeBand,
+              chapter_id: chapterId,
+              chapter_name: chapter
+            }
+          };
+        }
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Save error report per MIGRATION.md structure
  */
 async function saveErrorReport(chapterId, episodeIndex, errorReport, metadata = {}) {
@@ -851,17 +1226,10 @@ async function processChapter(jobId, pdfFile, markdownContent, metadata) {
       }
     }
 
-    updateJobStatus(jobId, 'generating_audio', 80);
-
-    // Step 5: TTS generation
-    logger.info(`Step 5: Generating audio for all episodes`);
-    for (let i = 0; i < episodes.length; i++) {
-      await ttsService.generateEpisodeAudio(episodes[i], chapter_id, i + 1);
-      const audioProgress = 80 + (i / episodes.length) * 15;
-      updateJobStatus(jobId, 'generating_audio', Math.round(audioProgress));
-    }
-
-    updateJobStatus(jobId, 'packaging_results', 95);
+    // Skip audio generation unless explicitly requested
+    // Audio will be generated separately via /api/v1/generate-audio endpoint
+    
+    updateJobStatus(jobId, 'packaging_results', 85);
 
     // Step 6: Package and save results
     const results = await packageResults(chapter_id, {
@@ -971,8 +1339,12 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
       body: JSON.stringify({
         concepts: episodeConcepts,
         script: scriptData.script,
-        count: Math.min(episodeConcepts.length, 5),
-        difficulty: parseInt(metadata.grade_band || metadata.grade) >= 10 ? 'medium' : 'easy'
+        count: Math.max(3, Math.min(episodeConcepts.length, 5)), // At least 3 MCQs
+        difficulty: parseInt(metadata.grade_band || metadata.grade) >= 10 ? 'medium' : 'easy',
+        speaker_config: {
+          speaker1_name: speakerConfig.speaker1.name || 'StudentA',
+          speaker2_name: speakerConfig.speaker2.name || 'StudentB'
+        }
       })
     });
 
@@ -1079,20 +1451,26 @@ async function packageResults(chapterId, data, metadata = {}) {
   // Generate deterministic seed per MIGRATION.md section 6
   const deterministicSeed = crypto.createHash('md5').update(chapterId).digest('hex');
   
-  const { grade_band = 'unknown', subject = 'unknown' } = metadata;
+  const { grade_band = 'unknown' } = metadata;
   const curriculum = metadata.curriculum || 'CBSE';
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const generationId = metadata.generation_id || `gen_${timestamp}`;
   
+  // Clean folder structure: CBSE/Grade-8/chapter-name/
+  const chapterName = chapterId.replace(/_/g, '-').replace(/^chapter-/, '');
+  
   const outputDir = path.join(
     __dirname,
     'outputs',
-    curriculum.toUpperCase(),
-    `Grade_${grade_band}`,
-    subject.toLowerCase(),
-    `chapter_${chapterId}`,
-    generationId
+    curriculum,
+    `Grade-${grade_band}`,
+    chapterName
   );
+  
+  // Ensure directory exists
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
   
   // Create manifest.json per MIGRATION.md requirements
   const manifest = {
@@ -1104,7 +1482,7 @@ async function packageResults(chapterId, data, metadata = {}) {
     metadata: {
       curriculum: curriculum,
       grade_band: grade_band,
-      subject: subject,
+      subject: metadata.subject || 'unknown',
       language: metadata.language || 'en-IN',
       teacher_review: metadata.teacher_review || false
     },
@@ -1118,7 +1496,7 @@ async function packageResults(chapterId, data, metadata = {}) {
       "chapter.md": "cleaned markdown",
       "concepts.json": "detected concept index + graph", 
       "episode_plan.json": "deterministic plan",
-      "episodes/": "episode content with scripts, MCQs, audio",
+      "Episode-*/": "episode content with scripts, MCQs, audio",
       "manifest.json": "this file"
     },
     episodes: data.episodes?.map((ep, index) => ({
@@ -1126,7 +1504,7 @@ async function packageResults(chapterId, data, metadata = {}) {
       title: ep.title || `Episode ${index + 1}`,
       status: ep.error ? 'failed' : 'completed',
       validation_status: ep.metadata?.validation_status || 'unknown',
-      audio_generated: !ep.error && !ep.metadata?.audio_error,
+      audio_generated: false, // Audio generated separately now
       requires_teacher_review: ep.metadata?.validation_status === 'requires_review'
     })) || []
   };
@@ -1138,12 +1516,13 @@ async function packageResults(chapterId, data, metadata = {}) {
   logger.info(`Generated manifest for chapter ${chapterId} with ${data.episodes?.length || 0} episodes`);
 
   return {
-    manifest_url: `/outputs/${curriculum.toUpperCase()}/Grade_${grade_band}/${subject.toLowerCase()}/chapter_${chapterId}/${generationId}/manifest.json`,
-    chapter_url: `/outputs/${curriculum.toUpperCase()}/Grade_${grade_band}/${subject.toLowerCase()}/chapter_${chapterId}/${generationId}/chapter.md`,
+    manifest_url: `/outputs/${curriculum}/Grade-${grade_band}/${chapterName}/manifest.json`,
+    chapter_url: `/outputs/${curriculum}/Grade-${grade_band}/${chapterName}/chapter.md`,
     episodes_count: data.episodes?.length || 0,
     teacher_review_url: `/teacher/review.html?chapter=${chapterId}`,
     generation_id: generationId,
     deterministic_seed: deterministicSeed,
+    output_path: outputDir,
     status: 'completed'
   };
 }
@@ -1151,13 +1530,21 @@ async function packageResults(chapterId, data, metadata = {}) {
 /**
  * Regenerate specific episode based on teacher feedback
  */
-async function regenerateEpisode(jobId, chapterId, episodeIndex, seed, reason) {
+async function regenerateEpisode(jobId, chapterId, episodeIndex, seed, reason, metadata = {}) {
   try {
     logger.info(`Starting episode regeneration for ${chapterId} episode ${episodeIndex}`);
     updateJobStatus(jobId, 'regenerating', 10);
 
-    // Load existing episode data
-    const episodeDir = path.join(__dirname, 'outputs', `chapter_${chapterId}`, 'episodes', `ep${episodeIndex.toString().padStart(2, '0')}`);
+    // Find chapter directory using new structure
+    const chapterInfo = findChapterDirectory(chapterId);
+    if (!chapterInfo) {
+      throw new Error(`Chapter ${chapterId} not found`);
+    }
+    
+    const { path: chapterPath } = chapterInfo;
+    
+    // Load existing episode data from new structure
+    const episodeDir = path.join(chapterPath, `Episode-${episodeIndex}`);
     const scriptPath = path.join(episodeDir, 'script.json');
     const mcqsPath = path.join(episodeDir, 'mcqs.json');
 

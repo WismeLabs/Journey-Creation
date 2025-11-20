@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const pdf = require('pdf-parse');
 const Tesseract = require('tesseract.js');
+const { fromPath } = require('pdf2pic');
 const winston = require('winston');
 const crypto = require('crypto');
 
@@ -738,139 +739,128 @@ class PDFProcessor {
     try {
       logger.info({ action: 'high_sensitivity_ocr_start', chapterId });
       
-      // Configuration for high-sensitivity OCR
-      const ocrConfigs = [
-        {
-          name: 'standard',
-          options: {
-            lang: 'eng',
-            oem: 1, // LSTM OCR Engine
-            psm: 6, // Uniform block of text
-          }
-        },
-        {
-          name: 'high_sensitivity',
-          options: {
-            lang: 'eng',
-            oem: 1,
-            psm: 3, // Fully automatic page segmentation
-            preserve_interword_spaces: '1',
-            tessedit_char_whitelist: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,!?()-:;[]{}/"\'%+='
-          }
-        },
-        {
-          name: 'document_mode',
-          options: {
-            lang: 'eng',
-            oem: 1,
-            psm: 1, // Automatic page segmentation with OSD
-            preserve_interword_spaces: '1'
-          }
-        }
-      ];
-      
-      let bestResult = null;
-      let bestQuality = 0;
-      
-      // Try each configuration and select the best result
-      for (const config of ocrConfigs) {
-        try {
-          logger.info({ action: 'ocr_attempt', config: config.name, chapterId });
-          
-          const { data: { text, confidence } } = await Tesseract.recognize(
-            pdfPath,
-            'eng',
-            { 
-              logger: m => {
-                if (m.status === 'recognizing text') {
-                  // Log progress periodically
-                  if (Math.round(m.progress * 100) % 20 === 0) {
-                    logger.info({ 
-                      action: 'ocr_progress', 
-                      config: config.name,
-                      progress: Math.round(m.progress * 100) 
-                    });
+      // First, convert PDF pages to images using pdf2pic
+      try {
+        const pdfBuffer = fs.readFileSync(pdfPath);
+        const pdfData = await pdf(pdfBuffer);
+        const pageCount = pdfData.numpages;
+        
+        logger.info({ action: 'pdf_page_count', pages: pageCount, chapterId });
+        
+        // Try to convert PDF to images
+        const converter = fromPath(pdfPath, {
+          density: 300, // Higher DPI for better OCR
+          saveFilename: `ocr_temp_${chapterId}`,
+          savePath: this.tempDir,
+          format: "png",
+          width: 2480, // A4 at 300 DPI
+          height: 3508
+        });
+        
+        let fullText = '';
+        let totalConfidence = 0;
+        let successfulPages = 0;
+        
+        // Process each page
+        for (let pageNum = 1; pageNum <= Math.min(pageCount, 50); pageNum++) { // Limit to 50 pages
+          try {
+            logger.info({ action: 'ocr_page_start', page: pageNum, total: pageCount, chapterId });
+            
+            // Convert page to image
+            const pageImage = await converter(pageNum);
+            const imagePath = pageImage.path;
+            
+            // Perform OCR on the image
+            const { data: { text, confidence } } = await Tesseract.recognize(
+              imagePath,
+              'eng',
+              { 
+                logger: m => {
+                  if (m.status === 'recognizing text') {
+                    if (Math.round(m.progress * 100) % 20 === 0) {
+                      logger.info({ 
+                        action: 'ocr_progress', 
+                        page: pageNum,
+                        progress: Math.round(m.progress * 100) 
+                      });
+                    }
                   }
                 }
-              },
-              ...config.options
-            }
-          );
-          
-          if (text && text.length > 50) {
-            const quality = this.assessOCRQuality(text, confidence);
-            const errorRate = this.calculateOCRErrorRate(text);
+              }
+            );
             
-            logger.info({
-              action: 'ocr_attempt_complete',
-              config: config.name,
-              textLength: text.length,
-              confidence,
-              quality,
-              errorRate
+            if (text && text.trim().length > 10) {
+              fullText += text + '\n\n';
+              totalConfidence += confidence;
+              successfulPages++;
+              
+              logger.info({
+                action: 'ocr_page_complete',
+                page: pageNum,
+                textLength: text.length,
+                confidence
+              });
+            }
+            
+            // Clean up temporary image
+            if (fs.existsSync(imagePath)) {
+              fs.unlinkSync(imagePath);
+            }
+            
+          } catch (pageError) {
+            logger.warn({ 
+              action: 'ocr_page_failed', 
+              page: pageNum, 
+              error: pageError.message 
             });
-            
-            if (quality > bestQuality) {
-              bestResult = {
-                text: text.trim(),
-                confidence: confidence / 100, // Normalize to 0-1
-                quality,
-                errorRate,
-                config: config.name
-              };
-              bestQuality = quality;
-            }
           }
-          
-        } catch (configError) {
-          logger.warn({ 
-            action: 'ocr_config_failed', 
-            config: config.name, 
-            error: configError.message 
-          });
         }
-      }
-      
-      const processingTime = Date.now() - startTime;
-      
-      if (bestResult && bestResult.errorRate <= this.maxOcrErrorRate) {
+        
+        const processingTime = Date.now() - startTime;
+        
+        if (successfulPages === 0) {
+          throw new Error('No pages successfully processed with OCR');
+        }
+        
+        const avgConfidence = totalConfidence / successfulPages / 100; // Normalize to 0-1
+        const errorRate = this.calculateOCRErrorRate(fullText);
+        
         // Apply post-processing improvements
-        const cleanedText = this.postProcessOCRText(bestResult.text);
+        const cleanedText = this.postProcessOCRText(fullText);
         
         logger.info({
           action: 'high_sensitivity_ocr_success',
           chapterId,
-          config: bestResult.config,
+          pagesProcessed: successfulPages,
+          totalPages: pageCount,
           processingTimeMs: processingTime,
-          errorRate: bestResult.errorRate,
-          confidence: bestResult.confidence
+          errorRate,
+          confidence: avgConfidence
         });
         
         return {
           success: true,
           text: cleanedText,
-          confidence: bestResult.confidence,
-          errorRate: bestResult.errorRate,
+          confidence: avgConfidence,
+          errorRate,
           processingTime,
-          method: `high_sensitivity_ocr_${bestResult.config}`
+          method: 'high_sensitivity_ocr_pdf2pic'
         };
         
-      } else {
-        // OCR failed quality thresholds
-        logger.error({
-          action: 'high_sensitivity_ocr_failed',
-          chapterId,
-          bestErrorRate: bestResult?.errorRate || 'unknown',
-          threshold: this.maxOcrErrorRate,
-          processingTimeMs: processingTime
+      } catch (conversionError) {
+        // Fallback: pdf2pic failed, likely missing ImageMagick/GraphicsMagick
+        logger.warn({ 
+          action: 'pdf2pic_failed', 
+          error: conversionError.message,
+          fallback: 'using_direct_pdf_parse'
         });
         
+        // Return failure so extractWithFallback can use direct PDF parse
         return {
           success: false,
-          error: 'OCR quality below threshold',
-          errorRate: bestResult?.errorRate || 1.0,
-          processingTime,
-          attempted_configs: ocrConfigs.length
+          error: 'OCR conversion failed - missing ImageMagick/GraphicsMagick',
+          processingTime: Date.now() - startTime,
+          fallback_recommended: 'pdf-parse'
         };
       }
       

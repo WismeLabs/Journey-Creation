@@ -99,6 +99,60 @@
             gap: 20px;
         }
 
+        .failed-episodes-banner {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+        }
+
+        .failed-episodes-banner h3 {
+            color: #856404;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .failed-episode-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #dc3545;
+        }
+
+        .failed-episode-info {
+            flex: 1;
+        }
+
+        .failed-episode-error {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .retry-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-retry {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+
         .episode-card {
             background: white;
             border-radius: 15px;
@@ -431,6 +485,10 @@
                 if (response.ok) {
                     const data = await response.json();
                     currentChapter = data;
+                    
+                    // Load failed episodes if they exist
+                    await loadFailedEpisodes(chapterId);
+                    
                     renderChapterInfo();
                     renderEpisodes();
                     updateStats();
@@ -441,6 +499,25 @@
                 showError(`Error loading chapter: ${error.message}`);
             } finally {
                 showLoading(false);
+            }
+        }
+
+        // Load failed episodes from failed_episodes.json
+        async function loadFailedEpisodes(chapterId) {
+            try {
+                // Construct path to failed_episodes.json based on chapter ID
+                const response = await fetch(`/api/v1/chapter/${chapterId}/failed-episodes`);
+                
+                if (response.ok) {
+                    const failedData = await response.json();
+                    currentChapter.failedEpisodes = failedData.failures || [];
+                } else {
+                    // No failed episodes file exists (which is fine)
+                    currentChapter.failedEpisodes = [];
+                }
+            } catch (error) {
+                // Silently fail - no failed episodes to show
+                currentChapter.failedEpisodes = [];
             }
         }
 
@@ -459,8 +536,14 @@
             const container = document.getElementById('episodesContainer');
             container.innerHTML = '';
 
+            // Show failed episodes banner if any exist
+            if (currentChapter.failedEpisodes && currentChapter.failedEpisodes.length > 0) {
+                const failedBanner = createFailedEpisodesBanner(currentChapter.failedEpisodes);
+                container.appendChild(failedBanner);
+            }
+
             if (!currentChapter.episodes || currentChapter.episodes.length === 0) {
-                container.innerHTML = '<div class="error-message">No episodes found for this chapter.</div>';
+                container.innerHTML += '<div class="error-message">No episodes found for this chapter.</div>';
                 return;
             }
 
@@ -743,6 +826,122 @@
             if (statusElement) {
                 statusElement.className = `episode-status status-${status}`;
                 statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ');
+            }
+        }
+
+        // Create failed episodes banner
+        function createFailedEpisodesBanner(failedEpisodes) {
+            const banner = document.createElement('div');
+            banner.className = 'failed-episodes-banner';
+            
+            const failedItems = failedEpisodes.map(failed => `
+                <div class="failed-episode-item">
+                    <div class="failed-episode-info">
+                        <strong>Episode ${failed.episode}</strong>
+                        <div class="failed-episode-error">
+                            ❌ ${failed.error}
+                            <br><small>Concepts: ${failed.concepts.join(', ')}</small>
+                        </div>
+                    </div>
+                    <button class="btn btn-retry btn-small" onclick="retryEpisode(${failed.episode})">
+                        🔄 Retry
+                    </button>
+                </div>
+            `).join('');
+
+            banner.innerHTML = `
+                <h3>
+                    <span>⚠️</span>
+                    Failed Episodes (${failedEpisodes.length})
+                </h3>
+                <p style="margin-bottom: 15px; color: #856404;">
+                    Some episodes failed to generate due to rate limits or errors. You can retry them individually or all at once.
+                </p>
+                ${failedItems}
+                <div class="retry-controls">
+                    <button class="btn btn-retry" onclick="retryAllFailedEpisodes()">
+                        🔄 Retry All Failed Episodes
+                    </button>
+                    <button class="btn btn-warning" onclick="dismissFailedBanner()">
+                        Dismiss
+                    </button>
+                </div>
+            `;
+
+            return banner;
+        }
+
+        // Retry single episode
+        async function retryEpisode(episodeNumber) {
+            if (!confirm(`Retry generating Episode ${episodeNumber}?`)) return;
+
+            try {
+                showSuccess(`Retrying Episode ${episodeNumber}...`);
+                
+                const response = await fetch('/api/v1/retry-episode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chapter_id: currentChapter.chapter_id,
+                        episode_number: episodeNumber
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess(`Episode ${episodeNumber} regeneration started!`);
+                    
+                    // Poll for completion
+                    setTimeout(() => {
+                        loadChapter(currentChapter.chapter_id);
+                    }, 5000);
+                } else {
+                    showError(`Failed to retry episode: ${data.error}`);
+                }
+            } catch (error) {
+                showError(`Error retrying episode: ${error.message}`);
+            }
+        }
+
+        // Retry all failed episodes
+        async function retryAllFailedEpisodes() {
+            const failedCount = currentChapter.failedEpisodes?.length || 0;
+            if (!confirm(`Retry generating all ${failedCount} failed episodes?`)) return;
+
+            try {
+                showSuccess(`Retrying ${failedCount} episodes...`);
+                
+                const response = await fetch('/api/v1/retry-failed-episodes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chapter_id: currentChapter.chapter_id
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess(`Regenerating ${failedCount} episodes...`);
+                    
+                    // Poll for completion
+                    setTimeout(() => {
+                        loadChapter(currentChapter.chapter_id);
+                    }, 10000);
+                } else {
+                    showError(`Failed to retry episodes: ${data.error}`);
+                }
+            } catch (error) {
+                showError(`Error retrying episodes: ${error.message}`);
+            }
+        }
+
+        // Dismiss failed banner
+        function dismissFailedBanner() {
+            const banner = document.querySelector('.failed-episodes-banner');
+            if (banner) {
+                banner.style.display = 'none';
             }
         }
 

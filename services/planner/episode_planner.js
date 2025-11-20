@@ -145,16 +145,36 @@ class EpisodePlanner {
   }
 
   /**
-   * Determine chapter size per MIGRATION.md rules
+   * Determine chapter size using weighted concept importance (smart sizing)
    */
   determineChapterSize(concepts, chapterMetadata) {
     const conceptCount = concepts.length;
     const wordCount = chapterMetadata.word_count || 0;
 
-    // Use concept_count if available; fallback to word_count per MIGRATION.md
-    if (conceptCount > 0) {
-      if (conceptCount < this.conceptCountThresholds.small) return 'small';
-      if (conceptCount <= this.conceptCountThresholds.large) return 'medium';
+    // Calculate weighted complexity score based on concept importance
+    const weightedScore = concepts.reduce((score, concept) => {
+      const importance = concept.importance || 3;
+      const estimatedMinutes = concept.estimated_minutes || 5;
+      
+      // Core concepts (importance 5) count more heavily
+      // Vocabulary/facts (importance 1-2) count less
+      return score + (importance * estimatedMinutes / 10);
+    }, 0);
+
+    // Count only core and supporting concepts (importance >= 3) for sizing
+    const significantConceptCount = concepts.filter(c => (c.importance || 3) >= 3).length;
+
+    logger.info({
+      action: 'chapter_sizing',
+      totalConcepts: conceptCount,
+      significantConcepts: significantConceptCount,
+      weightedScore: weightedScore.toFixed(2)
+    });
+
+    // Use significant concept count (filters out vocabulary noise)
+    if (significantConceptCount > 0) {
+      if (significantConceptCount < this.conceptCountThresholds.small) return 'small';
+      if (significantConceptCount <= this.conceptCountThresholds.large) return 'medium';
       return 'large';
     } else if (wordCount > 0) {
       if (wordCount < this.wordCountThresholds.small) return 'small';
@@ -194,6 +214,11 @@ class EpisodePlanner {
     
     // Extract explicit relationships from concept.related arrays
     concepts.forEach(concept => {
+      // Auto-group low-importance concepts with their parent
+      if (concept.parent_concept) {
+        graph.push([concept.parent_concept, concept.id]);
+      }
+      
       if (concept.related && Array.isArray(concept.related)) {
         concept.related.forEach(relatedId => {
           const relatedConcept = concepts.find(c => c.id === relatedId);
@@ -413,6 +438,21 @@ class EpisodePlanner {
   canAddConceptToEpisode(concept, episode, dependencyGraph) {
     if (!episode || episode.concepts.length >= this.maxConceptsPerEpisode) {
       return false;
+    }
+
+    // SMART GROUPING: Auto-group low-importance concepts with core concepts
+    const importance = concept.importance || 3;
+    const isGroupable = concept.groupable !== false; // default true
+    
+    // If it's a vocabulary/fact (importance 1-2) and groupable, always add to current episode
+    if (importance <= 2 && isGroupable && episode.concepts.length > 0) {
+      logger.info({
+        action: 'auto_grouping_vocabulary',
+        concept: concept.name,
+        importance,
+        episode: episode.ep
+      });
+      return true;
     }
 
     // Check prerequisite constraints

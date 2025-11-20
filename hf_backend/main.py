@@ -56,7 +56,9 @@ def get_gemini_model():
     
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-pro-latest")
+        # Using Gemini 2.0 Flash - best balance of cost, speed, and quality for educational content
+        # Cheaper than 1.5 Pro ($0.025 vs $0.15 per chapter), faster, better instruction following
+        model = genai.GenerativeModel("gemini-2.0-flash-001")
         
         # Test API connectivity 
         test_response = model.generate_content(
@@ -139,24 +141,48 @@ class ChapterAnalysisRequest(BaseModel):
 # Educational prompt templates per MIGRATION.md requirements
 EDUCATIONAL_PROMPTS = {
     "concept_extraction": """
-SYSTEM: You are an educational content analyzer for K-12 textbooks. 
+SYSTEM: You are an educational content analyzer for K-12 textbooks with hierarchical concept mapping.
 INPUT: chapter_markdown, grade_band, subject
-TASK: Extract key educational concepts from the chapter content.
-OUTPUT: Return JSON with concepts array and prerequisite graph.
+TASK: Extract ALL concepts with importance ranking and grouping.
+OUTPUT: Return JSON with hierarchical concepts array and prerequisite graph.
+
+CONCEPT HIERARCHY - Extract and classify:
+
+1. CORE CONCEPTS (importance: 5) - Major chapter topics
+   - Main learning objectives
+   - Key processes and theories
+   - Must-know definitions
+   - Can standalone as episode (8-12 min dialogue)
+
+2. SUPPORTING CONCEPTS (importance: 3-4) - Important details
+   - Secondary definitions and terms
+   - Examples and applications
+   - Related processes
+   - Can be combined with core concepts
+
+3. VOCABULARY & FACTS (importance: 1-2) - Foundational knowledge
+   - Technical terms
+   - Quick facts and data points
+   - Simple definitions
+   - Should be grouped together or embedded in other concepts
 
 For each concept include:
 - id: snake_case identifier
 - name: human readable name
-- type: definition|process|formula|example|application  
+- importance: 1-5 (5=core, 3-4=supporting, 1-2=vocabulary/facts)
+- groupable: true|false (can this be combined with other concepts?)
+- type: definition|process|formula|example|application|vocabulary|fact
 - difficulty: easy|medium|hard (grade-appropriate)
 - blooms: remember|understand|apply|analyze|evaluate|create
 - source_excerpt: reference like "p3:lines 1-7"
 - related: array of prerequisite concept ids
-- definition: clear explanation of the concept
+- parent_concept: id of parent concept (if this is a supporting detail)
+- definition: clear explanation
+- estimated_minutes: 2-12 (dialogue time needed)
 
 Create a concept graph showing prerequisite relationships.
-Focus on concepts that can be explained in 4-8 minute peer conversations.
-Ensure concepts are grade {grade_band} appropriate for {subject}.
+Ensure comprehensive coverage but smart grouping for episode planning.
+Grade {grade_band} appropriate for {subject}.
 
 Chapter content:
 {content}
@@ -165,17 +191,35 @@ Return valid JSON only:
 {{
   "concepts": [
     {{
-      "id": "concept_id",
-      "name": "Concept Name", 
-      "type": "definition",
+      "id": "photosynthesis",
+      "name": "Photosynthesis Process", 
+      "importance": 5,
+      "groupable": false,
+      "type": "process",
       "difficulty": "medium",
       "blooms": "understand",
       "source_excerpt": "line_15",
-      "related": ["prerequisite_id"],
-      "definition": "Clear explanation"
+      "related": ["chlorophyll"],
+      "parent_concept": null,
+      "definition": "Process by which plants make food using sunlight",
+      "estimated_minutes": 10
+    }},
+    {{
+      "id": "chlorophyll",
+      "name": "Chlorophyll",
+      "importance": 2,
+      "groupable": true,
+      "type": "vocabulary",
+      "difficulty": "easy",
+      "blooms": "remember",
+      "source_excerpt": "line_8",
+      "related": [],
+      "parent_concept": "photosynthesis",
+      "definition": "Green pigment in plants",
+      "estimated_minutes": 2
     }}
   ],
-  "graph": [["prerequisite_id", "concept_id"]]
+  "graph": [["chlorophyll", "photosynthesis"]]
 }}
 """,
 

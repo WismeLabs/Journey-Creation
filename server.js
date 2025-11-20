@@ -1014,6 +1014,152 @@ app.get('/api/v1/chapter/:chapter_id', async (req, res) => {
 });
 
 /**
+ * GET /api/v1/chapter/:chapter_id/failed-episodes
+ * Get failed episodes for a chapter
+ */
+app.get('/api/v1/chapter/:chapter_id/failed-episodes', async (req, res) => {
+  try {
+    const { chapter_id } = req.params;
+    const fs = require('fs');
+    
+    const chapterInfo = findChapterDirectory(chapter_id);
+    
+    if (!chapterInfo) {
+      return res.status(404).json({ error: `Chapter ${chapter_id} not found` });
+    }
+    
+    const failedEpisodesPath = path.join(chapterInfo.path, 'failed_episodes.json');
+    
+    if (!fs.existsSync(failedEpisodesPath)) {
+      return res.json({ failures: [] }); // No failures
+    }
+    
+    const failedData = JSON.parse(fs.readFileSync(failedEpisodesPath, 'utf8'));
+    res.json(failedData);
+    
+  } catch (error) {
+    logger.error('Failed to load failed episodes:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/retry-episode
+ * Retry generating a specific failed episode
+ */
+app.post('/api/v1/retry-episode', async (req, res) => {
+  try {
+    const { chapter_id, episode_number } = req.body;
+    
+    if (!chapter_id || !episode_number) {
+      return res.status(400).json({ error: 'chapter_id and episode_number required' });
+    }
+    
+    const chapterInfo = findChapterDirectory(chapter_id);
+    
+    if (!chapterInfo) {
+      return res.status(404).json({ error: `Chapter ${chapter_id} not found` });
+    }
+    
+    const fs = require('fs');
+    
+    // Load chapter data
+    const conceptsPath = path.join(chapterInfo.path, 'concepts.json');
+    const episodePlanPath = path.join(chapterInfo.path, 'episode_plan.json');
+    
+    if (!fs.existsSync(conceptsPath) || !fs.existsSync(episodePlanPath)) {
+      return res.status(404).json({ error: 'Chapter data not found' });
+    }
+    
+    const concepts = JSON.parse(fs.readFileSync(conceptsPath, 'utf8'));
+    const episodePlan = JSON.parse(fs.readFileSync(episodePlanPath, 'utf8'));
+    
+    // Find the specific episode config
+    const episodeConfig = episodePlan.episodes.find(ep => ep.ep === episode_number);
+    
+    if (!episodeConfig) {
+      return res.status(404).json({ error: `Episode ${episode_number} not found in plan` });
+    }
+    
+    // Generate job ID
+    const jobId = `retry_${chapter_id}_ep${episode_number}_${Date.now()}`;
+    
+    // Start regeneration in background
+    regenerateSingleEpisode(jobId, chapter_id, episodeConfig, concepts.concepts || [], chapterInfo.metadata);
+    
+    res.json({ 
+      success: true, 
+      message: `Episode ${episode_number} regeneration started`,
+      job_id: jobId
+    });
+    
+  } catch (error) {
+    logger.error('Failed to retry episode:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/retry-failed-episodes
+ * Retry all failed episodes for a chapter
+ */
+app.post('/api/v1/retry-failed-episodes', async (req, res) => {
+  try {
+    const { chapter_id } = req.body;
+    
+    if (!chapter_id) {
+      return res.status(400).json({ error: 'chapter_id required' });
+    }
+    
+    const chapterInfo = findChapterDirectory(chapter_id);
+    
+    if (!chapterInfo) {
+      return res.status(404).json({ error: `Chapter ${chapter_id} not found` });
+    }
+    
+    const fs = require('fs');
+    
+    // Load failed episodes
+    const failedEpisodesPath = path.join(chapterInfo.path, 'failed_episodes.json');
+    
+    if (!fs.existsSync(failedEpisodesPath)) {
+      return res.json({ message: 'No failed episodes to retry' });
+    }
+    
+    const failedData = JSON.parse(fs.readFileSync(failedEpisodesPath, 'utf8'));
+    const failedEpisodes = failedData.failures || [];
+    
+    if (failedEpisodes.length === 0) {
+      return res.json({ message: 'No failed episodes to retry' });
+    }
+    
+    // Load chapter data
+    const conceptsPath = path.join(chapterInfo.path, 'concepts.json');
+    const episodePlanPath = path.join(chapterInfo.path, 'episode_plan.json');
+    
+    const concepts = JSON.parse(fs.readFileSync(conceptsPath, 'utf8'));
+    const episodePlan = JSON.parse(fs.readFileSync(episodePlanPath, 'utf8'));
+    
+    // Generate job ID
+    const jobId = `retry_all_${chapter_id}_${Date.now()}`;
+    
+    // Start regeneration for all failed episodes
+    retryAllFailedEpisodes(jobId, chapter_id, failedEpisodes, episodePlan, concepts.concepts || [], chapterInfo.metadata);
+    
+    res.json({ 
+      success: true, 
+      message: `Retrying ${failedEpisodes.length} failed episodes`,
+      job_id: jobId,
+      episodes: failedEpisodes.map(f => f.episode)
+    });
+    
+  } catch (error) {
+    logger.error('Failed to retry all episodes:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Helper function to find chapter directory in new structure
  * Returns object with {path, metadata} or null
  */
@@ -1206,28 +1352,51 @@ async function processChapter(jobId, pdfFile, markdownContent, metadata) {
     // Step 4: Generate scripts and MCQs for each episode
     logger.info(`Step 4: Generating content for ${episodePlan.episodes.length} episodes`);
     const episodes = [];
+    const failedEpisodes = [];
     
     for (let i = 0; i < episodePlan.episodes.length; i++) {
       const episodeConfig = episodePlan.episodes[i];
       const progress = 50 + (i / episodePlan.episodes.length) * 30;
       updateJobStatus(jobId, `generating_episode_${i + 1}`, Math.round(progress));
 
-      // Generate script and MCQs via LLM service
-      const episodeContent = await generateEpisodeContent(episodeConfig, concepts, cleanedMarkdown, metadata);
-      
-      // Validate content
-      const validationResult = await validationService.validateEpisode(episodeContent, episodeConfig);
-      if (!validationResult.isValid) {
-        // Auto-repair if needed
-        const repairedContent = await validationService.repairEpisode(episodeContent, validationResult.errors);
-        episodes.push(repairedContent);
-      } else {
-        episodes.push(episodeContent);
+      try {
+        // Generate script and MCQs via LLM service
+        const episodeContent = await generateEpisodeContent(episodeConfig, concepts, cleanedMarkdown, metadata);
+        
+        // Validate content
+        const validationResult = await validationService.validateEpisode(episodeContent, episodeConfig);
+        if (!validationResult.isValid) {
+          // Auto-repair if needed
+          const repairedContent = await validationService.repairEpisode(episodeContent, validationResult.errors);
+          episodes.push(repairedContent);
+        } else {
+          episodes.push(episodeContent);
+        }
+      } catch (episodeError) {
+        logger.error(`Episode ${episodeConfig.ep} generation failed:`, episodeError.message);
+        
+        // Save error report for this episode
+        failedEpisodes.push({
+          episode: episodeConfig.ep,
+          error: episodeError.message,
+          timestamp: new Date().toISOString(),
+          concepts: episodeConfig.concepts.map(c => c.name)
+        });
+        
+        // Continue with next episode instead of crashing entire chapter
+        continue;
       }
     }
 
     // Skip audio generation unless explicitly requested
     // Audio will be generated separately via /api/v1/generate-audio endpoint
+    
+    // Log failed episodes summary
+    if (failedEpisodes.length > 0) {
+      logger.warn(`${failedEpisodes.length} episodes failed to generate:`, failedEpisodes);
+    }
+    
+    logger.info(`Successfully generated ${episodes.length}/${episodePlan.episodes.length} episodes`);
     
     updateJobStatus(jobId, 'packaging_results', 85);
 
@@ -1236,7 +1405,8 @@ async function processChapter(jobId, pdfFile, markdownContent, metadata) {
       markdown: cleanedMarkdown,
       concepts,
       episodePlan,
-      episodes
+      episodes,
+      failedEpisodes: failedEpisodes.length > 0 ? failedEpisodes : undefined
     }, metadata);
     
     // Track metrics per MIGRATION.md section 12
@@ -1513,6 +1683,21 @@ async function packageResults(chapterId, data, metadata = {}) {
   const manifestPath = path.join(outputDir, 'manifest.json');
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
 
+  // Save failed episodes report if any failures occurred
+  if (data.failedEpisodes && data.failedEpisodes.length > 0) {
+    const failedReportPath = path.join(outputDir, 'failed_episodes.json');
+    fs.writeFileSync(failedReportPath, JSON.stringify({
+      chapter_id: chapterId,
+      timestamp: new Date().toISOString(),
+      failed_count: data.failedEpisodes.length,
+      total_episodes: data.episodePlan?.total_episodes || 0,
+      failures: data.failedEpisodes,
+      suggested_action: 'Retry failed episodes individually or enable billing to increase rate limits'
+    }, null, 2), 'utf8');
+    
+    logger.warn(`Saved failed episodes report: ${data.failedEpisodes.length} episodes failed`);
+  }
+
   logger.info(`Generated manifest for chapter ${chapterId} with ${data.episodes?.length || 0} episodes`);
 
   return {
@@ -1617,6 +1802,179 @@ async function regenerateEpisode(jobId, chapterId, episodeIndex, seed, reason, m
   } catch (error) {
     logger.error(`Episode regeneration failed: ${error.message}`);
     updateJobStatus(jobId, 'failed', null, error.message);
+  }
+}
+
+/**
+ * Regenerate a single episode
+ */
+async function regenerateSingleEpisode(jobId, chapterId, episodeConfig, concepts, metadata) {
+  try {
+    updateJobStatus(jobId, 'generating_episode', 0);
+    logger.info(`Regenerating episode ${episodeConfig.ep} for chapter ${chapterId}`);
+    
+    // Load chapter markdown
+    const chapterInfo = findChapterDirectory(chapterId);
+    const fs = require('fs');
+    const chapterMdPath = path.join(chapterInfo.path, 'chapter.md');
+    const cleanedMarkdown = fs.existsSync(chapterMdPath) 
+      ? fs.readFileSync(chapterMdPath, 'utf8') 
+      : '';
+    
+    // Generate episode content
+    const episodeContent = await generateEpisodeContent(episodeConfig, concepts, cleanedMarkdown, metadata);
+    
+    // Validate
+    const validationResult = await validationService.validateEpisode(episodeContent, episodeConfig);
+    
+    let finalContent = episodeContent;
+    if (!validationResult.isValid) {
+      const repairedContent = await validationService.repairEpisode(episodeContent, validationResult.errors);
+      finalContent = repairedContent;
+    }
+    
+    // Save episode files
+    await saveEpisodeFiles(chapterId, episodeConfig.ep, finalContent, metadata);
+    
+    // Remove from failed episodes list
+    await removeFromFailedEpisodes(chapterId, episodeConfig.ep);
+    
+    updateJobStatus(jobId, 'completed', 100);
+    logger.info(`Successfully regenerated episode ${episodeConfig.ep}`);
+    
+  } catch (error) {
+    logger.error(`Failed to regenerate episode:`, error);
+    updateJobStatus(jobId, 'failed', null, error.message);
+  }
+}
+
+/**
+ * Retry all failed episodes
+ */
+async function retryAllFailedEpisodes(jobId, chapterId, failedEpisodes, episodePlan, concepts, metadata) {
+  try {
+    updateJobStatus(jobId, 'retrying_episodes', 0);
+    logger.info(`Retrying ${failedEpisodes.length} failed episodes for ${chapterId}`);
+    
+    const chapterInfo = findChapterDirectory(chapterId);
+    const fs = require('fs');
+    const chapterMdPath = path.join(chapterInfo.path, 'chapter.md');
+    const cleanedMarkdown = fs.existsSync(chapterMdPath) 
+      ? fs.readFileSync(chapterMdPath, 'utf8') 
+      : '';
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (let i = 0; i < failedEpisodes.length; i++) {
+      const failed = failedEpisodes[i];
+      const episodeConfig = episodePlan.episodes.find(ep => ep.ep === failed.episode);
+      
+      if (!episodeConfig) {
+        logger.warn(`Episode ${failed.episode} not found in plan, skipping`);
+        continue;
+      }
+      
+      const progress = Math.round((i / failedEpisodes.length) * 100);
+      updateJobStatus(jobId, `retrying_episode_${failed.episode}`, progress);
+      
+      try {
+        // Add delay to avoid rate limits
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 5000)); // 5 second delay
+        }
+        
+        const episodeContent = await generateEpisodeContent(episodeConfig, concepts, cleanedMarkdown, metadata);
+        
+        const validationResult = await validationService.validateEpisode(episodeContent, episodeConfig);
+        
+        let finalContent = episodeContent;
+        if (!validationResult.isValid) {
+          const repairedContent = await validationService.repairEpisode(episodeContent, validationResult.errors);
+          finalContent = repairedContent;
+        }
+        
+        await saveEpisodeFiles(chapterId, episodeConfig.ep, finalContent, metadata);
+        
+        successCount++;
+        logger.info(`Successfully regenerated episode ${failed.episode}`);
+        
+      } catch (error) {
+        logger.error(`Failed to regenerate episode ${failed.episode}:`, error);
+        failCount++;
+      }
+    }
+    
+    // Update failed episodes file
+    if (successCount > 0) {
+      const remainingFailed = failedEpisodes.filter((_, i) => i >= successCount);
+      await updateFailedEpisodesFile(chapterId, remainingFailed);
+    }
+    
+    updateJobStatus(jobId, 'completed', 100, null, {
+      success_count: successCount,
+      fail_count: failCount,
+      total: failedEpisodes.length
+    });
+    
+    logger.info(`Retry completed: ${successCount} succeeded, ${failCount} failed`);
+    
+  } catch (error) {
+    logger.error(`Failed to retry episodes:`, error);
+    updateJobStatus(jobId, 'failed', null, error.message);
+  }
+}
+
+/**
+ * Remove episode from failed episodes list
+ */
+async function removeFromFailedEpisodes(chapterId, episodeNumber) {
+  const fs = require('fs');
+  const chapterInfo = findChapterDirectory(chapterId);
+  
+  if (!chapterInfo) return;
+  
+  const failedPath = path.join(chapterInfo.path, 'failed_episodes.json');
+  
+  if (fs.existsSync(failedPath)) {
+    const failedData = JSON.parse(fs.readFileSync(failedPath, 'utf8'));
+    failedData.failures = failedData.failures.filter(f => f.episode !== episodeNumber);
+    failedData.failed_count = failedData.failures.length;
+    
+    if (failedData.failures.length === 0) {
+      // Remove file if no more failures
+      fs.unlinkSync(failedPath);
+    } else {
+      fs.writeFileSync(failedPath, JSON.stringify(failedData, null, 2), 'utf8');
+    }
+  }
+}
+
+/**
+ * Update failed episodes file
+ */
+async function updateFailedEpisodesFile(chapterId, remainingFailed) {
+  const fs = require('fs');
+  const chapterInfo = findChapterDirectory(chapterId);
+  
+  if (!chapterInfo) return;
+  
+  const failedPath = path.join(chapterInfo.path, 'failed_episodes.json');
+  
+  if (remainingFailed.length === 0) {
+    // Remove file if no failures
+    if (fs.existsSync(failedPath)) {
+      fs.unlinkSync(failedPath);
+    }
+  } else {
+    const failedData = {
+      chapter_id: chapterId,
+      timestamp: new Date().toISOString(),
+      failed_count: remainingFailed.length,
+      failures: remainingFailed
+    };
+    
+    fs.writeFileSync(failedPath, JSON.stringify(failedData, null, 2), 'utf8');
   }
 }
 

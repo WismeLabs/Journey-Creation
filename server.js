@@ -325,6 +325,7 @@ app.post('/api/v1/generate', async (req, res) => {
         language, 
         teacher_review, 
         curriculum: req.body.curriculum || 'CBSE',
+        llm_provider: req.body.llm_provider || 'auto',  // Support provider selection
         ...speakerConfig
       }
     };
@@ -1483,6 +1484,7 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
         subject: metadata.subject,
         duration_minutes: episodeConfig.target_minutes || 8,
         source_content: markdown.substring(0, 5000), // Context window
+        llm_provider: metadata.llm_provider || 'auto',
         speaker_config: {
           speaker1_name: speakerConfig.speaker1.name || 'StudentA',
           speaker2_name: speakerConfig.speaker2.name || 'StudentB',
@@ -1511,6 +1513,7 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
         script: scriptData.script,
         count: Math.max(3, Math.min(episodeConcepts.length, 5)), // At least 3 MCQs
         difficulty: parseInt(metadata.grade_band || metadata.grade) >= 10 ? 'medium' : 'easy',
+        llm_provider: metadata.llm_provider || 'auto',
         speaker_config: {
           speaker1_name: speakerConfig.speaker1.name || 'StudentA',
           speaker2_name: speakerConfig.speaker2.name || 'StudentB'

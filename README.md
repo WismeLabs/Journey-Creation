@@ -4,18 +4,20 @@ Production-ready AI-powered content pipeline for generating engaging educational
 
 ## Features
 
-- **Real LLM Integration**: Gemini 2.0 Flash API for concept extraction, script generation, and MCQ creation
+- **Multi-LLM Support**: GPT-5.1, GPT-4o, Gemini 2.0 Flash with automatic 3-tier fallback
 - **Google Cloud TTS**: Premium Chirp3-HD voices for natural student dialogue
 - **Complete Pipeline**: PDF/Markdown → Concepts → Episodes → Scripts → MCQs → Audio
 - **Teacher Interface**: Upload and configure content via web UI
-- **Production Ready**: No mocks, real API calls, comprehensive error handling
+- **Production Ready**: Real API calls, comprehensive error handling, auto-retry
 
 ## Prerequisites
 
 - Node.js 22+ 
 - Python 3.13+
-- Gemini API Key ([Get one here](https://makersuite.google.com/app/apikey))
-- Google Cloud TTS API Key
+- **API Keys** (at least one LLM provider required):
+  - OpenAI API Key ([GPT-5.1/GPT-4o](https://platform.openai.com/api-keys)) - Recommended
+  - Gemini API Key ([Fallback/Alternative](https://makersuite.google.com/app/apikey))
+  - Google Cloud TTS API Key (Required for audio)
 - FFmpeg (for audio merging)
 
 ## Quick Start
@@ -40,7 +42,11 @@ cp .env.example .env
 
 Edit `.env` and add your API keys:
 ```env
-GEMINI_API_KEY=your-gemini-api-key-here
+# LLM Provider: auto (GPT-5.1 → GPT-4o → Gemini)
+LLM_PROVIDER=auto
+OPENAI_API_KEY=your-openai-key-here
+OPENAI_MODEL=gpt-5.1,gpt-4o
+GEMINI_API_KEY=your-gemini-key-here
 GOOGLE_TTS_API_KEY=your-google-tts-key-here
 ```
 
@@ -91,14 +97,14 @@ Journey-Creation/
 
 ## Documentation
 
-- [Complete Generation Guide](docs/COMPLETE_GENERATION_GUIDE.md)
-- [TTS Configuration](docs/TTS_CONFIGURATION.md)
-- [Migration Guide](docs/MIGRATION.md)
+- [Complete Generation Guide](docs/COMPLETE_GENERATION_GUIDE.md) - Full setup and usage guide
+- [TTS Configuration](docs/TTS_CONFIGURATION.md) - Voice and audio settings
+- [Migration Guide](docs/MIGRATION.md) - System updates and changes
 
 ## Tech Stack
 
 - **Backend**: Node.js (Express), Python (FastAPI)
-- **LLM**: Google Gemini 2.0 Flash
+- **LLM**: OpenAI GPT-5.1/GPT-4o, Google Gemini 2.0 Flash (3-tier cascade)
 - **TTS**: Google Cloud Text-to-Speech (Chirp3-HD)
 - **OCR**: Tesseract.js
 - **Audio**: FFmpeg
@@ -108,9 +114,14 @@ Journey-Creation/
 Key configuration in `.env`:
 
 ```env
-# Required
-GEMINI_API_KEY=           # From Google AI Studio
-GOOGLE_TTS_API_KEY=       # From Google Cloud Console
+# LLM Provider (Required)
+LLM_PROVIDER=auto                 # auto, openai, or gemini
+OPENAI_API_KEY=                   # From OpenAI Platform
+OPENAI_MODEL=gpt-5.1,gpt-4o      # Model fallback list
+GEMINI_API_KEY=                   # From Google AI Studio
+
+# TTS (Required)
+GOOGLE_TTS_API_KEY=               # From Google Cloud Console
 
 # Server
 PORT=3002

@@ -119,6 +119,7 @@ class ConceptExtractor {
           metadata: {
             subject: metadata.subject || 'general',
             grade_band: metadata.grade_band || '7',
+            llm_provider: metadata.llm_provider || 'auto',
             language: metadata.language || 'en-IN',
             curriculum: 'CBSE'
           }

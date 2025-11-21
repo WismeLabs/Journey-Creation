@@ -14,11 +14,26 @@ This guide walks you through the entire process of generating professional K-12 
 
 ### Step 1: Get Required API Keys
 
-#### 1.1 Gemini API Key (REQUIRED)
+#### 1.1 LLM Provider API Keys
+
+**Option A: Auto Mode (Recommended - Maximum Reliability)**
+Get both OpenAI and Gemini keys for 3-tier fallback:
+
+**OpenAI API Key:**
+1. Visit: https://platform.openai.com/api-keys
+2. Create a new secret key
+3. Copy the key (starts with `sk-...`)
+
+**Gemini API Key:**
 1. Visit: https://makersuite.google.com/app/apikey
 2. Sign in with your Google account
 3. Create a new API key
 4. Copy the key (starts with `AIza...`)
+
+**Option B: Single Provider**
+Choose one based on your preference:
+- **OpenAI GPT**: Latest models (GPT-5.1, GPT-4o), excellent quality, ~$1.00 per 100 chapters
+- **Gemini**: Fast, cost-effective (~$0.64 per 100 chapters), great for high-volume
 
 #### 1.2 Google Cloud TTS API Key (REQUIRED)
 1. Visit: https://console.cloud.google.com/
@@ -29,6 +44,8 @@ This guide walks you through the entire process of generating professional K-12 
 6. Copy the API key
 
 ### Step 2: Configure Environment
+
+#### Auto Mode (Recommended - GPT-5.1 → GPT-4o → Gemini cascade)
 ```bash
 # 1. Navigate to project directory
 cd Journey-Creation
@@ -37,12 +54,32 @@ cd Journey-Creation
 cp .env.template .env
 
 # 3. Edit .env file with your API keys
-# Add your actual keys (no quotes needed):
-GEMINI_API_KEY=AIzaSyC-your-actual-gemini-key-here
-GOOGLE_TTS_API_KEY=AIzaSyB-your-actual-tts-key-here
+# LLM Configuration (Auto mode for maximum reliability)
+LLM_PROVIDER=auto
+OPENAI_API_KEY=sk-your-openai-key-here
+OPENAI_MODEL=gpt-5.1,gpt-4o
+GEMINI_API_KEY=AIzaSyC-your-gemini-key-here
+
+# TTS Configuration
+GOOGLE_TTS_API_KEY=AIzaSyB-your-tts-key-here
 
 # Optional: Use service account instead
 # GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json
+```
+
+#### OpenAI Only Configuration
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-your-openai-key-here
+OPENAI_MODEL=gpt-5.1,gpt-4o
+GOOGLE_TTS_API_KEY=AIzaSyB-your-tts-key-here
+```
+
+#### Gemini Only Configuration
+```bash
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=AIzaSyC-your-gemini-key-here
+GOOGLE_TTS_API_KEY=AIzaSyB-your-tts-key-here
 ```
 
 ### Step 3: Install Dependencies
@@ -56,6 +93,54 @@ pip install -r requirements.txt
 cd ..
 ```
 
+### Step 4: Understanding LLM Providers
+
+The system supports multiple AI providers with intelligent fallback:
+
+#### Provider Options
+
+**1. Auto Mode (Recommended)**
+- **Cascade**: GPT-5.1 → GPT-4o → Gemini 2.0 Flash
+- **Cost**: ~$1.00 per 100 chapters (GPT-5.1 primary)
+- **Reliability**: Highest - automatic fallback if one provider fails
+- **Quality**: Excellent across all stages
+- **Use when**: You want maximum reliability and quality
+
+**2. OpenAI Only**
+- **Models**: GPT-5.1 (latest), GPT-4o, GPT-4o-mini
+- **Cost**: ~$1.00-2.50 per 100 chapters depending on model
+- **Speed**: Fast (GPT-5.1 uses Responses API)
+- **Quality**: Excellent, best for advanced reasoning
+- **Use when**: You prefer OpenAI's output style
+
+**3. Gemini Only**
+- **Model**: Gemini 2.0 Flash
+- **Cost**: ~$0.64 per 100 chapters
+- **Speed**: Very fast (2x faster than GPT-4o)
+- **Quality**: Excellent for educational dialogue
+- **Use when**: Cost-effectiveness is priority
+
+#### Per-Request Override
+
+You can also select the LLM provider per upload via the web UI dropdown:
+- **Auto**: Uses 3-tier cascade for that specific job
+- **OpenAI Priority**: Tries OpenAI models first, Gemini fallback
+- **Gemini Priority**: Uses Gemini only for that job
+
+#### Switching Providers
+
+To change the default provider:
+1. Stop the backend service (Ctrl+C in Terminal 1)
+2. Edit `.env` and change `LLM_PROVIDER`
+3. Restart backend: `cd hf_backend; python main.py`
+
+All pipeline features work with all providers:
+- ✅ Concept Extraction
+- ✅ Episode Script Generation  
+- ✅ MCQ Generation
+- ✅ Auto-Repair (Validation Loop)
+- ✅ All 13 Regeneration Prompts
+
 ---
 
 ## 🔧 Part 2: Starting the System
@@ -68,7 +153,9 @@ python main.py
 
 # Expected output:
 # INFO: Uvicorn running on http://127.0.0.1:8000
-# ✅ Gemini API configured and validated successfully
+# [INFO] LLM Provider: auto (GPT-5.1 → GPT-4o → Gemini cascade)
+# ✅ OpenAI API configured
+# ✅ Gemini API configured
 ```
 
 ### Step 2: Start Main Server
@@ -119,6 +206,7 @@ Open browser and visit:
    - **Grade**: Student grade level (1-12)
    - **Subject**: Subject area (Mathematics, Science, etc.)
    - **Language**: Content language (en-IN, en-US, etc.)
+   - **LLM Provider**: Choose AI model (Auto mode recommended for 3-tier fallback)
    - **Speaker Names**: Customize dialogue speaker names (e.g., "Riya" and "Arjun")
    - **Voice Selection**: Choose TTS voices for each speaker (Chirp3-HD, Neural2, etc.)
    - **Teacher Review**: Enable for human review step
@@ -144,7 +232,7 @@ The system processes content through 5 stages:
 
 #### Stage 2: AI Concept Extraction (40% complete)  
 ```
-🤖 Gemini AI analyzes content
+🤖 LLM AI analyzes content (GPT-5.1, GPT-4o, or Gemini)
 📋 Identifies key educational concepts
 🔗 Maps prerequisite relationships
 📊 Quality validation and scoring
@@ -437,6 +525,35 @@ done
 ## 🚨 Troubleshooting Guide
 
 ### Common Issues & Solutions
+
+#### LLM Provider Issues
+
+**"API key required" Error**
+```bash
+# For Auto mode:
+LLM_PROVIDER=auto
+OPENAI_API_KEY=sk-your-key-here
+GEMINI_API_KEY=AIzaSyC-your-key-here
+
+# For OpenAI only:
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-your-key-here
+
+# For Gemini only:
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=AIzaSyC-your-key-here
+```
+
+**Rate Limit Errors**
+- **OpenAI**: Check limits at https://platform.openai.com/account/limits
+- **Gemini Free Tier**: 15 requests/minute, 1,500/day - enable billing for higher limits
+- **Solution**: Auto mode automatically falls back to alternate provider
+
+**Provider Switching Not Working**
+1. Stop backend service (Ctrl+C)
+2. Verify `.env` has correct `LLM_PROVIDER` value
+3. Ensure corresponding API key is set
+4. Restart: `cd hf_backend; python main.py`
 
 #### "Gemini API key required" Error
 ```bash

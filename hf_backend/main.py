@@ -16,6 +16,7 @@ load_dotenv(ROOT_DIR / '.env')
 load_dotenv()
 
 from google import generativeai as genai
+from openai import AsyncOpenAI
 from contextlib import asynccontextmanager
 
 # Configure structured logging per MIGRATION.md
@@ -39,6 +40,49 @@ logger = logging.getLogger(__name__)
 # Fix Windows console encoding for emojis
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8')
+
+# LLM Provider Configuration
+# Options: "gemini", "openai", or "auto" (tries OpenAI first, falls back to Gemini)
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower()
+
+# Track which provider is currently active (for auto mode)
+CURRENT_PROVIDER = None
+FALLBACK_PROVIDER = None
+
+def initialize_providers():
+    """Initialize available LLM providers"""
+    global CURRENT_PROVIDER, FALLBACK_PROVIDER
+    
+    openai_available = os.getenv("OPENAI_API_KEY") and os.getenv("OPENAI_API_KEY").strip()
+    gemini_available = os.getenv("GEMINI_API_KEY") and os.getenv("GEMINI_API_KEY").strip()
+    
+    if LLM_PROVIDER == "auto":
+        if openai_available and gemini_available:
+            CURRENT_PROVIDER = "openai"
+            FALLBACK_PROVIDER = "gemini"
+            logger.info("[AUTO MODE] Primary: OpenAI GPT-4o | Fallback: Gemini 2.0 Flash")
+        elif openai_available:
+            CURRENT_PROVIDER = "openai"
+            FALLBACK_PROVIDER = None
+            logger.info("[AUTO MODE] Only OpenAI available")
+        elif gemini_available:
+            CURRENT_PROVIDER = "gemini"
+            FALLBACK_PROVIDER = None
+            logger.info("[AUTO MODE] Only Gemini available")
+        else:
+            raise ValueError("No LLM provider configured. Please add OPENAI_API_KEY or GEMINI_API_KEY to .env")
+    elif LLM_PROVIDER == "openai":
+        if not openai_available:
+            raise ValueError("OPENAI_API_KEY required when LLM_PROVIDER=openai")
+        CURRENT_PROVIDER = "openai"
+        FALLBACK_PROVIDER = "gemini" if gemini_available else None
+    elif LLM_PROVIDER == "gemini":
+        if not gemini_available:
+            raise ValueError("GEMINI_API_KEY required when LLM_PROVIDER=gemini")
+        CURRENT_PROVIDER = "gemini"
+        FALLBACK_PROVIDER = "openai" if openai_available else None
+    
+    return CURRENT_PROVIDER, FALLBACK_PROVIDER
 
 def get_gemini_model():
     """Get configured Gemini model - REQUIRES valid API key for production"""
@@ -79,14 +123,207 @@ def get_gemini_model():
             detail=f"Gemini API configuration error: {str(e)}"
         )
 
+def get_openai_client():
+    """Get configured OpenAI client - supports GPT-5, GPT-4o, and GPT-4o-mini"""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or api_key.strip() == "":
+        error_msg = (
+            "[ERROR] OPENAI_API_KEY is required when LLM_PROVIDER=openai. "
+            "Please:\n"
+            "1. Get your API key from: https://platform.openai.com/api-keys\n"
+            "2. Add it to your .env file: OPENAI_API_KEY=your_actual_key_here\n"
+            "3. Restart the backend service"
+        )
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+    try:
+        client = AsyncOpenAI(api_key=api_key)
+        logger.info("[OK] OpenAI API configured successfully")
+        return client, api_key
+    except Exception as e:
+        logger.error(f"[ERROR] OpenAI API setup failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"OpenAI API configuration error: {str(e)}"
+        )
+
+def parse_openai_model_list():
+    """Parse OPENAI_MODEL env var - supports comma-separated fallback list"""
+    model_str = os.getenv("OPENAI_MODEL", "gpt-4o")
+    # Support format: "gpt-5,gpt-4o" or single model "gpt-4o"
+    models = [m.strip() for m in model_str.split(",") if m.strip()]
+    return models if models else ["gpt-4o"]
+
+async def generate_with_llm(prompt: str, temperature: float = 0.4, max_tokens: int = 3000, json_mode: bool = True, provider_override: str = None) -> str:
+    """Universal LLM generation function with automatic fallback support
+    
+    Args:
+        prompt: The prompt to send to the LLM
+        temperature: Generation temperature
+        max_tokens: Maximum tokens to generate
+        json_mode: Whether to request JSON formatted output
+        provider_override: Override the default provider selection ("openai" or "gemini")
+    
+    Returns:
+        Generated text response
+    """
+    # Determine which provider to use
+    use_provider = provider_override if provider_override else CURRENT_PROVIDER
+    
+    async def try_provider(provider_name: str, model_override: str = None) -> str:
+        """Attempt generation with a specific provider and optional model"""
+        if provider_name == "openai":
+            client, _ = get_openai_client()
+            model_name = model_override or "gpt-4o"
+            
+            messages = [{"role": "user", "content": prompt}]
+            
+            kwargs = {
+                "model": model_name,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens
+            }
+            
+            if json_mode:
+                kwargs["response_format"] = {"type": "json_object"}
+            
+            logger.info(f"[OpenAI] Trying model: {model_name}")
+            try:
+                # Primary: chat.completions
+                response = await client.chat.completions.create(**kwargs)
+                return response.choices[0].message.content
+            except Exception as chat_err:
+                logger.warning(f"[OpenAI] {model_name} via chat.completions failed: {str(chat_err)[:100]}")
+                # Try Responses API as fallback for this model
+                try:
+                    rsp_kwargs = {
+                        "model": model_name,
+                        "input": prompt,
+                        "temperature": temperature,
+                    }
+                    if json_mode:
+                        rsp_kwargs["response_format"] = {"type": "json_object"}
+                    rsp = await client.responses.create(**rsp_kwargs)
+                    if hasattr(rsp, "output_text") and rsp.output_text:
+                        return rsp.output_text
+                    try:
+                        parts = rsp.output[0].content if hasattr(rsp, "output") else []
+                        texts = [p.text for p in parts if hasattr(p, "text")]
+                        return "\n".join(texts) if texts else json.dumps(rsp.model_dump())
+                    except Exception:
+                        return json.dumps(getattr(rsp, "model_dump", lambda: str(rsp))())
+                except Exception as rsp_err:
+                    logger.warning(f"[OpenAI] {model_name} via responses API also failed: {str(rsp_err)[:100]}")
+                    raise chat_err  # Re-raise original error for fallback handling
+            
+        else:  # Gemini
+            model, _ = get_gemini_model()
+            
+            config_kwargs = {
+                "temperature": temperature,
+                "max_output_tokens": max_tokens
+            }
+            
+            if json_mode:
+                config_kwargs["response_mime_type"] = "application/json"
+            
+            logger.info("[Gemini] Using model: gemini-2.0-flash-001")
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(**config_kwargs)
+            )
+            
+            return response.text
+    
+    # 3-Tier Fallback Strategy: GPT-5 → GPT-4o → Gemini
+    errors = []
+    
+    if use_provider == "openai":
+        # Try each OpenAI model in order
+        openai_models = parse_openai_model_list()
+        for model_name in openai_models:
+            try:
+                result = await try_provider("openai", model_override=model_name)
+                logger.info(f"✓ Successfully generated content using OpenAI ({model_name})")
+                return result
+            except Exception as e:
+                error_msg = f"OpenAI ({model_name}): {str(e)[:150]}"
+                errors.append(error_msg)
+                logger.warning(f"✗ {error_msg}")
+        
+        # All OpenAI models failed, try Gemini if available
+        if FALLBACK_PROVIDER == "gemini":
+            logger.warning(f"→ All OpenAI models failed. Attempting Gemini fallback...")
+            try:
+                result = await try_provider("gemini")
+                logger.info(f"✓ Successfully generated content using fallback Gemini")
+                return result
+            except Exception as gemini_error:
+                errors.append(f"Gemini: {str(gemini_error)[:150]}")
+                logger.error(f"✗ Gemini fallback also failed: {str(gemini_error)[:150]}")
+        
+        # All providers exhausted
+        raise HTTPException(
+            status_code=500,
+            detail=f"All providers failed. Tried: {' | '.join(errors)}"
+        )
+    
+    else:
+        # Gemini primary (or other provider)
+        try:
+            result = await try_provider(use_provider)
+            logger.info(f"✓ Successfully generated content using {use_provider.upper()}")
+            return result
+        except Exception as e:
+            logger.error(f"✗ {use_provider.upper()} failed: {str(e)}")
+            
+            # Try OpenAI models as fallback if available
+            if FALLBACK_PROVIDER == "openai":
+                logger.warning(f"→ Attempting OpenAI fallback...")
+                openai_models = parse_openai_model_list()
+                for model_name in openai_models:
+                    try:
+                        result = await try_provider("openai", model_override=model_name)
+                        logger.info(f"✓ Successfully generated content using fallback OpenAI ({model_name})")
+                        return result
+                    except Exception as fallback_error:
+                        logger.warning(f"✗ OpenAI ({model_name}) fallback failed: {str(fallback_error)[:150]}")
+            
+            # No fallback or all failed
+            raise HTTPException(status_code=500, detail=f"{use_provider.upper()} failed: {str(e)}")
+            logger.warning(f"→ Attempting fallback to {FALLBACK_PROVIDER.upper()}...")
+            try:
+                result = await try_provider(FALLBACK_PROVIDER)
+                logger.info(f"✓ Successfully generated content using fallback {FALLBACK_PROVIDER.upper()}")
+                return result
+            except Exception as fallback_error:
+                logger.error(f"✗ Fallback {FALLBACK_PROVIDER.upper()} also failed: {str(fallback_error)}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Both providers failed. Primary ({use_provider}): {str(e)}. Fallback ({FALLBACK_PROVIDER}): {str(fallback_error)}"
+                )
+        else:
+            # No fallback available
+            raise HTTPException(status_code=500, detail=f"{use_provider.upper()} failed: {str(e)}")
+
 # Mock content generation removed - system now requires real Gemini API integration
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context manager - validates Gemini API on startup"""
+    """Lifespan context manager - validates LLM API on startup"""
     try:
-        get_gemini_model()
-        logger.info("[OK] LLM Service started successfully - all systems operational")
+        initialize_providers()
+        
+        if CURRENT_PROVIDER == "openai":
+            get_openai_client()
+        if CURRENT_PROVIDER == "gemini" or FALLBACK_PROVIDER == "gemini":
+            get_gemini_model()
+        if FALLBACK_PROVIDER == "openai":
+            get_openai_client()
+            
+        logger.info("[OK] All systems operational")
     except Exception as e:
         logger.error(f"[WARNING] Startup validation failed - service may not function correctly: {str(e)}")
     yield
@@ -120,17 +357,20 @@ class ScriptGenerationRequest(BaseModel):
         "speaker1_personality": "confident",
         "speaker2_personality": "curious"
     }
+    llm_provider: Optional[str] = None
 
 class MCQGenerationRequest(BaseModel):
     concepts: List[Dict[str, Any]]
     script: Dict[str, Any]
     count: int
     difficulty: str
+    llm_provider: Optional[str] = None
 
 class RegenerationRequest(BaseModel):
     prompt_type: str
     input_data: Dict[str, Any]
     temperature: float = 0.0
+    llm_provider: Optional[str] = None
 
 class ChapterAnalysisRequest(BaseModel):
     markdown_content: str
@@ -451,8 +691,10 @@ Keep it actionable with exact sentences that need edit. Do NOT include raw logs.
 async def extract_concepts(request: ConceptExtractionRequest):
     """Extract educational concepts from chapter content"""
     try:
-        model, api_key = get_gemini_model()
-        logger.info(f"Extracting concepts for {request.metadata.get('subject', 'unknown')} content using Gemini API")
+        provider_pref = (request.metadata or {}).get('llm_provider', None)
+        provider_override = provider_pref if provider_pref in ("openai", "gemini") else None
+        provider_name = (provider_override or (CURRENT_PROVIDER or LLM_PROVIDER)).upper()
+        logger.info(f"Extracting concepts for {request.metadata.get('subject', 'unknown')} content using {provider_name}")
         
         prompt = EDUCATIONAL_PROMPTS["concept_extraction"].format(
             content=request.markdown_content[:5000],  # Limit content size
@@ -460,17 +702,10 @@ async def extract_concepts(request: ConceptExtractionRequest):
             subject=request.metadata.get("subject", "general")
         )
 
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.3,
-                max_output_tokens=4000,
-                response_mime_type="application/json"
-            )
-        )
+        response_text = await generate_with_llm(prompt, temperature=0.3, max_tokens=4000, json_mode=True, provider_override=provider_override)
 
         # Parse and validate response
-        result = json.loads(response.text)
+        result = json.loads(response_text)
         
         if not result.get("concepts"):
             raise ValueError("No concepts extracted from content")
@@ -486,8 +721,10 @@ async def extract_concepts(request: ConceptExtractionRequest):
 async def generate_script(request: ScriptGenerationRequest):
     """Generate educational script per MIGRATION.md requirements"""
     try:
-        model, api_key = get_gemini_model()
-        logger.info(f"Generating script for episode: {request.episode_title} using Gemini API")
+        provider_pref = getattr(request, 'llm_provider', None)
+        provider_override = provider_pref if provider_pref in ("openai", "gemini") else None
+        provider_name = (provider_override or (CURRENT_PROVIDER or LLM_PROVIDER)).upper()
+        logger.info(f"Generating script for episode: {request.episode_title} using {provider_name}")
         
         concept_names = [c.get('name', c.get('id', 'Unknown')) for c in request.concepts]
         concept_ids = [c.get('id', 'unknown') for c in request.concepts]
@@ -514,16 +751,9 @@ async def generate_script(request: ScriptGenerationRequest):
             speaker2_personality=speaker2_personality
         )
 
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.4,
-                max_output_tokens=3000,
-                response_mime_type="application/json"
-            )
-        )
+        response_text = await generate_with_llm(prompt, temperature=0.4, max_tokens=3000, json_mode=True, provider_override=provider_override)
 
-        result = json.loads(response.text)
+        result = json.loads(response_text)
         
         # Validate required fields
         if not result.get("sections"):
@@ -540,8 +770,10 @@ async def generate_script(request: ScriptGenerationRequest):
 async def generate_mcqs(request: MCQGenerationRequest):
     """Generate MCQs from script content per MIGRATION.md"""
     try:
-        model, api_key = get_gemini_model()
-        logger.info(f"Generating {request.count} MCQs using Gemini API")
+        provider_pref = getattr(request, 'llm_provider', None)
+        provider_override = provider_pref if provider_pref in ("openai", "gemini") else None
+        provider_name = (provider_override or (CURRENT_PROVIDER or LLM_PROVIDER)).upper()
+        logger.info(f"Generating {request.count} MCQs using {provider_name}")
         
         script_text = ""
         if isinstance(request.script, dict):
@@ -566,16 +798,9 @@ async def generate_mcqs(request: MCQGenerationRequest):
             speaker2_name=speaker2_name
         )
 
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.3,  # Slightly higher for variety in MCQ generation
-                max_output_tokens=2000,
-                response_mime_type="application/json"
-            )
-        )
+        response_text = await generate_with_llm(prompt, temperature=0.3, max_tokens=2000, json_mode=True, provider_override=provider_override)
 
-        result = json.loads(response.text)
+        result = json.loads(response_text)
         
         if not result.get("mcqs"):
             raise ValueError("MCQ generation failed - no questions created")
@@ -595,16 +820,15 @@ async def generate_mcqs(request: MCQGenerationRequest):
 async def regenerate_content(request: RegenerationRequest):
     """Handle content regeneration using specific prompts per MIGRATION.md"""
     try:
-        model, api_key = get_gemini_model()
-        if not model:
-            raise HTTPException(status_code=500, detail="Gemini API not configured")
-
         prompt_type = request.prompt_type.lower()
         
         if prompt_type not in REGENERATION_PROMPTS:
             raise HTTPException(status_code=400, detail=f"Unknown regeneration prompt type: {prompt_type}")
 
-        logger.info(f"Running regeneration prompt: {prompt_type}")
+        provider_pref = getattr(request, 'llm_provider', None)
+        provider_override = provider_pref if provider_pref in ("openai", "gemini") else None
+        provider_name = (provider_override or (CURRENT_PROVIDER or LLM_PROVIDER)).upper()
+        logger.info(f"Running regeneration prompt: {prompt_type} using {provider_name}")
         
         # Get the appropriate regeneration prompt
         base_prompt = REGENERATION_PROMPTS[prompt_type]
@@ -613,21 +837,14 @@ async def regenerate_content(request: RegenerationRequest):
         formatted_prompt = base_prompt + "\\n\\nINPUT DATA:\\n" + json.dumps(request.input_data, indent=2)
         
         # Generate with deterministic settings for regeneration (temperature=0.0)
-        response = model.generate_content(
-            formatted_prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=request.temperature,
-                max_output_tokens=3000,
-                response_mime_type="application/json"
-            )
-        )
+        response_text = await generate_with_llm(formatted_prompt, temperature=request.temperature, max_tokens=3000, json_mode=True, provider_override=provider_override)
 
         # Parse response
         try:
-            result = json.loads(response.text)
+            result = json.loads(response_text)
         except json.JSONDecodeError:
             # Fallback if JSON parsing fails
-            result = {"regenerated_content": response.text, "success": False}
+            result = {"regenerated_content": response_text, "success": False}
 
         # Add regeneration metadata
         result["regeneration_metadata"] = {

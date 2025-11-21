@@ -3,6 +3,17 @@
 .env.local
 .env.*.local
 
+# API Keys & Sensitive Data
+*_api_key*
+*.key
+*.pem
+**/api_keys/
+
+# Test Files
+test_*.py
+**/test_*.js
+find_*.py
+
 # Dependencies
 node_modules/
 .venv/

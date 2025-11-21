@@ -310,6 +310,22 @@
                     </select>
                 </div>
 
+                <!-- LLM Provider Selection -->
+                <div class="form-section-header" style="margin-top: 30px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0;">
+                    <h3 style="color: #667eea; font-size: 18px;">🤖 AI Model Configuration</h3>
+                    <p style="font-size: 13px; color: #666; margin-top: 5px;">Choose the AI model for content generation</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="llmProvider">AI Model Provider</label>
+                    <select id="llmProvider" name="llm_provider">
+                        <option value="auto">🎯 Auto (GPT-5 → GPT-4o → Gemini)</option>
+                        <option value="openai">🚀 OpenAI Priority (GPT-5/4o, then Gemini)</option>
+                        <option value="gemini">⚡ Gemini Priority (Flash 2.0, then OpenAI)</option>
+                    </select>
+                    <div class="help-text" id="llmProviderHelp">Auto tries GPT-5, falls back to GPT-4o if unavailable, then Gemini as final fallback</div>
+                </div>
+
                 <!-- Speaker Configuration -->
                 <div class="form-section-header" style="margin-top: 30px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0;">
                     <h3 style="color: #667eea; font-size: 18px;">🎙️ Speaker Configuration</h3>
@@ -450,6 +466,7 @@
             const subject = document.getElementById('subject').value;
             const curriculum = document.getElementById('curriculum').value;
             const language = document.getElementById('language').value;
+            const llmProvider = document.getElementById('llmProvider').value;
             
             // Hide previous results
             document.getElementById('resultContainer').classList.remove('active');
@@ -468,6 +485,7 @@
                 formData.append('subject', subject);
                 formData.append('curriculum', curriculum);
                 formData.append('language', language);
+                formData.append('llm_provider', llmProvider);
                 
                 if (currentTab === 'pdf') {
                     const pdfFile = document.getElementById('pdfFile').files[0];

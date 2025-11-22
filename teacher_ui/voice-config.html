@@ -45,6 +45,22 @@
             opacity: 0.9;
         }
 
+        .persistence-notice {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 30px;
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .persistence-notice strong {
+            color: #533f03;
+            font-size: 16px;
+        }
+
         .config-section {
             padding: 30px;
             border-bottom: 1px solid #eee;
@@ -307,17 +323,22 @@
     <div class="container">
         <div class="header">
             <h1>🎤 Voice & Speaker Configuration</h1>
-            <p>Customize speaker names, voices, and audio settings for your educational content</p>
+            <p>Customize speaker names, voices, and audio parameters for your educational content</p>
         </div>
 
-        <div class="nav-bar">
-            <a href="upload.html">📤 Upload Chapter</a>
-            <a href="voice-config.html" class="active">🎤 Voice Settings</a>
-            <a href="voice-test.html">🧪 Test Voices</a>
-            <a href="review.html">📝 Review Content</a>
+        <div class="persistence-notice">
+            <strong>💾 Global Default Settings</strong><br>
+            These settings will be <strong>saved permanently</strong> and used as defaults for all future chapter uploads.<br>
+            You can preview these settings on the Upload page before generating content.
         </div>
 
-        <div id="statusMessage" class="status-message"></div>
+    <div class="nav-bar">
+        <a href="upload.html">📤 Upload Chapter</a>
+        <a href="voice-config.html" class="active">🎤 Voice Settings</a>
+        <a href="voice-test.html">🧪 Test Voices</a>
+        <a href="review.html">📝 Review Content</a>
+        <a href="logs.html">📊 System Logs</a>
+    </div>        <div id="statusMessage" class="status-message"></div>
 
         <!-- Speaker Configuration Section -->
         <div class="config-section">

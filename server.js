@@ -85,7 +85,21 @@ let voiceConfiguration = {
  * Helper function to load voice configuration
  */
 async function loadVoiceConfiguration() {
-  // In production, load from DB or config file
+  const fs = require('fs');
+  const configPath = path.join(__dirname, 'outputs', 'voice_config.json');
+  
+  // Try to load from file first
+  if (fs.existsSync(configPath)) {
+    try {
+      const fileData = fs.readFileSync(configPath, 'utf8');
+      const loadedConfig = JSON.parse(fileData);
+      voiceConfiguration = { ...voiceConfiguration, ...loadedConfig };
+      return voiceConfiguration;
+    } catch (error) {
+      logger.warn('Failed to load voice config from file, using defaults:', error.message);
+    }
+  }
+  
   return voiceConfiguration;
 }
 
@@ -898,6 +912,37 @@ app.put('/api/v1/tts/config', async (req, res) => {
 });
 
 /**
+ * GET /api/v1/logs
+ * Proxy to backend for system logs
+ */
+app.get('/api/v1/logs', async (req, res) => {
+  try {
+    const limit = req.query.limit || 500;
+    const response = await fetch(`http://localhost:8000/api/v1/logs?limit=${limit}`);
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    logger.error('Failed to fetch logs from backend:', error);
+    res.status(500).json({ logs: [], total: 0, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/jobs
+ * Proxy to backend for active jobs status
+ */
+app.get('/api/v1/jobs', async (req, res) => {
+  try {
+    const response = await fetch('http://localhost:8000/api/v1/jobs');
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    logger.error('Failed to fetch jobs from backend:', error);
+    res.status(500).json({ jobs: [], active_count: 0, history: [], error: error.message });
+  }
+});
+
+/**
  * POST /api/v1/tts/test
  * Test voice configuration with sample audio
  */
@@ -905,28 +950,67 @@ app.post('/api/v1/tts/test', async (req, res) => {
   try {
     const { config, testScript } = req.body;
     
-    // Temporarily apply test configuration
-    const originalConfig = voiceConfiguration;
-    voiceConfiguration = { ...originalConfig, ...config };
+    logger.info('Generating test audio with voice configuration');
     
-    // Generate test audio
+    // Create test audio directory
     const testAudioPath = path.join(__dirname, 'outputs', 'test_audio');
     const fs = require('fs');
     if (!fs.existsSync(testAudioPath)) {
       fs.mkdirSync(testAudioPath, { recursive: true });
     }
     
-    // Restore original configuration
-    voiceConfiguration = originalConfig;
+    // Generate test audio using TTS orchestrator with proper episode format
+    const testEpisodeData = {
+      episode_index: 0,
+      title: 'Voice Test',
+      script: testScript,
+      metadata: {
+        generated_at: new Date().toISOString()
+      }
+    };
     
-    res.json({ 
-      success: true, 
-      message: 'Test audio generated',
-      output_path: testAudioPath 
-    });
+    const testMetadata = {
+      chapter_id: 'voice_test',
+      grade_band: '5',
+      subject: 'Test',
+      ...config
+    };
+    
+    try {
+      const result = await ttsService.generateEpisodeAudio(
+        testEpisodeData,
+        'test',
+        0,
+        testMetadata
+      );
+      
+      if (result.success && result.audioPath) {
+        // Get relative URL for the audio file
+        const relativePath = path.relative(__dirname, result.audioPath);
+        const audioUrl = '/' + relativePath.replace(/\\/g, '/');
+        
+        logger.info(`Test audio generated: ${audioUrl}`);
+        
+        res.json({ 
+          success: true, 
+          message: 'Test audio generated successfully',
+          audio_url: audioUrl,
+          file_path: result.audioPath
+        });
+      } else {
+        throw new Error('Audio generation returned no file');
+      }
+    } catch (audioError) {
+      logger.error('TTS generation error:', audioError);
+      throw audioError;
+    }
+    
   } catch (error) {
     logger.error('Test audio generation failed:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: error.message,
+      success: false 
+    });
   }
 });
 
@@ -2004,6 +2088,20 @@ if (!fs.existsSync('logs')) {
 }
 
 app.listen(PORT, () => {
+  console.log('\n' + '='.repeat(60));
+  console.log('🚀 Journey Creation - School Pipeline Server');
+  console.log('='.repeat(60));
+  console.log(`📡 Server:          http://localhost:${PORT}`);
+  console.log('\n🌐 TEACHER INTERFACES:');
+  console.log(`   📤 Upload:       http://localhost:${PORT}/teacher/upload.html`);
+  console.log(`   🎤 Voice Config: http://localhost:${PORT}/teacher/voice-config.html`);
+  console.log(`   🧪 Voice Test:   http://localhost:${PORT}/teacher/voice-test.html`);
+  console.log(`   📝 Review:       http://localhost:${PORT}/teacher/review.html`);
+  console.log(`   📊 System Logs:  http://localhost:${PORT}/teacher/logs.html`);
+  console.log('\n💡 Backend API:     http://127.0.0.1:8000');
+  console.log('   Start with:      cd hf_backend && python main.py');
+  console.log('='.repeat(60) + '\n');
+  
   logger.info(`Journey Creation School Pipeline server running on port ${PORT}`);
 });
 

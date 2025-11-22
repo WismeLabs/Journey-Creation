@@ -391,14 +391,13 @@
 </head>
 <body>
     <div class="container">
-        <div class="nav-bar">
-            <a href="upload.html">📤 Upload Chapter</a>
-            <a href="voice-config.html">🎤 Voice Settings</a>
-            <a href="voice-test.html">🧪 Test Voices</a>
-            <a href="review.html" class="active">📝 Review Content</a>
-        </div>
-
-        <!-- Header Section -->
+    <div class="nav-bar">
+        <a href="upload.html">📤 Upload Chapter</a>
+        <a href="voice-config.html">🎤 Voice Settings</a>
+        <a href="voice-test.html">🧪 Test Voices</a>
+        <a href="review.html" class="active">📝 Review Content</a>
+        <a href="logs.html">📊 System Logs</a>
+    </div>        <!-- Header Section -->
         <div class="header">
             <h1>📚 Content Review Dashboard</h1>
             <p style="color: #7f8c8d; margin-bottom: 20px;">Review and approve AI-generated educational content</p>
@@ -758,10 +757,23 @@
 
         // Episode-level actions
         async function approveEpisode(episodeNumber) {
+            if (!currentChapter || !currentChapter.chapter_id) {
+                showError('No chapter loaded');
+                return;
+            }
+
             try {
-                // API call to approve episode
-                showSuccess(`Episode ${episodeNumber} approved`);
+                // Mark episode as approved locally
+                const episode = currentChapter.episodes.find(ep => ep.episode_number === episodeNumber);
+                if (episode) {
+                    episode.review_status = 'approved';
+                }
+                
+                showSuccess(`Episode ${episodeNumber} marked as approved`);
                 updateEpisodeStatus(episodeNumber, 'approved');
+                
+                // Update stats
+                updateStats();
             } catch (error) {
                 showError(`Failed to approve episode: ${error.message}`);
             }
@@ -773,6 +785,7 @@
             
             try {
                 showSuccess(`Requesting revision for Episode ${episodeNumber}...`);
+                console.log('Requesting revision for episode:', episodeNumber, 'Reason:', reason);
                 
                 // Call backend to trigger regeneration
                 const response = await fetch('/api/v1/regenerate_episode', {
@@ -788,7 +801,9 @@
                     })
                 });
 
+                console.log('Revision response status:', response.status);
                 const data = await response.json();
+                console.log('Revision response data:', data);
 
                 if (response.ok) {
                     showSuccess(`Revision requested for Episode ${episodeNumber}! Job ID: ${data.job_id}`);
@@ -802,23 +817,62 @@
                     throw new Error(data.error || 'Failed to request revision');
                 }
             } catch (error) {
+                console.error('Revision request error:', error);
                 showError(`Failed to request revision: ${error.message}`);
             }
         }
 
         async function rejectEpisode(episodeNumber) {
-            if (confirm('Are you sure you want to reject this episode?')) {
-                // API call to reject episode
-                showSuccess(`Episode ${episodeNumber} rejected`);
+            if (!currentChapter || !currentChapter.chapter_id) {
+                showError('No chapter loaded');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to reject this episode?')) {
+                return;
+            }
+
+            try {
+                // Mark episode as rejected locally
+                const episode = currentChapter.episodes.find(ep => ep.episode_number === episodeNumber);
+                if (episode) {
+                    episode.review_status = 'rejected';
+                }
+                
+                showSuccess(`Episode ${episodeNumber} marked as rejected`);
                 updateEpisodeStatus(episodeNumber, 'rejected');
+                
+                // Update stats
+                updateStats();
+            } catch (error) {
+                showError(`Failed to reject episode: ${error.message}`);
             }
         }
 
         // Chapter-level actions
         async function approveAll() {
-            if (confirm('Approve all episodes in this chapter?')) {
-                // API call to approve entire chapter
-                showSuccess('Chapter approved successfully');
+            if (!currentChapter || !currentChapter.chapter_id) {
+                showError('No chapter loaded');
+                return;
+            }
+
+            if (!confirm('Approve all episodes in this chapter?')) {
+                return;
+            }
+
+            try {
+                // Mark all episodes as approved
+                currentChapter.episodes.forEach((episode, index) => {
+                    episode.review_status = 'approved';
+                    updateEpisodeStatus(episode.episode_number || (index + 1), 'approved');
+                });
+                
+                showSuccess(`All ${currentChapter.episodes.length} episodes approved! Click "Generate Audio" to create episode audio.`);
+                
+                // Update stats
+                updateStats();
+            } catch (error) {
+                showError(`Failed to approve all episodes: ${error.message}`);
             }
         }
 
@@ -834,6 +888,7 @@
 
             try {
                 showSuccess('Starting audio generation...');
+                console.log('Requesting audio generation for chapter:', currentChapter.chapter_id);
 
                 const response = await fetch('/api/v1/generate-audio', {
                     method: 'POST',
@@ -846,17 +901,25 @@
                     })
                 });
 
+                console.log('Audio generation response status:', response.status);
                 const data = await response.json();
+                console.log('Audio generation response data:', data);
 
                 if (response.ok) {
-                    showSuccess(`Audio generation started! Job ID: ${data.job_id}`);
+                    showSuccess(`Audio generation started! Job ID: ${data.jobId || data.job_id}`);
                     
                     // Poll for job status
-                    pollAudioGenerationStatus(data.job_id);
+                    const jobId = data.jobId || data.job_id;
+                    if (jobId) {
+                        pollAudioGenerationStatus(jobId);
+                    } else {
+                        showError('No job ID returned from server');
+                    }
                 } else {
-                    showError(`Failed to start audio generation: ${data.error}`);
+                    showError(`Failed to start audio generation: ${data.error || 'Unknown error'}`);
                 }
             } catch (error) {
+                console.error('Audio generation error:', error);
                 showError(`Error starting audio generation: ${error.message}`);
             }
         }

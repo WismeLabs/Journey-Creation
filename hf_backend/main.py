@@ -41,6 +41,60 @@ logger = logging.getLogger(__name__)
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8')
 
+# In-memory log storage for web UI (last 500 logs)
+from collections import deque
+from datetime import datetime
+
+class LogHandler(logging.Handler):
+    """Custom handler to capture logs for web UI"""
+    def __init__(self, maxlen=500):
+        super().__init__()
+        self.logs = deque(maxlen=maxlen)
+    
+    def emit(self, record):
+        log_entry = {
+            'timestamp': datetime.fromtimestamp(record.created).isoformat(),
+            'level': record.levelname,
+            'source': record.name,
+            'message': self.format(record),
+            'module': record.module,
+            'funcName': record.funcName
+        }
+        self.logs.append(log_entry)
+
+# Add custom handler to logger
+web_log_handler = LogHandler(maxlen=500)
+web_log_handler.setFormatter(logging.Formatter('%(message)s'))
+logging.getLogger().addHandler(web_log_handler)
+
+# Job tracking (for monitoring active requests)
+active_jobs = {}
+job_history = deque(maxlen=100)
+
+def create_job_id(task_type: str, data: Dict) -> str:
+    """Create unique job ID"""
+    timestamp = time.time()
+    data_hash = hashlib.md5(json.dumps(data, sort_keys=True).encode()).hexdigest()[:8]
+    return f"{task_type}_{int(timestamp)}_{data_hash}"
+
+def track_job(job_id: str, status: str, metadata: Dict = None):
+    """Track job status"""
+    job_info = {
+        'id': job_id,
+        'status': status,
+        'timestamp': datetime.now().isoformat(),
+        'metadata': metadata or {}
+    }
+    
+    if status in ['queued', 'processing']:
+        active_jobs[job_id] = job_info
+    elif status in ['completed', 'failed']:
+        if job_id in active_jobs:
+            del active_jobs[job_id]
+        job_history.append(job_info)
+    
+    logger.info(f"Job {job_id}: {status}")
+
 # LLM Provider Configuration
 # Options: "gemini", "openai", or "auto" (tries OpenAI first, falls back to Gemini)
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower()
@@ -740,11 +794,19 @@ Keep it actionable with exact sentences that need edit. Do NOT include raw logs.
 @app.post("/extract_concepts")
 async def extract_concepts(request: ConceptExtractionRequest):
     """Extract educational concepts from chapter content"""
+    job_id = None
     try:
+        # Create job tracking
+        job_id = create_job_id("concept_extraction", {
+            "subject": request.metadata.get('subject', 'unknown'),
+            "grade": request.metadata.get('grade_band', 'unknown')
+        })
+        track_job(job_id, "processing", {"task": "Extracting concepts", "subject": request.metadata.get('subject')})
+        
         provider_pref = (request.metadata or {}).get('llm_provider', None)
         provider_override = provider_pref if provider_pref in ("openai", "gemini") else None
         provider_name = (provider_override or (CURRENT_PROVIDER or LLM_PROVIDER)).upper()
-        logger.info(f"Extracting concepts for {request.metadata.get('subject', 'unknown')} content using {provider_name}")
+        logger.info(f"[{job_id}] Extracting concepts for {request.metadata.get('subject', 'unknown')} content using {provider_name}")
         
         prompt = EDUCATIONAL_PROMPTS["concept_extraction"].format(
             content=request.markdown_content[:5000],  # Limit content size
@@ -760,21 +822,32 @@ async def extract_concepts(request: ConceptExtractionRequest):
         if not result.get("concepts"):
             raise ValueError("No concepts extracted from content")
 
-        logger.info(f"Successfully extracted {len(result['concepts'])} concepts")
+        logger.info(f"[{job_id}] Successfully extracted {len(result['concepts'])} concepts")
+        track_job(job_id, "completed", {"concepts_count": len(result['concepts'])})
         return result
 
     except Exception as e:
-        logger.error(f"Concept extraction failed: {str(e)}")
+        logger.error(f"[{job_id}] Concept extraction failed: {str(e)}")
+        if job_id:
+            track_job(job_id, "failed", {"error": str(e)})
         raise HTTPException(status_code=500, detail=f"Concept extraction failed: {str(e)}")
 
 @app.post("/generate_script")
 async def generate_script(request: ScriptGenerationRequest):
     """Generate educational script per MIGRATION.md requirements"""
+    job_id = None
     try:
+        # Create job tracking
+        job_id = create_job_id("script_generation", {
+            "episode": request.episode_title,
+            "grade": request.grade
+        })
+        track_job(job_id, "processing", {"task": "Generating script", "episode": request.episode_title})
+        
         provider_pref = getattr(request, 'llm_provider', None)
         provider_override = provider_pref if provider_pref in ("openai", "gemini") else None
         provider_name = (provider_override or (CURRENT_PROVIDER or LLM_PROVIDER)).upper()
-        logger.info(f"Generating script for episode: {request.episode_title} using {provider_name}")
+        logger.info(f"[{job_id}] Generating script for episode: {request.episode_title} using {provider_name}")
         
         concept_names = [c.get('name', c.get('id', 'Unknown')) for c in request.concepts]
         concept_ids = [c.get('id', 'unknown') for c in request.concepts]
@@ -809,21 +882,31 @@ async def generate_script(request: ScriptGenerationRequest):
         if not result.get("sections"):
             raise ValueError("Script generation failed - no sections created")
 
-        logger.info(f"Successfully generated script with {len(result['sections'])} sections")
+        logger.info(f"[{job_id}] Successfully generated script with {len(result['sections'])} sections")
+        track_job(job_id, "completed", {"sections_count": len(result['sections'])})
         return {"script": result}
 
     except Exception as e:
-        logger.error(f"Script generation failed: {str(e)}")
+        logger.error(f"[{job_id}] Script generation failed: {str(e)}")
+        if job_id:
+            track_job(job_id, "failed", {"error": str(e)})
         raise HTTPException(status_code=500, detail=f"Script generation failed: {str(e)}")
 
 @app.post("/generate_mcqs")
 async def generate_mcqs(request: MCQGenerationRequest):
     """Generate MCQs from script content per MIGRATION.md"""
+    job_id = None
     try:
+        # Create job tracking
+        job_id = create_job_id("mcq_generation", {
+            "count": request.count
+        })
+        track_job(job_id, "processing", {"task": "Generating MCQs", "count": request.count})
+        
         provider_pref = getattr(request, 'llm_provider', None)
         provider_override = provider_pref if provider_pref in ("openai", "gemini") else None
         provider_name = (provider_override or (CURRENT_PROVIDER or LLM_PROVIDER)).upper()
-        logger.info(f"Generating {request.count} MCQs using {provider_name}")
+        logger.info(f"[{job_id}] Generating {request.count} MCQs using {provider_name}")
         
         script_text = ""
         if isinstance(request.script, dict):
@@ -857,28 +940,36 @@ async def generate_mcqs(request: MCQGenerationRequest):
         
         # Ensure we have at least the requested count
         if len(result['mcqs']) < request.count:
-            logger.warning(f"Generated {len(result['mcqs'])} MCQs, requested {request.count}")
+            logger.warning(f"[{job_id}] Generated {len(result['mcqs'])} MCQs, requested {request.count}")
 
-        logger.info(f"Successfully generated {len(result['mcqs'])} MCQs")
+        logger.info(f"[{job_id}] Successfully generated {len(result['mcqs'])} MCQs")
+        track_job(job_id, "completed", {"mcqs_count": len(result['mcqs'])})
         return result
 
     except Exception as e:
-        logger.error(f"MCQ generation failed: {str(e)}")
+        logger.error(f"[{job_id}] MCQ generation failed: {str(e)}")
+        if job_id:
+            track_job(job_id, "failed", {"error": str(e)})
         raise HTTPException(status_code=500, detail=f"MCQ generation failed: {str(e)}")
 
 @app.post("/regenerate")
 async def regenerate_content(request: RegenerationRequest):
     """Handle content regeneration using specific prompts per MIGRATION.md"""
+    job_id = None
     try:
         prompt_type = request.prompt_type.lower()
         
         if prompt_type not in REGENERATION_PROMPTS:
             raise HTTPException(status_code=400, detail=f"Unknown regeneration prompt type: {prompt_type}")
 
+        # Create job tracking
+        job_id = create_job_id("regenerate", {"prompt_type": prompt_type})
+        track_job(job_id, "processing", {"task": f"Regenerating: {prompt_type}"})
+
         provider_pref = getattr(request, 'llm_provider', None)
         provider_override = provider_pref if provider_pref in ("openai", "gemini") else None
         provider_name = (provider_override or (CURRENT_PROVIDER or LLM_PROVIDER)).upper()
-        logger.info(f"Running regeneration prompt: {prompt_type} using {provider_name}")
+        logger.info(f"[{job_id}] Running regeneration prompt: {prompt_type} using {provider_name}")
         
         # Get the appropriate regeneration prompt
         base_prompt = REGENERATION_PROMPTS[prompt_type]
@@ -901,20 +992,32 @@ async def regenerate_content(request: RegenerationRequest):
             "prompt_type": prompt_type,
             "temperature": request.temperature,
             "timestamp": time.time(),
-            "generation_version": "content_pipeline_v1"
+            "generation_version": "content_pipeline_v2_multi_llm"
         }
 
-        logger.info(f"Successfully completed regeneration: {prompt_type}")
+        logger.info(f"[{job_id}] Successfully completed regeneration: {prompt_type}")
+        track_job(job_id, "completed", {"prompt_type": prompt_type})
         return result
 
     except Exception as e:
-        logger.error(f"Regeneration failed for {request.prompt_type}: {str(e)}")
+        logger.error(f"[{job_id}] Regeneration failed for {request.prompt_type}: {str(e)}")
+        if job_id:
+            track_job(job_id, "failed", {"error": str(e)})
         raise HTTPException(status_code=500, detail=f"Regeneration failed: {str(e)}")
 
 @app.post("/analyze_chapter")
 async def analyze_chapter(request: ChapterAnalysisRequest):
     """Complete chapter analysis per MIGRATION.md requirements"""
+    job_id = None
     try:
+        # Create job tracking
+        job_id = create_job_id("chapter_analysis", {
+            "chapter_id": request.metadata.get("chapter_id", "unknown")
+        })
+        track_job(job_id, "processing", {"task": "Analyzing chapter", "chapter": request.metadata.get("chapter_id")})
+        
+        logger.info(f"[{job_id}] Starting chapter analysis")
+        
         model, api_key = get_gemini_model()
         if not model:
             raise HTTPException(status_code=500, detail="Gemini API not configured")
@@ -968,24 +1071,41 @@ Return comprehensive JSON analysis:
 
         result = json.loads(response.text)
         
-        logger.info("Chapter analysis completed successfully")
+        logger.info(f"[{job_id}] Chapter analysis completed successfully")
+        track_job(job_id, "completed", {"concepts_found": len(result.get("concepts", []))})
         return result
 
     except Exception as e:
-        logger.error(f"Chapter analysis failed: {str(e)}")
+        logger.error(f"[{job_id}] Chapter analysis failed: {str(e)}")
+        if job_id:
+            track_job(job_id, "failed", {"error": str(e)})
         raise HTTPException(status_code=500, detail=f"Chapter analysis failed: {str(e)}")
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    model, api_key = get_gemini_model()
-    return {
-        "status": "healthy",
-        "gemini_configured": api_key is not None,
-        "timestamp": time.time(),
-        "version": "content_pipeline_v1",
-        "regeneration_prompts_count": len(REGENERATION_PROMPTS)
-    }
+    try:
+        openai_configured = bool(os.getenv("OPENAI_API_KEY") and os.getenv("OPENAI_API_KEY").strip())
+        gemini_configured = bool(os.getenv("GEMINI_API_KEY") and os.getenv("GEMINI_API_KEY").strip())
+        
+        return {
+            "status": "healthy",
+            "llm_provider": LLM_PROVIDER,
+            "current_provider": CURRENT_PROVIDER,
+            "fallback_provider": FALLBACK_PROVIDER,
+            "openai_configured": openai_configured,
+            "gemini_configured": gemini_configured,
+            "timestamp": time.time(),
+            "version": "content_pipeline_v2_multi_llm",
+            "regeneration_prompts_count": len(REGENERATION_PROMPTS)
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return {
+            "status": "degraded",
+            "error": str(e),
+            "timestamp": time.time()
+        }
 
 @app.get("/regeneration_prompts")
 async def list_regeneration_prompts():
@@ -996,8 +1116,44 @@ async def list_regeneration_prompts():
         "migration_md_compliance": "all_13_prompts_implemented"
     }
 
+@app.get("/api/v1/logs")
+async def get_logs(limit: int = 500):
+    """Get recent system logs for web UI"""
+    try:
+        logs_list = list(web_log_handler.logs)
+        # Return most recent first
+        logs_list.reverse()
+        return {
+            "logs": logs_list[:limit],
+            "total": len(logs_list)
+        }
+    except Exception as e:
+        logger.error(f"Failed to fetch logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/jobs")
+async def get_jobs():
+    """Get active jobs and recent job history"""
+    try:
+        active_list = list(active_jobs.values())
+        history_list = list(job_history)
+        history_list.reverse()  # Most recent first
+        
+        return {
+            "jobs": active_list,
+            "active_count": len(active_list),
+            "history": history_list[:20],  # Last 20 completed jobs
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Failed to fetch jobs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
+    
+    # Get frontend port from environment or use default
+    frontend_port = os.getenv("PORT", "3000")
     
     # Print startup information
     print("\n" + "="*60)
@@ -1007,10 +1163,11 @@ if __name__ == "__main__":
     print(f"📚 API Docs:        http://127.0.0.1:8000/docs")
     print(f"🔧 Health Check:    http://127.0.0.1:8000/health")
     print("\n🌐 FRONTEND INTERFACES:")
-    print(f"   📤 Upload:       http://localhost:3002/teacher/upload.html")
-    print(f"   🎤 Voice Config: http://localhost:3002/teacher/voice-config.html")
-    print(f"   🧪 Voice Test:   http://localhost:3002/teacher/voice-test.html")
-    print(f"   📝 Review:       http://localhost:3002/teacher/review.html")
+    print(f"   📤 Upload:       http://localhost:{frontend_port}/teacher/upload.html")
+    print(f"   🎤 Voice Config: http://localhost:{frontend_port}/teacher/voice-config.html")
+    print(f"   🧪 Voice Test:   http://localhost:{frontend_port}/teacher/voice-test.html")
+    print(f"   📝 Review:       http://localhost:{frontend_port}/teacher/review.html")
+    print(f"   📊 System Logs:  http://localhost:{frontend_port}/teacher/logs.html")
     print("\n💡 LLM Provider: " + LLM_PROVIDER.upper())
     if LLM_PROVIDER == "auto":
         print(f"   Primary:   {CURRENT_PROVIDER.upper() if CURRENT_PROVIDER else 'None'}")

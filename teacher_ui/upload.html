@@ -278,14 +278,13 @@
             <p>Transform educational content into engaging podcast-style episodes</p>
         </div>
         
-        <div class="nav-bar">
-            <a href="upload.html" class="active">📤 Upload Chapter</a>
-            <a href="voice-config.html">🎤 Voice Settings</a>
-            <a href="voice-test.html">🧪 Test Voices</a>
-            <a href="review.html">📝 Review Content</a>
-        </div>
-
-        <div class="form-container">
+    <div class="nav-bar">
+        <a href="upload.html" class="active">📤 Upload Chapter</a>
+        <a href="voice-config.html">🎤 Voice Settings</a>
+        <a href="voice-test.html">🧪 Test Voices</a>
+        <a href="review.html">📝 Review Content</a>
+        <a href="logs.html">📊 System Logs</a>
+    </div>        <div class="form-container">
             <div class="tab-container">
                 <button class="tab active" onclick="switchTab('pdf')">📄 PDF Upload</button>
                 <button class="tab" onclick="switchTab('text')">📝 Text Input</button>
@@ -360,61 +359,51 @@
                     <div class="help-text" id="llmProviderHelp">Auto tries GPT-5, falls back to GPT-4o if unavailable, then Gemini as final fallback</div>
                 </div>
 
-                <!-- Speaker Configuration -->
-                <div class="form-section-header" style="margin-top: 30px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0;">
-                    <h3 style="color: #667eea; font-size: 18px;">🎙️ Speaker Configuration</h3>
-                    <p style="font-size: 13px; color: #666; margin-top: 5px;">Configure voices for this chapter upload. These settings will be used for the generated episodes.</p>
-                    <p style="font-size: 12px; color: #3498db; margin-top: 8px; padding: 8px; background: #e3f2fd; border-radius: 5px;">
-                        💡 <strong>Tip:</strong> You can also set default voice preferences in <a href="voice-config.html" style="color: #2980b9; font-weight: 600;">Voice Settings</a> or test voices in <a href="voice-test.html" style="color: #2980b9; font-weight: 600;">Voice Test</a>
-                    </p>
+                <!-- Voice Configuration Preview & Quick Test -->
+                <div class="form-section-header" style="margin-top: 30px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0;">
+                    <h3 style="color: #667eea; font-size: 18px;">🎙️ Voice Settings</h3>
+                    <p style="font-size: 13px; color: #666; margin-top: 5px;">Current voice configuration that will be used for this chapter</p>
                 </div>
 
-                <div class="form-group">
-                    <label for="speaker1Name">First Speaker Name</label>
-                    <input type="text" id="speaker1Name" name="speaker1_name" 
-                           placeholder="e.g., Riya, Alex, Student" value="StudentA">
-                    <div class="help-text">Name of the confident speaker</div>
-                </div>
+                <!-- Voice Preview Card -->
+                <div id="voicePreviewCard" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 25px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h4 style="color: white; margin: 0; font-size: 16px;">📢 Current Voice Configuration</h4>
+                        <button type="button" onclick="window.location.href='voice-config.html'" 
+                                style="background: white; color: #667eea; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s;">
+                            ⚙️ Edit Settings
+                        </button>
+                    </div>
 
-                <div class="form-group">
-                    <label for="speaker1Voice">First Speaker Voice</label>
-                    <select id="speaker1Voice" name="speaker1_voice">
-                        <option value="en-US-Chirp3-HD-Achird">Achird (Female, US English) - Premium HD</option>
-                        <option value="en-US-Chirp3-HD-Aoede">Aoede (Female, US English) - Premium HD</option>
-                        <option value="en-IN-Neural2-A">Neural2-A (Female, Indian English)</option>
-                        <option value="en-IN-Neural2-B">Neural2-B (Male, Indian English)</option>
-                        <option value="en-IN-Neural2-C">Neural2-C (Male, Indian English)</option>
-                        <option value="en-IN-Neural2-D">Neural2-D (Female, Indian English)</option>
-                        <option value="en-US-Neural2-A">Neural2-A (Male, US English)</option>
-                        <option value="en-US-Neural2-C">Neural2-C (Female, US English)</option>
-                        <option value="en-US-Neural2-D">Neural2-D (Male, US English)</option>
-                        <option value="en-US-Neural2-E">Neural2-E (Female, US English)</option>
-                        <option value="en-US-Neural2-F">Neural2-F (Female, US English)</option>
-                    </select>
-                </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- Speaker 1 Preview -->
+                        <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 8px; padding: 15px; border: 1px solid rgba(255,255,255,0.2);">
+                            <div style="color: rgba(255,255,255,0.8); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Speaker 1</div>
+                            <div style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 8px;" id="previewSpeaker1Name">StudentA</div>
+                            <div style="color: rgba(255,255,255,0.9); font-size: 12px; margin-bottom: 12px;" id="previewSpeaker1Voice">Achird (Female, US English)</div>
+                            <button type="button" onclick="testVoice(1)" 
+                                    style="background: rgba(255,255,255,0.25); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; width: 100%;">
+                                ▶️ Test Voice
+                            </button>
+                        </div>
 
-                <div class="form-group">
-                    <label for="speaker2Name">Second Speaker Name</label>
-                    <input type="text" id="speaker2Name" name="speaker2_name" 
-                           placeholder="e.g., Arjun, Emma, Tutor" value="StudentB">
-                    <div class="help-text">Name of the curious speaker</div>
-                </div>
+                        <!-- Speaker 2 Preview -->
+                        <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 8px; padding: 15px; border: 1px solid rgba(255,255,255,0.2);">
+                            <div style="color: rgba(255,255,255,0.8); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Speaker 2</div>
+                            <div style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 8px;" id="previewSpeaker2Name">StudentB</div>
+                            <div style="color: rgba(255,255,255,0.9); font-size: 12px; margin-bottom: 12px;" id="previewSpeaker2Voice">Aoede (Female, US English)</div>
+                            <button type="button" onclick="testVoice(2)" 
+                                    style="background: rgba(255,255,255,0.25); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; width: 100%;">
+                                ▶️ Test Voice
+                            </button>
+                        </div>
+                    </div>
 
-                <div class="form-group">
-                    <label for="speaker2Voice">Second Speaker Voice</label>
-                    <select id="speaker2Voice" name="speaker2_voice">
-                        <option value="en-US-Chirp3-HD-Aoede">Aoede (Female, US English) - Premium HD</option>
-                        <option value="en-US-Chirp3-HD-Achird">Achird (Female, US English) - Premium HD</option>
-                        <option value="en-IN-Neural2-A">Neural2-A (Female, Indian English)</option>
-                        <option value="en-IN-Neural2-B">Neural2-B (Male, Indian English)</option>
-                        <option value="en-IN-Neural2-C">Neural2-C (Male, Indian English)</option>
-                        <option value="en-IN-Neural2-D">Neural2-D (Female, Indian English)</option>
-                        <option value="en-US-Neural2-A">Neural2-A (Male, US English)</option>
-                        <option value="en-US-Neural2-C">Neural2-C (Female, US English)</option>
-                        <option value="en-US-Neural2-D">Neural2-D (Male, US English)</option>
-                        <option value="en-US-Neural2-E">Neural2-E (Female, US English)</option>
-                        <option value="en-US-Neural2-F">Neural2-F (Female, US English)</option>
-                    </select>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                        <div style="color: rgba(255,255,255,0.9); font-size: 12px; line-height: 1.6;">
+                            💡 <strong>Tip:</strong> These are your saved global settings. Click "Edit Settings" to modify and save permanently, or use "Test Voice" to preview how they sound.
+                        </div>
+                    </div>
                 </div>
 
                 <!-- PDF Upload Tab -->
@@ -524,6 +513,17 @@
                 formData.append('language', language);
                 formData.append('llm_provider', llmProvider);
                 
+                // Add voice configuration from loaded settings
+                if (currentVoiceConfig && currentVoiceConfig.speakers) {
+                    const speaker1 = currentVoiceConfig.speakers.speaker1 || currentVoiceConfig.speakers.StudentA;
+                    const speaker2 = currentVoiceConfig.speakers.speaker2 || currentVoiceConfig.speakers.StudentB;
+                    
+                    formData.append('speaker1_name', speaker1?.name || speaker1?.displayName || 'StudentA');
+                    formData.append('speaker2_name', speaker2?.name || speaker2?.displayName || 'StudentB');
+                    formData.append('speaker1_voice', speaker1?.voice || speaker1?.voiceId || 'en-US-Chirp3-HD-Achird');
+                    formData.append('speaker2_voice', speaker2?.voice || speaker2?.voiceId || 'en-US-Chirp3-HD-Aoede');
+                }
+                
                 if (currentTab === 'pdf') {
                     const pdfFile = document.getElementById('pdfFile').files[0];
                     if (!pdfFile) {
@@ -551,23 +551,15 @@
                 }
                 
                 const result = await response.json();
+                const jobId = result.job_id;
                 
-                updateProgress(100, 'Processing complete!');
+                if (!jobId) {
+                    throw new Error('No job ID returned from server');
+                }
                 
-                setTimeout(() => {
-                    document.getElementById('progressContainer').classList.remove('active');
-                    document.getElementById('resultContainer').classList.add('active');
-                    document.getElementById('resultMessage').innerHTML = `
-                        <strong>Chapter ID:</strong> ${result.chapter_id}<br>
-                        <strong>Episodes Generated:</strong> ${result.total_episodes || 'Processing...'}<br>
-                        <strong>Output Path:</strong> <code>${result.output_path || 'outputs/' + chapterId}</code><br>
-                        <br>
-                        <a href="/teacher/review.html?chapter=${chapterId}" target="_blank" style="color: #667eea;">
-                            📝 Review Generated Content →
-                        </a>
-                    `;
-                    document.getElementById('submitBtn').disabled = false;
-                }, 1000);
+                // Poll for job status
+                updateProgress(30, 'Processing chapter...');
+                await pollJobStatus(jobId, chapterId);
                 
             } catch (error) {
                 document.getElementById('progressContainer').classList.remove('active');
@@ -577,10 +569,212 @@
             }
         });
         
+        // Poll job status until complete
+        async function pollJobStatus(jobId, chapterId) {
+            try {
+                const maxAttempts = 120; // 10 minutes max (5 sec intervals)
+                let attempts = 0;
+                
+                const poll = async () => {
+                    attempts++;
+                    
+                    const response = await fetch(`/api/v1/status/${jobId}`);
+                    if (!response.ok) {
+                        throw new Error('Failed to check job status');
+                    }
+                    
+                    const status = await response.json();
+                    
+                    // Update progress based on status
+                    if (status.progress) {
+                        updateProgress(status.progress, status.status || 'Processing...');
+                    }
+                    
+                    if (status.status === 'completed') {
+                        updateProgress(100, 'Processing complete!');
+                        
+                        setTimeout(() => {
+                            document.getElementById('progressContainer').classList.remove('active');
+                            document.getElementById('resultContainer').classList.add('active');
+                            document.getElementById('resultMessage').innerHTML = `
+                                <strong>✅ Generation Complete!</strong><br><br>
+                                <strong>Chapter ID:</strong> ${chapterId}<br>
+                                <strong>Job ID:</strong> ${jobId}<br>
+                                <br>
+                                <a href="/teacher/review.html?chapter=${chapterId}" target="_blank" style="color: #667eea; font-weight: 600; text-decoration: underline;">
+                                    📝 Review Generated Content →
+                                </a>
+                            `;
+                            document.getElementById('submitBtn').disabled = false;
+                        }, 500);
+                    } else if (status.status === 'failed') {
+                        throw new Error(status.error || 'Job failed');
+                    } else if (attempts >= maxAttempts) {
+                        throw new Error('Job processing timeout - check system logs');
+                    } else {
+                        // Continue polling
+                        setTimeout(poll, 5000);
+                    }
+                };
+                
+                // Start polling
+                await poll();
+                
+            } catch (error) {
+                document.getElementById('progressContainer').classList.remove('active');
+                document.getElementById('errorContainer').classList.add('active');
+                document.getElementById('errorMessage').textContent = error.message;
+                document.getElementById('submitBtn').disabled = false;
+            }
+        }
+        
         function updateProgress(percent, message) {
             document.getElementById('progressBar').style.width = percent + '%';
             document.getElementById('statusMessage').textContent = message;
         }
+
+        // Voice configuration management
+        let currentVoiceConfig = null;
+
+        // Voice name mapping for display
+        const voiceDisplayNames = {
+            'en-US-Chirp3-HD-Achird': 'Achird (Female, US English)',
+            'en-US-Chirp3-HD-Aoede': 'Aoede (Female, US English)',
+            'en-IN-Neural2-A': 'Neural2-A (Female, Indian)',
+            'en-IN-Neural2-B': 'Neural2-B (Male, Indian)',
+            'en-IN-Neural2-C': 'Neural2-C (Male, Indian)',
+            'en-IN-Neural2-D': 'Neural2-D (Female, Indian)',
+            'en-US-Neural2-A': 'Neural2-A (Male, US)',
+            'en-US-Neural2-C': 'Neural2-C (Female, US)',
+            'en-US-Neural2-D': 'Neural2-D (Male, US)',
+            'en-US-Neural2-E': 'Neural2-E (Female, US)',
+            'en-US-Neural2-F': 'Neural2-F (Female, US)'
+        };
+
+        // Load and display current voice configuration
+        async function loadVoiceConfig() {
+            try {
+                const response = await fetch('/api/v1/tts/config');
+                if (response.ok) {
+                    currentVoiceConfig = await response.json();
+                    updateVoicePreview();
+                } else {
+                    // Use defaults if no config exists
+                    currentVoiceConfig = {
+                        speakers: {
+                            speaker1: { name: 'StudentA', voice: 'en-US-Chirp3-HD-Achird' },
+                            speaker2: { name: 'StudentB', voice: 'en-US-Chirp3-HD-Aoede' }
+                        }
+                    };
+                    updateVoicePreview();
+                }
+            } catch (error) {
+                console.error('Failed to load voice config:', error);
+                // Use defaults
+                currentVoiceConfig = {
+                    speakers: {
+                        speaker1: { name: 'StudentA', voice: 'en-US-Chirp3-HD-Achird' },
+                        speaker2: { name: 'StudentB', voice: 'en-US-Chirp3-HD-Aoede' }
+                    }
+                };
+                updateVoicePreview();
+            }
+        }
+
+        // Update preview card with current settings
+        function updateVoicePreview() {
+            if (!currentVoiceConfig || !currentVoiceConfig.speakers) return;
+
+            const speaker1 = currentVoiceConfig.speakers.speaker1 || currentVoiceConfig.speakers.StudentA;
+            const speaker2 = currentVoiceConfig.speakers.speaker2 || currentVoiceConfig.speakers.StudentB;
+
+            document.getElementById('previewSpeaker1Name').textContent = speaker1?.name || speaker1?.displayName || 'StudentA';
+            document.getElementById('previewSpeaker2Name').textContent = speaker2?.name || speaker2?.displayName || 'StudentB';
+
+            const voice1 = speaker1?.voice || speaker1?.voiceId || 'en-US-Chirp3-HD-Achird';
+            const voice2 = speaker2?.voice || speaker2?.voiceId || 'en-US-Chirp3-HD-Aoede';
+
+            document.getElementById('previewSpeaker1Voice').textContent = voiceDisplayNames[voice1] || voice1;
+            document.getElementById('previewSpeaker2Voice').textContent = voiceDisplayNames[voice2] || voice2;
+        }
+
+        // Test voice preview
+        async function testVoice(speakerNum) {
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.innerHTML = '⏳ Generating...';
+            button.disabled = true;
+
+            try {
+                const speaker = speakerNum === 1 ? 
+                    (currentVoiceConfig.speakers.speaker1 || currentVoiceConfig.speakers.StudentA) :
+                    (currentVoiceConfig.speakers.speaker2 || currentVoiceConfig.speakers.StudentB);
+
+                const speakerName = speaker?.name || speaker?.displayName || `Student${speakerNum}`;
+                const sampleText = speakerNum === 1 ? 
+                    `Hello! My name is ${speakerName}. I'm excited to help you learn about this fascinating topic today!` :
+                    `Hi there! I'm ${speakerName}, and I'm really curious to explore new concepts with you!`;
+
+                const response = await fetch('/api/v1/tts/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        config: currentVoiceConfig,
+                        testScript: {
+                            sections: [{
+                                speaker: speakerNum === 1 ? 'speaker1' : 'speaker2',
+                                text: `${speakerName}: ${sampleText}`
+                            }]
+                        }
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    if (result.audio_url) {
+                        button.innerHTML = '🔊 Playing...';
+                        
+                        // Create and play audio element
+                        const audio = new Audio(result.audio_url);
+                        audio.play().catch(err => {
+                            console.error('Audio playback failed:', err);
+                            button.innerHTML = '❌ Playback failed';
+                        });
+                        
+                        // Reset button when audio ends
+                        audio.onended = () => {
+                            button.innerHTML = originalText;
+                            button.disabled = false;
+                        };
+                        
+                        // Reset button after 10 seconds max
+                        setTimeout(() => {
+                            button.innerHTML = originalText;
+                            button.disabled = false;
+                        }, 10000);
+                    } else {
+                        button.innerHTML = '✅ Generated';
+                        setTimeout(() => {
+                            button.innerHTML = originalText;
+                            button.disabled = false;
+                        }, 2000);
+                    }
+                } else {
+                    throw new Error('Test failed');
+                }
+            } catch (error) {
+                console.error('Voice test error:', error);
+                button.innerHTML = '❌ Failed';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                }, 2000);
+            }
+        }
+
+        // Load voice config when page loads
+        document.addEventListener('DOMContentLoaded', loadVoiceConfig);
     </script>
 </body>
 </html>

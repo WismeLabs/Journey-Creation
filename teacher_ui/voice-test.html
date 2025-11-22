@@ -88,9 +88,44 @@
             border-radius: 5px;
             background: #fafafa;
         }
+
+        .nav-bar {
+            background: #2c3e50;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 20px;
+        }
+
+        .nav-bar a {
+            color: white;
+            text-decoration: none;
+            padding: 15px 25px;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-bar a:hover {
+            background: #34495e;
+        }
+
+        .nav-bar a.active {
+            background: #34495e;
+            border-bottom-color: #667eea;
+        }
     </style>
 </head>
 <body>
+    <div class="nav-bar">
+        <a href="upload.html">📤 Upload Chapter</a>
+        <a href="voice-config.html">🎤 Voice Settings</a>
+        <a href="voice-test.html" class="active">🧪 Test Voices</a>
+        <a href="review.html">📝 Review Content</a>
+    </div>
+    
     <div class="container">
         <h1>🎤 Voice Configuration Test</h1>
         <p>Test the voice configuration API and speaker name customization functionality.</p>

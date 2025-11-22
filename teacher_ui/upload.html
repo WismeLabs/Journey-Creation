@@ -242,13 +242,47 @@
         .error.active {
             display: block;
         }
+
+        .nav-bar {
+            background: #2c3e50;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 0;
+        }
+
+        .nav-bar a {
+            color: white;
+            text-decoration: none;
+            padding: 15px 25px;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-bar a:hover {
+            background: #34495e;
+        }
+
+        .nav-bar a.active {
+            background: #34495e;
+            border-bottom-color: #667eea;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🎓 K-12 Content Generation Pipeline</h1>
-            <p>Transform textbook content into engaging educational episodes</p>
+            <p>Transform educational content into engaging podcast-style episodes</p>
+        </div>
+        
+        <div class="nav-bar">
+            <a href="upload.html" class="active">📤 Upload Chapter</a>
+            <a href="voice-config.html">🎤 Voice Settings</a>
+            <a href="voice-test.html">🧪 Test Voices</a>
+            <a href="review.html">📝 Review Content</a>
         </div>
 
         <div class="form-container">
@@ -329,7 +363,10 @@
                 <!-- Speaker Configuration -->
                 <div class="form-section-header" style="margin-top: 30px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0;">
                     <h3 style="color: #667eea; font-size: 18px;">🎙️ Speaker Configuration</h3>
-                    <p style="font-size: 13px; color: #666; margin-top: 5px;">Customize the dialogue voices and speaker names</p>
+                    <p style="font-size: 13px; color: #666; margin-top: 5px;">Configure voices for this chapter upload. These settings will be used for the generated episodes.</p>
+                    <p style="font-size: 12px; color: #3498db; margin-top: 8px; padding: 8px; background: #e3f2fd; border-radius: 5px;">
+                        💡 <strong>Tip:</strong> You can also set default voice preferences in <a href="voice-config.html" style="color: #2980b9; font-weight: 600;">Voice Settings</a> or test voices in <a href="voice-test.html" style="color: #2980b9; font-weight: 600;">Voice Test</a>
+                    </p>
                 </div>
 
                 <div class="form-group">

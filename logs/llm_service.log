@@ -1461,3 +1461,24 @@
 2025-11-20 06:39:22,283 - __main__ - ERROR - [ERROR] Gemini API setup failed: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
 2025-11-20 06:39:22,284 - __main__ - ERROR - [WARNING] Startup validation failed - service may not function correctly: 500: Gemini API configuration error: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
 2025-11-20 06:39:46,901 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-22 14:02:30,832 - __main__ - INFO - [AUTO MODE] Primary: OpenAI GPT-4o | Fallback: Gemini 2.0 Flash
+2025-11-22 14:02:31,071 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-22 14:02:31,428 - __main__ - ERROR - [ERROR] Gemini API setup failed: 400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+domain: "googleapis.com"
+metadata {
+  key: "service"
+  value: "generativelanguage.googleapis.com"
+}
+, locale: "en-US"
+message: "API key not valid. Please pass a valid API key."
+]
+2025-11-22 14:02:31,429 - __main__ - ERROR - [WARNING] Startup validation failed - service may not function correctly: 500: Gemini API configuration error: 400 API key not valid. Please pass a valid API key. [reason: "API_KEY_INVALID"
+domain: "googleapis.com"
+metadata {
+  key: "service"
+  value: "generativelanguage.googleapis.com"
+}
+, locale: "en-US"
+message: "API key not valid. Please pass a valid API key."
+]
+2025-11-22 14:05:25,649 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down

@@ -360,10 +360,44 @@
                 flex-wrap: wrap;
             }
         }
+
+        .nav-bar {
+            background: #2c3e50;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 0;
+        }
+
+        .nav-bar a {
+            color: white;
+            text-decoration: none;
+            padding: 15px 25px;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-bar a:hover {
+            background: #34495e;
+        }
+
+        .nav-bar a.active {
+            background: #34495e;
+            border-bottom-color: #667eea;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="nav-bar">
+            <a href="upload.html">📤 Upload Chapter</a>
+            <a href="voice-config.html">🎤 Voice Settings</a>
+            <a href="voice-test.html">🧪 Test Voices</a>
+            <a href="review.html" class="active">📝 Review Content</a>
+        </div>
+
         <!-- Header Section -->
         <div class="header">
             <h1>📚 Content Review Dashboard</h1>
@@ -553,46 +587,66 @@
             });
         }
 
+        // Helper function to get audio path for new structure  
+        function getEpisodeAudioPath(chapter, episodeNum) {
+            if (!chapter || !chapter.metadata) {
+                return '';
+            }
+            
+            const curriculum = chapter.metadata.curriculum || 'CBSE';
+            const grade = chapter.metadata.grade_band || chapter.metadata.grade || 'unknown';
+            const chapterName = chapter.chapter_id.replace(/_/g, '-').replace(/^chapter-/, '');
+            
+            return `/outputs/${curriculum}/Grade-${grade}/${chapterName}/Episode-${episodeNum}/audio/audio.mp3`;
+        }
+
         // Create episode card
         function createEpisodeCard(episode, episodeNumber) {
             const card = document.createElement('div');
             card.className = 'episode-card';
+            
+            // Use episode_number from data, fallback to episodeNumber
+            const actualEpisodeNum = episode.episode_number || episodeNumber;
+            
+            // Build audio path using new structure
+            const audioPath = getEpisodeAudioPath(currentChapter, actualEpisodeNum);
+            
             card.innerHTML = `
                 <div class="episode-header">
-                    <div class="episode-title">Episode ${episodeNumber}: ${episode.title || 'Untitled'}</div>
+                    <div class="episode-title">Episode ${actualEpisodeNum}: ${episode.script?.title || episode.title || 'Untitled'}</div>
                     <div class="episode-status status-pending">Pending Review</div>
                 </div>
                 
                 <div class="script-preview">
                     <h4>Script Preview:</h4>
-                    <div id="script-${episodeNumber}">
-                        ${renderScriptWithHighlights(episode, episodeNumber)}
+                    <div id="script-${actualEpisodeNum}">
+                        ${renderScriptWithHighlights(episode, actualEpisodeNum)}
                     </div>
                 </div>
 
                 <div class="mcq-section">
-                    <h4>Assessment Questions (${episode.mcqs?.length || 0}):</h4>
-                    <div id="mcqs-${episodeNumber}">
-                        ${renderMCQs(episode.mcqs || [])}
+                    <h4>Assessment Questions (${episode.mcqs?.mcqs?.length || episode.mcqs?.length || 0}):</h4>
+                    <div id="mcqs-${actualEpisodeNum}">
+                        ${renderMCQs(episode.mcqs?.mcqs || episode.mcqs || [])}
                     </div>
                 </div>
 
                 <div class="audio-section" style="margin: 15px 0;">
                     <h4>Audio Preview:</h4>
                     <audio controls class="audio-player">
-                        <source src="/outputs/chapter_${currentChapter.chapter_id}/episodes/ep${episodeNumber.toString().padStart(2, '0')}/audio/final_audio.mp3" type="audio/mpeg">
+                        <source src="${audioPath}" type="audio/mpeg">
                         Audio not available
                     </audio>
                 </div>
 
                 <div class="episode-actions">
-                    <button class="btn btn-success" onclick="approveEpisode(${episodeNumber})">
+                    <button class="btn btn-success" onclick="approveEpisode(${actualEpisodeNum})">
                         ✅ Approve Episode
                     </button>
-                    <button class="btn btn-warning" onclick="requestEpisodeRevision(${episodeNumber})">
+                    <button class="btn btn-warning" onclick="requestEpisodeRevision(${actualEpisodeNum})">
                         📝 Request Revision
                     </button>
-                    <button class="btn btn-danger" onclick="rejectEpisode(${episodeNumber})">
+                    <button class="btn btn-danger" onclick="rejectEpisode(${actualEpisodeNum})">
                         ❌ Reject Episode
                     </button>
                 </div>
@@ -715,10 +769,40 @@
 
         async function requestEpisodeRevision(episodeNumber) {
             const reason = prompt('Please provide revision notes:');
-            if (reason) {
-                // API call to request revision
-                showSuccess(`Revision requested for Episode ${episodeNumber}`);
-                updateEpisodeStatus(episodeNumber, 'revision-requested');
+            if (!reason) return;
+            
+            try {
+                showSuccess(`Requesting revision for Episode ${episodeNumber}...`);
+                
+                // Call backend to trigger regeneration
+                const response = await fetch('/api/v1/regenerate_episode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        chapter_id: currentChapter.chapter_id,
+                        episode_index: episodeNumber,
+                        reason: reason,
+                        metadata: currentChapter.metadata
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess(`Revision requested for Episode ${episodeNumber}! Job ID: ${data.job_id}`);
+                    updateEpisodeStatus(episodeNumber, 'revision-requested');
+                    
+                    // Poll for regeneration status
+                    if (data.job_id) {
+                        pollJobStatus(data.job_id, episodeNumber);
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to request revision');
+                }
+            } catch (error) {
+                showError(`Failed to request revision: ${error.message}`);
             }
         }
 
@@ -798,6 +882,30 @@
                 } catch (error) {
                     clearInterval(pollInterval);
                     showError(`Error checking audio generation status: ${error.message}`);
+                }
+            }, 3000); // Poll every 3 seconds
+        }
+
+        async function pollJobStatus(jobId, episodeNumber) {
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/v1/status/${jobId}`);
+                    const data = await response.json();
+
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        showSuccess(`Episode ${episodeNumber} regeneration completed! Please refresh to see updated content.`);
+                        // Optionally reload the episode
+                        setTimeout(() => loadChapter(currentChapter.chapter_id), 2000);
+                    } else if (data.status === 'failed') {
+                        clearInterval(pollInterval);
+                        showError(`Episode ${episodeNumber} regeneration failed: ${data.error || 'Unknown error'}`);
+                    } else if (data.progress !== undefined) {
+                        showSuccess(`Regenerating Episode ${episodeNumber}... ${data.progress}% complete`);
+                    }
+                } catch (error) {
+                    clearInterval(pollInterval);
+                    showError(`Error checking regeneration status: ${error.message}`);
                 }
             }, 3000); // Poll every 3 seconds
         }

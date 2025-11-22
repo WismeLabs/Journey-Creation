@@ -464,37 +464,81 @@ Return valid JSON only:
 """,
 
     "episode_script": """
-SYSTEM: You are a K-12 educational script writer with strict source alignment. Generate peer-to-peer dialogue between two students.
-INPUT: episode_config, concepts, chapter_content
-CONSTRAINTS: 
-- MUST use ONLY these speaker names: {speaker1_name} ({speaker1_personality}) and {speaker2_name} ({speaker2_personality})
-- DO NOT use "StudentA" or "StudentB" - use the exact names provided above
-- Word count: 450-1100 words, target 500-900
-- Sections: hook(10-20s), core1, micro-example(≤30s), core2, recall-break, mini-summary(≤30s)
-- CRITICAL: Attach source_reference to every factual statement or mark as inferred:true
+SYSTEM: You are an expert K-12 educational dialogue writer creating engaging peer-to-peer conversations between two friends discussing what they're learning.
 
-SOURCE ALIGNMENT RULES (MANDATORY per MIGRATION.md):
-- Every assertive sentence must include source_reference field
-- source_reference format: "p[page]:lines [start]-[end]" or "block_[id]"  
-- If no direct source found, mark as "inferred": true with soft language
-- Use "Scientists think...", "It is believed that..." for inferred content
-- Never make high-confidence claims without source reference
-- Grade {grade_band} appropriate vocabulary
-- No teacher voice, no narrator, no intros/outros
-- Stories only if memory-aiding, ≤30s
-- Include timestamps in seconds for each section
+CORE MISSION: Create a natural, conversational podcast-style dialogue where two curious students explore and teach each other educational concepts through friendly discussion.
 
-Concepts to cover: {concepts}
-Target duration: {duration_minutes} minutes
-Source content: {chapter_content}
-REQUIRED Speakers (use these exact names): {speaker1_name} ({speaker1_personality}), {speaker2_name} ({speaker2_personality})
+SPEAKERS:
+- {speaker1_name} ({speaker1_personality}): The more confident friend who often explains concepts
+- {speaker2_name} ({speaker2_personality}): The curious friend who asks great questions and relates concepts to real life
+- CRITICAL: Use ONLY these exact names. Never use "StudentA" or "StudentB"
 
-Return valid JSON only:
+DIALOGUE STYLE REQUIREMENTS:
+1. **Natural Conversation**: Write how real Grade {grade_band} students actually talk to each other
+   - Use contractions ("it's", "that's", "we're") naturally
+   - Include verbal thinking ("hmm", "oh!", "wait", "interesting!")
+   - Let them interrupt, build on each other's ideas, use examples from their lives
+   - Grade 1-3: Simple sentences, everyday examples, lots of enthusiasm
+   - Grade 4-6: More complex ideas but still playful, relatable examples
+   - Grade 7-9: Deeper reasoning, real-world connections, some technical terms
+   - Grade 10-12: Analytical discussion, academic vocabulary, complex applications
+
+2. **Engaging Hooks**: Start with something that immediately grabs attention
+   - Personal story, surprising fact, relatable problem, or intriguing question
+   - Make them WANT to keep listening
+
+3. **Concept Coverage**: MUST cover ALL these concepts thoroughly: {concepts}
+   - Don't just mention concepts - actually explain them through dialogue
+   - Use examples, analogies, and real-world applications
+   - Build from simple to complex
+   - Connect concepts to each other naturally
+
+4. **Interactive Elements**:
+   - {speaker2_name} asks "why?" and "how?" questions that students would actually wonder
+   - Use analogies and comparisons ("it's like...", "imagine if...")
+   - Include mini "aha!" moments where concepts click
+   - Relate to students' everyday experiences
+
+STRUCTURE (8-12 minutes, 500-1100 words):
+- **Hook** (10-20s): Grab attention with something surprising or relatable
+- **Core1** (2-3 min): Introduce and explore first main concept(s)
+- **Micro-Example** (≤30s): Quick concrete example to solidify understanding
+- **Core2** (3-4 min): Develop deeper understanding or additional concepts
+- **Recall-Break** (30-45s): Quick review through conversational recap
+- **Mini-Summary** (≤30s): Natural wrap-up that ties concepts together
+
+GRADE-APPROPRIATE LANGUAGE:
+- Grade 1-3: 50-100 words per minute, 3-6 word sentences, concrete examples (pets, toys, family)
+- Grade 4-6: 100-150 words per minute, varied sentence length, school/hobby examples
+- Grade 7-9: 150-180 words per minute, introduce technical terms with explanations
+- Grade 10-12: 180-200 words per minute, academic vocabulary, abstract concepts OK
+
+SOURCE ALIGNMENT (CRITICAL):
+- Every factual claim needs source_reference: "p[page]:lines [start]-[end]" or "block_[id]"
+- If inferring or simplifying, mark "inferred": true and use soft language ("scientists think", "it seems like")
+- Never state uncertain facts with high confidence
+
+WHAT TO AVOID:
+- Teacher/narrator voice or formal lecture style
+- Robotic back-and-forth (let conversations flow naturally)
+- Just reading facts - make it a real discussion
+- Skipping concepts or only mentioning them briefly
+- Age-inappropriate vocabulary or examples
+- Boring textbook language
+
+Episode: {episode_title}
+Duration: {duration_minutes} minutes
+Grade: {grade_band}
+Concepts to fully cover: {concepts}
+Source: {chapter_content}
+
+Return ONLY valid JSON:
 {{
   "episode_index": 1,
   "title": "{episode_title}",
   "estimated_duration_seconds": {duration_seconds},
   "word_count": 720,
+  "grade_level": {grade_band},
   "style_lock": "style_v1.json",
   "sections": [
     {{
@@ -502,18 +546,24 @@ Return valid JSON only:
       "start": 0,
       "end": 18,
       "type": "hook",
-      "text": "{speaker1_name}: Hey, have you ever wondered why...?\\n{speaker2_name}: Actually, yes! I was just thinking about that..."
+      "text": "{speaker1_name}: [Natural, engaging opening that hooks the listener]\\n{speaker2_name}: [Curious response that sets up the topic]",
+      "source_reference": "p1:lines 1-5",
+      "concepts_covered": ["concept_id"]
     }},
     {{
-      "id": "core1", 
+      "id": "core1",
       "start": 18,
-      "end": 120,
+      "end": 180,
       "type": "core",
-      "text": "{speaker1_name}: So let me explain...\\n{speaker2_name}: That makes sense, but what about..."
+      "text": "[Actual conversation with both speakers exploring concepts naturally]",
+      "source_reference": "p2:lines 10-25",
+      "concepts_covered": ["concept_id1", "concept_id2"]
     }}
   ],
   "concept_ids": {concept_ids},
-  "pronunciation_hints": {{"difficult_word": "pronunciation"}}
+  "concepts_coverage_check": {{"concept_id": "fully_explained"}},
+  "pronunciation_hints": {{"difficult_word": "pronunciation"}},
+  "age_appropriate_check": true
 }}
 """,
 
@@ -948,4 +998,23 @@ async def list_regeneration_prompts():
 
 if __name__ == "__main__":
     import uvicorn
+    
+    # Print startup information
+    print("\n" + "="*60)
+    print("🚀 K-12 Educational Content Pipeline - Backend Service")
+    print("="*60)
+    print(f"📡 Backend API:     http://127.0.0.1:8000")
+    print(f"📚 API Docs:        http://127.0.0.1:8000/docs")
+    print(f"🔧 Health Check:    http://127.0.0.1:8000/health")
+    print("\n🌐 FRONTEND INTERFACES:")
+    print(f"   📤 Upload:       http://localhost:3002/teacher/upload.html")
+    print(f"   🎤 Voice Config: http://localhost:3002/teacher/voice-config.html")
+    print(f"   🧪 Voice Test:   http://localhost:3002/teacher/voice-test.html")
+    print(f"   📝 Review:       http://localhost:3002/teacher/review.html")
+    print("\n💡 LLM Provider: " + LLM_PROVIDER.upper())
+    if LLM_PROVIDER == "auto":
+        print(f"   Primary:   {CURRENT_PROVIDER.upper() if CURRENT_PROVIDER else 'None'}")
+        print(f"   Fallback:  {FALLBACK_PROVIDER.upper() if FALLBACK_PROVIDER else 'None'}")
+    print("="*60 + "\n")
+    
     uvicorn.run(app, host="127.0.0.1", port=8000)

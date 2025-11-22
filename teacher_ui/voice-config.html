@@ -274,6 +274,33 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        .nav-bar {
+            background: #2c3e50;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 0;
+        }
+
+        .nav-bar a {
+            color: white;
+            text-decoration: none;
+            padding: 15px 25px;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-bar a:hover {
+            background: #34495e;
+        }
+
+        .nav-bar a.active {
+            background: #34495e;
+            border-bottom-color: #667eea;
+        }
     </style>
 </head>
 <body>
@@ -281,6 +308,13 @@
         <div class="header">
             <h1>🎤 Voice & Speaker Configuration</h1>
             <p>Customize speaker names, voices, and audio settings for your educational content</p>
+        </div>
+
+        <div class="nav-bar">
+            <a href="upload.html">📤 Upload Chapter</a>
+            <a href="voice-config.html" class="active">🎤 Voice Settings</a>
+            <a href="voice-test.html">🧪 Test Voices</a>
+            <a href="review.html">📝 Review Content</a>
         </div>
 
         <div id="statusMessage" class="status-message"></div>

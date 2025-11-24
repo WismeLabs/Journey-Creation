@@ -281,7 +281,7 @@
     <div class="nav-bar">
         <a href="upload.html" class="active">📤 Upload Chapter</a>
         <a href="voice-config.html">🎤 Voice Settings</a>
-        <a href="voice-test.html">🧪 Test Voices</a>
+        <a href="https://cloud.google.com/text-to-speech/docs/voices" target="_blank">🎧 Preview Voices</a>
         <a href="review.html">📝 Review Content</a>
         <a href="logs.html">📊 System Logs</a>
     </div>        <div class="form-container">
@@ -720,12 +720,10 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         config: currentVoiceConfig,
-                        testScript: {
-                            sections: [{
-                                speaker: speakerNum === 1 ? 'speaker1' : 'speaker2',
-                                text: `${speakerName}: ${sampleText}`
-                            }]
-                        }
+                        testScript: [{
+                            speaker: speakerNum === 1 ? 'speaker1' : 'speaker2',
+                            text: sampleText
+                        }]
                     })
                 });
 

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Configuration Test - Journey Creation</title>
+    <title>Voice Preview - Journey Creation</title>
+    <meta http-equiv="refresh" content="0; url=https://cloud.google.com/text-to-speech/docs/voices">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -351,11 +352,17 @@
             const config = gatherConfiguration();
             showResult('fullTestResults', 'Running full integration test...', 'info');
             
-            const testScript = {
-                sections: [{
-                    text: `${config.speakers.speaker1.name}: Welcome to our educational episode! Today we'll explore fascinating concepts together.\n\n${config.speakers.speaker2.name}: That sounds exciting! I'm curious to learn more about this topic.`
-                }]
-            };
+            // Test script must be array of {speaker, text} objects
+            const testScript = [
+                {
+                    speaker: 'StudentA',
+                    text: 'Welcome to our educational episode! Today we will explore fascinating concepts together.'
+                },
+                {
+                    speaker: 'StudentB',
+                    text: 'That sounds exciting! I am curious to learn more about this topic.'
+                }
+            ];
             
             try {
                 const response = await fetch('/api/v1/tts/test', {
@@ -371,7 +378,13 @@
                 
                 if (response.ok) {
                     const result = await response.json();
-                    showResult('fullTestResults', `✅ Full test completed successfully!\n${JSON.stringify(result, null, 2)}`, 'success');
+                    showResult('fullTestResults', `✅ Full test completed successfully!\nAudio: ${result.audio_url}`, 'success');
+                    
+                    // Play the audio
+                    if (result.audio_url) {
+                        const audio = new Audio(result.audio_url);
+                        audio.play();
+                    }
                 } else {
                     const error = await response.json();
                     showResult('fullTestResults', `❌ Full test failed: ${error.error}`, 'error');
@@ -418,34 +431,87 @@
             select2.innerHTML = '';
             
             // Add voice options from available voices
-            if (voiceData.available && voiceData.available['en-US']) {
-                Object.keys(voiceData.available['en-US']).forEach(voiceType => {
-                    const group1 = document.createElement('optgroup');
-                    group1.label = voiceType.toUpperCase();
-                    const group2 = document.createElement('optgroup');
-                    group2.label = voiceType.toUpperCase();
+            // Structure: voiceData.available = { chirp3_hd: { 'en-US': [...], 'en-IN': [...] }, neural2: {...} }
+            if (voiceData.available) {
+                Object.keys(voiceData.available).forEach(voiceType => {
+                    const languages = voiceData.available[voiceType];
                     
-                    voiceData.available['en-US'][voiceType].forEach(voiceName => {
-                        const option1 = document.createElement('option');
-                        option1.value = voiceName;
-                        option1.textContent = voiceName;
-                        group1.appendChild(option1);
-                        
-                        const option2 = document.createElement('option');
-                        option2.value = voiceName;
-                        option2.textContent = voiceName;
-                        group2.appendChild(option2);
+                    // Add optgroup for each voice type
+                    const group1 = document.createElement('optgroup');
+                    group1.label = voiceType.replace('_', ' ').toUpperCase();
+                    const group2 = document.createElement('optgroup');
+                    group2.label = voiceType.replace('_', ' ').toUpperCase();
+                    
+                    // Get voices for all languages
+                    Object.keys(languages).forEach(lang => {
+                        languages[lang].forEach(voiceName => {
+                            const option1 = document.createElement('option');
+                            option1.value = voiceName;
+                            option1.textContent = voiceName;
+                            group1.appendChild(option1);
+                            
+                            const option2 = document.createElement('option');
+                            option2.value = voiceName;
+                            option2.textContent = voiceName;
+                            group2.appendChild(option2);
+                        });
                     });
                     
                     select1.appendChild(group1);
                     select2.appendChild(group2);
                 });
+                
+                // Set current voices if available
+                if (voiceData.current && voiceData.current.speakers) {
+                    select1.value = voiceData.current.speakers.StudentA.name;
+                    select2.value = voiceData.current.speakers.StudentB.name;
+                }
             }
         }
 
         async function generatePreview(voice, text, label) {
-            // This would generate a preview for each voice
-            console.log(`Generating preview for ${label}: ${voice}`);
+            try {
+                const response = await fetch('/api/v1/tts/preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        voice: voice,
+                        text: text,
+                        speakingRate: 1.0,
+                        pitch: 0,
+                        volumeGain: 0
+                    })
+                });
+                
+                if (response.ok) {
+                    const audioBlob = await response.blob();
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    
+                    // Create or update audio element for this speaker
+                    const audioId = `preview${label.replace(' ', '')}Audio`;
+                    let audioElement = document.getElementById(audioId);
+                    
+                    if (!audioElement) {
+                        audioElement = document.createElement('audio');
+                        audioElement.id = audioId;
+                        audioElement.controls = true;
+                        audioElement.style.width = '100%';
+                        audioElement.style.marginTop = '10px';
+                        document.getElementById('configResults').appendChild(audioElement);
+                    }
+                    
+                    audioElement.src = audioUrl;
+                    audioElement.play();
+                    console.log(`✅ Preview generated for ${label}: ${voice}`);
+                } else {
+                    throw new Error(`Preview failed with status ${response.status}`);
+                }
+            } catch (error) {
+                console.error(`Failed to generate preview for ${label}:`, error);
+                throw error;
+            }
         }
 
         function showResult(elementId, message, type) {

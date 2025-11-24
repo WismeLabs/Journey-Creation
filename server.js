@@ -6,6 +6,7 @@ const path = require('path');
 const winston = require('winston');
 const { v4: uuidv4 } = require('uuid');
 const fetch = require('node-fetch'); // For LLM service calls
+const axios = require('axios'); // For HTTP requests
 
 // Import services
 const ingestService = require('./services/ingest/pdf_processor');
@@ -14,11 +15,36 @@ const plannerService = require('./services/planner/episode_planner');
 const validationService = require('./services/validation/validator');
 const ttsService = require('./services/tts/tts_orchestrator');
 
+// In-memory log storage for web UI (last 500 logs)
+const frontendLogs = [];
+const MAX_FRONTEND_LOGS = 500;
+
+// Custom format to capture logs in memory
+const memoryFormat = winston.format((info) => {
+  // Store log entry for web UI
+  frontendLogs.push({
+    timestamp: info.timestamp || new Date().toISOString(),
+    level: info.level ? info.level.toUpperCase() : 'INFO',
+    source: 'frontend',
+    message: info.message || JSON.stringify(info),
+    module: 'server.js',
+    funcName: 'unknown'
+  });
+
+  // Keep only last 500 logs
+  if (frontendLogs.length > MAX_FRONTEND_LOGS) {
+    frontendLogs.shift();
+  }
+
+  return info;
+});
+
 // Configure logger
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
+    memoryFormat(),
     winston.format.json()
   ),
   transports: [
@@ -912,18 +938,74 @@ app.put('/api/v1/tts/config', async (req, res) => {
 });
 
 /**
+ * GET /api/v1/tts/voices
+ * Get available voices from TTS service
+ */
+app.get('/api/v1/tts/voices', async (req, res) => {
+  try {
+    const voices = ttsService.getAvailableVoices();
+    const currentConfig = ttsService.voiceConfig;
+    
+    res.json({
+      available: voices,
+      current: {
+        language: currentConfig.language || 'en-US',
+        voiceType: currentConfig.voiceType || 'chirp3_hd',
+        speakers: {
+          StudentA: currentConfig.StudentA,
+          StudentB: currentConfig.StudentB
+        }
+      },
+      languages: ['en-US', 'en-IN', 'en-GB', 'hi-IN'],
+      voiceTypes: ['chirp3_hd', 'neural2', 'wavenet', 'standard']
+    });
+  } catch (error) {
+    logger.error('Failed to load voices:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/v1/logs
- * Proxy to backend for system logs
+ * Merge frontend and backend logs for unified view
  */
 app.get('/api/v1/logs', async (req, res) => {
   try {
-    const limit = req.query.limit || 500;
-    const response = await fetch(`http://localhost:8000/api/v1/logs?limit=${limit}`);
-    const data = await response.json();
-    res.json(data);
+    const limit = parseInt(req.query.limit) || 500;
+    
+    // Fetch backend logs (optional)
+    let backendLogs = [];
+    let backendAvailable = false;
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/logs?limit=${limit}`, {
+        signal: AbortSignal.timeout(1000) // 1 second timeout
+      });
+      if (response.ok) {
+        const data = await response.json();
+        backendLogs = data.logs || [];
+        backendAvailable = true;
+      }
+    } catch (backendError) {
+      // Backend not available, continue with frontend logs only
+    }
+    
+    // Merge frontend and backend logs, sort by timestamp desc
+    const allLogs = [...frontendLogs, ...backendLogs]
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, limit);
+    
+    res.json({ 
+      logs: allLogs,
+      total: allLogs.length,
+      sources: {
+        frontend: frontendLogs.length,
+        backend: backendLogs.length
+      },
+      backendAvailable
+    });
   } catch (error) {
-    logger.error('Failed to fetch logs from backend:', error);
-    res.status(500).json({ logs: [], total: 0, error: error.message });
+    logger.error('Failed to fetch logs:', error);
+    res.status(500).json({ logs: frontendLogs.slice(-100), total: frontendLogs.length, error: error.message });
   }
 });
 
@@ -933,12 +1015,23 @@ app.get('/api/v1/logs', async (req, res) => {
  */
 app.get('/api/v1/jobs', async (req, res) => {
   try {
-    const response = await fetch('http://localhost:8000/api/v1/jobs');
+    const response = await fetch('http://localhost:8000/api/v1/jobs', {
+      signal: AbortSignal.timeout(1000) // 1 second timeout
+    });
+    if (!response.ok) {
+      throw new Error('Backend not available');
+    }
     const data = await response.json();
     res.json(data);
   } catch (error) {
-    logger.error('Failed to fetch jobs from backend:', error);
-    res.status(500).json({ jobs: [], active_count: 0, history: [], error: error.message });
+    // Backend not available, return empty jobs list
+    res.json({ 
+      jobs: [], 
+      active_count: 0,
+      history: [],
+      backendAvailable: false,
+      message: 'Backend service not running. Start with: cd hf_backend && python main.py'
+    });
   }
 });
 
@@ -951,58 +1044,46 @@ app.post('/api/v1/tts/test', async (req, res) => {
     const { config, testScript } = req.body;
     
     logger.info('Generating test audio with voice configuration');
+    logger.info(`Received testScript type: ${typeof testScript}, isArray: ${Array.isArray(testScript)}`);
+    logger.info(`Test script content: ${JSON.stringify(testScript)}`);
     
-    // Create test audio directory
-    const testAudioPath = path.join(__dirname, 'outputs', 'test_audio');
-    const fs = require('fs');
-    if (!fs.existsSync(testAudioPath)) {
-      fs.mkdirSync(testAudioPath, { recursive: true });
+    // Validate testScript - wrap single object in array if needed
+    let scriptArray = testScript;
+    if (!Array.isArray(testScript)) {
+      if (testScript && typeof testScript === 'object' && testScript.speaker && testScript.text) {
+        scriptArray = [testScript];
+        logger.info('Wrapped single object in array');
+      } else {
+        throw new Error('Invalid testScript: must be an array of {speaker, text} objects or a single {speaker, text} object');
+      }
     }
     
-    // Generate test audio using TTS orchestrator with proper episode format
-    const testEpisodeData = {
-      episode_index: 0,
-      title: 'Voice Test',
-      script: testScript,
-      metadata: {
-        generated_at: new Date().toISOString()
-      }
-    };
+    if (scriptArray.length === 0) {
+      throw new Error('Invalid testScript: array is empty');
+    }
     
-    const testMetadata = {
-      chapter_id: 'voice_test',
-      grade_band: '5',
-      subject: 'Test',
-      ...config
-    };
+    // Use the dedicated test audio generation method
+    const result = await ttsService.generateTestAudio(scriptArray);
     
-    try {
-      const result = await ttsService.generateEpisodeAudio(
-        testEpisodeData,
-        'test',
-        0,
-        testMetadata
-      );
+    logger.info(`Test audio result: ${JSON.stringify({ success: result.success, hasPath: !!result.audioPath })}`);
+    
+    if (result.success && result.audioPath) {
+      // Get relative URL for the audio file
+      const relativePath = path.relative(__dirname, result.audioPath);
+      const audioUrl = '/' + relativePath.replace(/\\/g, '/');
       
-      if (result.success && result.audioPath) {
-        // Get relative URL for the audio file
-        const relativePath = path.relative(__dirname, result.audioPath);
-        const audioUrl = '/' + relativePath.replace(/\\/g, '/');
-        
-        logger.info(`Test audio generated: ${audioUrl}`);
-        
-        res.json({ 
-          success: true, 
-          message: 'Test audio generated successfully',
-          audio_url: audioUrl,
-          file_path: result.audioPath
-        });
-      } else {
-        throw new Error('Audio generation returned no file');
-      }
-    } catch (audioError) {
-      logger.error('TTS generation error:', audioError);
-      throw audioError;
+      logger.info(`✅ Test audio generated: ${audioUrl}`);
+      
+      res.json({ 
+        success: true, 
+        message: 'Test audio generated successfully',
+        audio_url: audioUrl,
+        file_path: result.audioPath,
+        voice_config: result.voiceConfig,
+        audio_config: result.audioConfig
+      });
+    } else {
+      throw new Error('Audio generation returned no file');
     }
     
   } catch (error) {
@@ -1010,6 +1091,72 @@ app.post('/api/v1/tts/test', async (req, res) => {
     res.status(500).json({ 
       error: error.message,
       success: false 
+    });
+  }
+});
+
+/**
+ * POST /api/v1/tts/preview
+ * Generate a simple voice preview (returns audio blob)
+ */
+app.post('/api/v1/tts/preview', async (req, res) => {
+  try {
+    const { voice, text, speakingRate, pitch, volumeGain } = req.body;
+    
+    if (!voice || !text) {
+      return res.status(400).json({ error: 'Voice and text are required' });
+    }
+    
+    logger.info(`Generating voice preview for: ${voice}`);
+    
+    // Parse voice name to get language code (e.g., "en-US-Neural2-D" -> "en-US")
+    const languageCode = voice.split('-').slice(0, 2).join('-');
+    
+    // Determine SSML gender from voice name patterns
+    let ssmlGender = 'NEUTRAL';
+    if (voice.includes('-A') || voice.includes('-C') || voice.includes('Aoede') || voice.includes('Autonoe')) {
+      ssmlGender = 'FEMALE';
+    } else if (voice.includes('-B') || voice.includes('-D') || voice.includes('Achird') || voice.includes('Achernar')) {
+      ssmlGender = 'MALE';
+    }
+    
+    const request = {
+      input: { text: text },
+      voice: {
+        languageCode: languageCode,
+        name: voice,
+        ssmlGender: ssmlGender
+      },
+      audioConfig: {
+        audioEncoding: 'MP3',
+        sampleRateHertz: 44100,
+        speakingRate: speakingRate || 1.0,
+        pitch: pitch || 0,
+        volumeGainDb: volumeGain || 0
+      }
+    };
+    
+    // Get the TTS client directly
+    const TextToSpeechClient = require('@google-cloud/text-to-speech').TextToSpeechClient;
+    const ttsClient = new TextToSpeechClient({
+      apiKey: process.env.GOOGLE_TTS_API_KEY
+    });
+    
+    const [response] = await ttsClient.synthesizeSpeech(request);
+    
+    logger.info(`✅ Voice preview generated: ${voice}`);
+    
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': response.audioContent.length
+    });
+    
+    res.send(response.audioContent);
+    
+  } catch (error) {
+    logger.error('Preview generation failed:', error);
+    res.status(500).json({ 
+      error: error.message
     });
   }
 });
@@ -2095,7 +2242,7 @@ app.listen(PORT, () => {
   console.log('\n🌐 TEACHER INTERFACES:');
   console.log(`   📤 Upload:       http://localhost:${PORT}/teacher/upload.html`);
   console.log(`   🎤 Voice Config: http://localhost:${PORT}/teacher/voice-config.html`);
-  console.log(`   🧪 Voice Test:   http://localhost:${PORT}/teacher/voice-test.html`);
+  console.log(`   🎧 Preview Voices: https://cloud.google.com/text-to-speech/docs/voices`);
   console.log(`   📝 Review:       http://localhost:${PORT}/teacher/review.html`);
   console.log(`   📊 System Logs:  http://localhost:${PORT}/teacher/logs.html`);
   console.log('\n💡 Backend API:     http://127.0.0.1:8000');

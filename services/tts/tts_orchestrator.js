@@ -38,8 +38,9 @@ class TTSOrchestrator {
       }
     };
 
-    // FFmpeg path - update for your system
+    // FFmpeg and FFprobe paths - update for your system
     this.ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
+    this.ffprobePath = process.env.FFPROBE_PATH || (this.ffmpegPath.includes('ffmpeg.exe') ? this.ffmpegPath.replace('ffmpeg.exe', 'ffprobe.exe') : 'ffprobe');
     
     // Initialize voice and audio configurations
     this.voiceConfig = this.getOptimalVoiceConfig();
@@ -287,6 +288,90 @@ class TTSOrchestrator {
       } else {
         throw new Error(`TTS configuration error: ${error.message}`);
       }
+    }
+  }
+
+  /**
+   * Generate simple test audio (not a full episode)
+   */
+  async generateTestAudio(testScript, outputDir = null) {
+    try {
+      if (!this.googleTTSClient) {
+        throw new Error('Google TTS not initialized');
+      }
+
+      // Create output directory for test audio
+      const testDir = outputDir || path.join(__dirname, '../../outputs/test_audio');
+      if (!fs.existsSync(testDir)) {
+        fs.mkdirSync(testDir, { recursive: true });
+      }
+
+      const timestamp = Date.now();
+      const segments = [];
+
+      // Generate audio for each segment
+      for (let i = 0; i < testScript.length; i++) {
+        const segment = testScript[i];
+        const voiceConfig = this.voiceConfig[segment.speaker] || this.voiceConfig.StudentA;
+        const filename = `test_${timestamp}_${i}.mp3`;
+        const outputPath = path.join(testDir, filename);
+
+        const request = {
+          input: { text: segment.text },
+          voice: {
+            languageCode: voiceConfig.languageCode,
+            name: voiceConfig.name,
+            ssmlGender: voiceConfig.ssmlGender
+          },
+          audioConfig: {
+            audioEncoding: this.audioConfig.audioEncoding,
+            sampleRateHertz: this.audioConfig.sampleRateHertz,
+            speakingRate: this.audioConfig.speakingRate,
+            pitch: this.audioConfig.pitch,
+            volumeGainDb: this.audioConfig.volumeGainDb,
+            effectsProfileId: this.audioConfig.effectsProfileId ? [this.audioConfig.effectsProfileId] : []
+          }
+        };
+
+        const [response] = await this.googleTTSClient.synthesizeSpeech(request);
+        fs.writeFileSync(outputPath, response.audioContent, 'binary');
+        logger.info(`✅ Test audio segment saved: ${filename}`);
+        
+        segments.push(outputPath);
+      }
+
+      // Merge segments if multiple
+      if (segments.length > 1) {
+        const finalPath = path.join(testDir, `test_${timestamp}_final.mp3`);
+        const mergeListPath = path.join(testDir, `merge_list_${timestamp}.txt`);
+        const mergeList = segments.map(s => `file '${s}'`).join('\n');
+        fs.writeFileSync(mergeListPath, mergeList);
+
+        execSync(`"${this.ffmpegPath}" -f concat -safe 0 -i "${mergeListPath}" -c copy -y "${finalPath}"`);
+        
+        // Clean up individual segments and merge list
+        segments.forEach(s => fs.unlinkSync(s));
+        fs.unlinkSync(mergeListPath);
+        
+        logger.info(`✅ Test audio merged: ${finalPath}`);
+        return {
+          success: true,
+          audioPath: finalPath,
+          voiceConfig: this.voiceConfig,
+          audioConfig: this.audioConfig
+        };
+      } else {
+        return {
+          success: true,
+          audioPath: segments[0],
+          voiceConfig: this.voiceConfig,
+          audioConfig: this.audioConfig
+        };
+      }
+
+    } catch (error) {
+      logger.error(`Test audio generation failed: ${error.message}`);
+      throw error;
     }
   }
 
@@ -868,7 +953,7 @@ class TTSOrchestrator {
    */
   async getAudioDuration(audioPath) {
     try {
-      const cmd = `${this.ffmpegPath.replace('ffmpeg', 'ffprobe')} -v quiet -show_entries format=duration -of csv=p=0 "${audioPath}"`;
+      const cmd = `"${this.ffprobePath}" -v quiet -show_entries format=duration -of csv=p=0 "${audioPath}"`;
       const output = execSync(cmd, { encoding: 'utf8' });
       return parseFloat(output.trim());
     } catch (error) {

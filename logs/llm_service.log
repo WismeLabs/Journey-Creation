@@ -1503,3 +1503,24 @@ metadata {
 message: "API key not valid. Please pass a valid API key."
 ]
 2025-11-22 21:18:51,077 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-24 15:16:08,973 - __main__ - INFO - [AUTO MODE] Primary: OpenAI GPT-4o | Fallback: Gemini 2.0 Flash
+2025-11-24 15:16:09,206 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-24 15:16:10,246 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-24 15:16:10,246 - __main__ - INFO - [OK] All systems operational
+2025-11-24 15:23:50,769 - __main__ - INFO - [AUTO MODE] Primary: OpenAI GPT-4o | Fallback: Gemini 2.0 Flash
+2025-11-24 15:23:51,006 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-24 15:23:51,963 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-24 15:23:51,963 - __main__ - INFO - [OK] All systems operational
+2025-11-24 15:36:01,380 - main - INFO - [AUTO MODE] Primary: OpenAI GPT-4o | Fallback: Gemini 2.0 Flash
+2025-11-24 15:36:01,545 - main - INFO - [OK] OpenAI API configured successfully
+2025-11-24 15:36:02,509 - main - INFO - [OK] Gemini API configured and validated successfully
+2025-11-24 15:36:02,510 - main - INFO - [OK] All systems operational
+2025-11-24 15:36:22,140 - main - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-24 15:36:33,183 - main - INFO - [AUTO MODE] Primary: OpenAI GPT-4o | Fallback: Gemini 2.0 Flash
+2025-11-24 15:36:33,333 - main - INFO - [OK] OpenAI API configured successfully
+2025-11-24 15:36:34,295 - main - INFO - [OK] Gemini API configured and validated successfully
+2025-11-24 15:36:34,295 - main - INFO - [OK] All systems operational
+2025-11-24 15:49:30,831 - __main__ - INFO - [AUTO MODE] Primary: OpenAI GPT-4o | Fallback: Gemini 2.0 Flash
+2025-11-24 15:49:30,977 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-24 15:49:32,016 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-24 15:49:32,017 - __main__ - INFO - [OK] All systems operational

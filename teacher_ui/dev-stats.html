@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Developer Stats - Journey Creation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #1e3c72;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card h3 {
+            color: #1e3c72;
+            margin-bottom: 15px;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2a5298;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .performance-indicator {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .enabled {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .disabled {
+            background: #f44336;
+            color: white;
+        }
+        
+        .cache-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .cache-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .cache-item {
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            border-left: 4px solid #2a5298;
+        }
+        
+        .cache-item strong {
+            display: block;
+            color: #1e3c72;
+            margin-bottom: 5px;
+        }
+        
+        .btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #d32f2f;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .refresh-info {
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        .success {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .error {
+            background: #f44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Developer Performance Dashboard</h1>
+            <p class="subtitle">Real-time optimization metrics for Journey Creation pipeline</p>
+        </header>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>⚡ Parallel Processing</h3>
+                <div class="stat-value" id="parallel-status">—</div>
+                <div class="stat-label">Episodes generated concurrently</div>
+                <span class="performance-indicator enabled" id="parallel-indicator">ENABLED</span>
+            </div>
+            
+            <div class="stat-card">
+                <h3>💾 LLM Cache</h3>
+                <div class="stat-value" id="cache-files">0</div>
+                <div class="stat-label">Cached responses</div>
+                <span class="performance-indicator" id="cache-indicator">—</span>
+            </div>
+            
+            <div class="stat-card">
+                <h3>💰 Cache Savings</h3>
+                <div class="stat-value" id="cache-savings">$0.00</div>
+                <div class="stat-label">Estimated cost saved</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>📦 Cache Size</h3>
+                <div class="stat-value" id="cache-size">0 MB</div>
+                <div class="stat-label">Disk usage</div>
+            </div>
+        </div>
+        
+        <div class="cache-section">
+            <h3>🗂️ Cache Management</h3>
+            <div class="cache-grid">
+                <div class="cache-item">
+                    <strong>TTL (Time to Live)</strong>
+                    <span id="cache-ttl">7 days</span>
+                </div>
+                <div class="cache-item">
+                    <strong>Oldest Cache</strong>
+                    <span id="oldest-cache">—</span>
+                </div>
+                <div class="cache-item">
+                    <strong>Newest Cache</strong>
+                    <span id="newest-cache">—</span>
+                </div>
+                <div class="cache-item">
+                    <strong>Total Jobs Processed</strong>
+                    <span id="total-jobs">0</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button class="btn" onclick="clearCache()">🗑️ Clear All Cache</button>
+            </div>
+            
+            <div id="alert-container"></div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>✅ Success Rate</h3>
+                <div class="stat-value" id="success-rate">—</div>
+                <div class="stat-label">Jobs completed successfully</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>⏱️ Avg Processing Time</h3>
+                <div class="stat-value" id="avg-time">—</div>
+                <div class="stat-label">Per chapter (seconds)</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>📊 Queue Length</h3>
+                <div class="stat-value" id="queue-length">0</div>
+                <div class="stat-label">Pending jobs</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>⏰ Uptime</h3>
+                <div class="stat-value" id="uptime">—</div>
+                <div class="stat-label">Server running time</div>
+            </div>
+        </div>
+        
+        <div class="refresh-info">
+            📡 Auto-refreshing every 3 seconds | Last update: <span id="last-update">—</span>
+        </div>
+    </div>
+    
+    <script>
+        async function loadStats() {
+            try {
+                // Load metrics
+                const metricsRes = await fetch('/api/v1/metrics');
+                const metrics = await metricsRes.json();
+                
+                // Load cache stats
+                const cacheRes = await fetch('/api/v1/cache/stats');
+                const cache = await cacheRes.json();
+                
+                // Update parallel processing
+                document.getElementById('parallel-status').textContent = 
+                    metrics.performance.parallel_episodes ? '3' : 'Disabled';
+                document.getElementById('parallel-indicator').textContent = 
+                    metrics.performance.parallel_episodes ? 'ENABLED (3x concurrent)' : 'DISABLED';
+                document.getElementById('parallel-indicator').className = 
+                    'performance-indicator ' + (metrics.performance.parallel_episodes ? 'enabled' : 'disabled');
+                
+                // Update cache stats
+                document.getElementById('cache-files').textContent = cache.files;
+                document.getElementById('cache-savings').textContent = cache.cache_hits_saved_cost;
+                document.getElementById('cache-size').textContent = cache.total_size_mb + ' MB';
+                document.getElementById('cache-indicator').textContent = cache.enabled ? 'ENABLED' : 'DISABLED';
+                document.getElementById('cache-indicator').className = 
+                    'performance-indicator ' + (cache.enabled ? 'enabled' : 'disabled');
+                
+                // Update cache details
+                document.getElementById('oldest-cache').textContent = 
+                    cache.oldest_cache ? `${cache.oldest_cache.age_hours}h ago` : '—';
+                document.getElementById('newest-cache').textContent = 
+                    cache.newest_cache ? `${cache.newest_cache.age_hours}h ago` : '—';
+                
+                // Update general stats
+                document.getElementById('total-jobs').textContent = metrics.total_jobs;
+                document.getElementById('success-rate').textContent = 
+                    (metrics.success_rate * 100).toFixed(1) + '%';
+                document.getElementById('avg-time').textContent = 
+                    (metrics.average_processing_time_ms / 1000).toFixed(1) + 's';
+                document.getElementById('queue-length').textContent = metrics.queue_length;
+                document.getElementById('uptime').textContent = formatUptime(metrics.uptime_seconds);
+                
+                // Update last refresh time
+                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+                
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+        
+        async function clearCache() {
+            if (!confirm('Clear all cached LLM responses? This will increase API costs on next run.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/v1/cache/clear', { method: 'DELETE' });
+                const result = await response.json();
+                
+                showAlert(`✅ ${result.message} (${result.deleted_files} files deleted)`, 'success');
+                loadStats();
+            } catch (error) {
+                showAlert('❌ Failed to clear cache: ' + error.message, 'error');
+            }
+        }
+        
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            container.innerHTML = `<div class="alert ${type}">${message}</div>`;
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+        
+        function formatUptime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${secs}s`;
+            } else {
+                return `${secs}s`;
+            }
+        }
+        
+        // Load stats immediately
+        loadStats();
+        
+        // Auto-refresh every 3 seconds
+        setInterval(loadStats, 3000);
+    </script>
+</body>
+</html>

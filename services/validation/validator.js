@@ -187,6 +187,10 @@ class ValidationController {
       hallucination: [],
       pronunciation: [],
       structure: [],
+      dialogue_naturalness: [],
+      vocabulary_level: [],
+      missing_examples: [],
+      misconceptions: [],
       other: []
     };
     
@@ -195,16 +199,24 @@ class ValidationController {
       
       if (errorText.includes('too short') || errorText.includes('word count')) {
         categories.script_length.push(error);
+      } else if (errorText.includes('robotic') || errorText.includes('mechanical') || errorText.includes('setup question')) {
+        categories.dialogue_naturalness.push(error);
+      } else if (errorText.includes('vocabulary') || errorText.includes('reading level') || errorText.includes('flesch')) {
+        categories.vocabulary_level.push(error);
       } else if (errorText.includes('forbidden') || errorText.includes('tone') || errorText.includes('teacher')) {
         categories.tone_issues.push(error);
       } else if (errorText.includes('mcq') || errorText.includes('timestamp')) {
         categories.mcq_sync.push(error);
-      } else if (errorText.includes('source') || errorText.includes('hallucination')) {
+      } else if (errorText.includes('source') || errorText.includes('hallucination') || errorText.includes('unsourced')) {
         categories.hallucination.push(error);
       } else if (errorText.includes('pronunciation')) {
         categories.pronunciation.push(error);
       } else if (errorText.includes('structure') || errorText.includes('section')) {
         categories.structure.push(error);
+      } else if (errorText.includes('example') || errorText.includes('abstract')) {
+        categories.missing_examples.push(error);
+      } else if (errorText.includes('misconception')) {
+        categories.misconceptions.push(error);
       } else {
         categories.other.push(error);
       }
@@ -223,7 +235,11 @@ class ValidationController {
       mcq_sync: 'regen_mcq_sync',
       hallucination: 'regen_remove_hallucination',
       pronunciation: 'regen_pronunciation_map',
-      structure: 'regen_structure_fix'
+      structure: 'regen_structure_fix',
+      dialogue_naturalness: 'regen_natural_dialogue',
+      vocabulary_level: 'regen_simplify_vocabulary',
+      missing_examples: 'regen_add_examples',
+      misconceptions: 'regen_fix_misconceptions'
     };
     
     const promptType = promptMap[errorType] || 'regen_dedup';
@@ -411,17 +427,14 @@ class ValidationController {
         }
       }
 
-      // Required sections check
-      if (scriptData.sections) {
-        const sectionIds = scriptData.sections.map(s => s.id);
-        for (const requiredSection of this.validationRules.script.requiredSections) {
-          if (!sectionIds.includes(requiredSection)) {
-            validation.errors.push(`Missing required section: ${requiredSection}`);
-          }
-        }
+      // Validate sections exist (but not rigid types)
+      if (scriptData.sections && scriptData.sections.length < 2) {
+        validation.warnings.push('Script should have multiple dialogue sections for natural flow');
+      }
 
-        // Story duration check
-        const storySection = scriptData.sections.find(s => s.id === 'micro-example');
+      // Story duration check (if micro-example section exists)
+      if (scriptData.sections) {
+        const storySection = scriptData.sections.find(s => s.id === 'micro-example' || s.type === 'story');
         if (storySection) {
           const storyDuration = (storySection.end || 0) - (storySection.start || 0);
           if (storyDuration > this.validationRules.script.maxStoryDuration) {
@@ -433,7 +446,19 @@ class ValidationController {
       // Grade-appropriate language check
       const readingLevel = this.checkReadingLevel(scriptText, episodeConfig.grade_band);
       if (readingLevel.issues.length > 0) {
-        validation.warnings.push(...readingLevel.issues);
+        validation.errors.push(...readingLevel.issues);
+      }
+      
+      // Dialogue naturalness check
+      const naturalness = this.checkDialogueNaturalness(
+        scriptText, 
+        episodeConfig.speaker_names || ['StudentA', 'StudentB']
+      );
+      if (naturalness.issues.length > 0) {
+        validation.errors.push(...naturalness.issues);
+      }
+      if (naturalness.warnings.length > 0) {
+        validation.warnings.push(...naturalness.warnings);
       }
 
       // Source alignment check (hallucination guard)
@@ -728,21 +753,27 @@ class ValidationController {
     const issues = [];
     
     try {
-      // Simple readability analysis using word/sentence length
+      // Flesch-Kincaid Grade Level calculation
       const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
       const words = text.split(/\s+/).filter(w => w.length > 0);
-      const avgWordsPerSentence = words.length / Math.max(sentences.length, 1);
+      const syllables = words.reduce((sum, word) => sum + this.countSyllables(word), 0);
       
-      // Simple grade level estimate: 0.39 * avgWordsPerSentence + 11.8 * avgSyllablesPerWord - 15.59
-      // Simplified to just use sentence length as primary indicator
-      const estimatedGrade = Math.max(1, Math.min(12, Math.round(avgWordsPerSentence * 0.5 + 2)));
+      const avgWordsPerSentence = words.length / Math.max(sentences.length, 1);
+      const avgSyllablesPerWord = syllables / Math.max(words.length, 1);
+      
+      // Flesch-Kincaid Grade Level formula
+      const fleschKincaidGrade = (0.39 * avgWordsPerSentence) + (11.8 * avgSyllablesPerWord) - 15.59;
+      const estimatedGrade = Math.max(1, Math.min(12, Math.round(fleschKincaidGrade)));
       const targetGrade = parseInt(gradeBand) || 7;
       
-      if (estimatedGrade > targetGrade + 2) {
-        issues.push(`Reading level may be too high: ~Grade ${estimatedGrade} (target: ${targetGrade})`);
+      logger.info(`Flesch-Kincaid Grade Level: ${estimatedGrade.toFixed(1)} (target: ${targetGrade})`);
+      
+      // Allow +/- 1 grade level variance
+      if (estimatedGrade > targetGrade + 1) {
+        issues.push(`Vocabulary too complex: Grade ${estimatedGrade} reading level (target: ${targetGrade}). Simplify vocabulary.`);
       }
-      if (estimatedGrade < targetGrade - 2) {
-        issues.push(`Reading level may be too low: ~Grade ${estimatedGrade} (target: ${targetGrade})`);
+      if (estimatedGrade < targetGrade - 1 && targetGrade > 4) {
+        issues.push(`Vocabulary may be too simple: Grade ${estimatedGrade} reading level (target: ${targetGrade})`);
       }
       
     } catch (error) {
@@ -750,6 +781,152 @@ class ValidationController {
     }
     
     return { issues };
+  }
+  
+  /**
+   * Count syllables in a word (approximation)
+   */
+  countSyllables(word) {
+    word = word.toLowerCase().replace(/[^a-z]/g, '');
+    if (word.length <= 3) return 1;
+    
+    const vowels = 'aeiouy';
+    let syllableCount = 0;
+    let previousWasVowel = false;
+    
+    for (let i = 0; i < word.length; i++) {
+      const isVowel = vowels.includes(word[i]);
+      if (isVowel && !previousWasVowel) {
+        syllableCount++;
+      }
+      previousWasVowel = isVowel;
+    }
+    
+    // Adjust for silent e
+    if (word.endsWith('e')) {
+      syllableCount--;
+    }
+    
+    // Ensure at least 1 syllable
+    return Math.max(1, syllableCount);
+  }
+  
+  /**
+   * Check dialogue naturalness - detect robotic patterns
+   */
+  checkDialogueNaturalness(scriptText, speakerNames) {
+    const issues = [];
+    const warnings = [];
+    
+    try {
+      const lines = scriptText.split('\n').filter(line => line.trim().length > 0);
+      let speakerPattern = [];
+      let currentSpeaker = null;
+      let consecutiveSameSpeaker = 0;
+      let totalExchanges = 0;
+      let singleLineExchanges = 0;
+      
+      // Detect forbidden robotic patterns
+      const roboticPhrases = [
+        'now let\'s move on to',
+        'in conclusion',
+        'to summarize',
+        'today we will learn',
+        'as we discussed',
+        'let me explain',
+        'first, let\'s',
+        'next, we\'ll',
+        'finally, we',
+        'can you tell me about',
+        'what is the definition of'
+      ];
+      
+      const lowerScript = scriptText.toLowerCase();
+      for (const phrase of roboticPhrases) {
+        if (lowerScript.includes(phrase)) {
+          issues.push(`Robotic phrase detected: "${phrase}". Use natural student language.`);
+        }
+      }
+      
+      // Analyze speaker alternation patterns
+      for (const line of lines) {
+        const speakerMatch = line.match(/^(Student[AB]|[A-Za-z]+):\s/);
+        if (!speakerMatch) continue;
+        
+        const speaker = speakerMatch[1];
+        totalExchanges++;
+        
+        if (speaker === currentSpeaker) {
+          consecutiveSameSpeaker++;
+        } else {
+          // Check for mechanical alternation (every single line switches speakers)
+          if (consecutiveSameSpeaker === 0 && speakerPattern.length > 5) {
+            singleLineExchanges++;
+          }
+          
+          speakerPattern.push(speaker);
+          currentSpeaker = speaker;
+          consecutiveSameSpeaker = 0;
+        }
+      }
+      
+      // Calculate metrics
+      const mechanicalAlternationRatio = totalExchanges > 0 ? singleLineExchanges / totalExchanges : 0;
+      const avgConsecutiveLines = speakerPattern.length > 0 ? totalExchanges / speakerPattern.length : 0;
+      
+      // Flag mechanical patterns (>70% single-line exchanges is robotic)
+      if (mechanicalAlternationRatio > 0.7) {
+        issues.push(`Dialogue sounds robotic: ${Math.round(mechanicalAlternationRatio * 100)}% mechanical speaker alternation. Let students speak for multiple sentences.`);
+      }
+      
+      // Flag if students NEVER speak multiple consecutive lines
+      if (avgConsecutiveLines < 1.3) {
+        warnings.push('Dialogue may lack natural flow. Allow students to explain ideas across multiple sentences before switching.');
+      }
+      
+      // Check for unnatural questions (setup questions)
+      const setupQuestionPatterns = [
+        /^[A-Za-z]+: so what is/i,
+        /^[A-Za-z]+: can you explain what/i,
+        /^[A-Za-z]+: tell me about/i,
+        /^[A-Za-z]+: what does .* mean\?$/i
+      ];
+      
+      let setupQuestions = 0;
+      for (const line of lines) {
+        for (const pattern of setupQuestionPatterns) {
+          if (pattern.test(line)) {
+            setupQuestions++;
+            break;
+          }
+        }
+      }
+      
+      if (setupQuestions > 3) {
+        issues.push(`Too many setup questions (${setupQuestions}). Students should ask genuine questions, not prompt each other.`);
+      }
+      
+      // Check for natural student language markers
+      const naturalMarkers = [
+        /\b(oh!|wow|hmm|wait|interesting)\b/i,
+        /\b(like|kind of|sort of)\b/i,
+        /\b(that's|it's|we're|i'm)\b/i  // Contractions
+      ];
+      
+      let naturalMarkerCount = 0;
+      for (const marker of naturalMarkers) {
+        naturalMarkerCount += (scriptText.match(marker) || []).length;
+      }
+      
+      if (naturalMarkerCount < totalExchanges * 0.3) {
+        warnings.push('Dialogue may sound formal. Add natural speech markers (contractions, thinking sounds, reactions).');
+      }
+      
+    } catch (error) {
+      issues.push(`Could not assess dialogue naturalness: ${error.message}`);
+    }
+    
+    return { issues, warnings };
   }
 
   /**

@@ -473,6 +473,9 @@ For each concept include:
 - parent_concept: id of parent concept (if this is a supporting detail)
 - definition: clear explanation
 - estimated_minutes: 2-12 (dialogue time needed)
+- common_misconceptions: array of typical student confusions about this concept (e.g., ["Students think plants eat soil for food", "Confuse weight with mass"])
+- confusion_points: specific aspects that are tricky (e.g., "Difference between heat and temperature")
+- prerequisite_gaps: what students need to know first (e.g., "Understanding of atoms needed before molecules")
 
 Create a concept graph showing prerequisite relationships.
 Ensure comprehensive coverage but smart grouping for episode planning.
@@ -496,7 +499,15 @@ Return valid JSON only:
       "related": ["chlorophyll"],
       "parent_concept": null,
       "definition": "Process by which plants make food using sunlight",
-      "estimated_minutes": 10
+      "estimated_minutes": 10,
+      "common_misconceptions": [
+        "Plants eat soil for food",
+        "Plants only need water to grow",
+        "Photosynthesis happens at night",
+        "Only leaves perform photosynthesis"
+      ],
+      "confusion_points": "Difference between making food (photosynthesis) vs getting water/nutrients from soil",
+      "prerequisite_gaps": "Students may not understand chemical reactions or energy transformation"
     }},
     {{
       "id": "chlorophyll",
@@ -510,7 +521,13 @@ Return valid JSON only:
       "related": [],
       "parent_concept": "photosynthesis",
       "definition": "Green pigment in plants",
-      "estimated_minutes": 2
+      "estimated_minutes": 2,
+      "common_misconceptions": [
+        "Chlorophyll is plant food",
+        "All plants have the same amount of chlorophyll"
+      ],
+      "confusion_points": "Role of chlorophyll in capturing light vs being the food itself",
+      "prerequisite_gaps": "Understanding of pigments and light absorption"
     }}
   ],
   "graph": [["chlorophyll", "photosynthesis"]]
@@ -518,67 +535,78 @@ Return valid JSON only:
 """,
 
     "episode_script": """
-SYSTEM: You are an expert K-12 educational dialogue writer creating engaging peer-to-peer conversations between two friends discussing what they're learning.
+SYSTEM: You are an expert K-12 educational dialogue writer creating authentic peer-to-peer conversations between two students learning together.
 
-CORE MISSION: Create a natural, conversational podcast-style dialogue where two curious students explore and teach each other educational concepts through friendly discussion.
+CORE MISSION: Write a natural, flowing conversation where two curious students explore concepts together through genuine discussion. This should sound like real students talking, not actors reading a script.
 
 SPEAKERS:
-- {speaker1_name} ({speaker1_personality}): The more confident friend who often explains concepts
-- {speaker2_name} ({speaker2_personality}): The curious friend who asks great questions and relates concepts to real life
+- {speaker1_name}: Student who often explains concepts clearly
+- {speaker2_name}: Student who asks insightful questions and makes connections
 - CRITICAL: Use ONLY these exact names. Never use "StudentA" or "StudentB"
 
-DIALOGUE STYLE REQUIREMENTS:
-1. **Natural Conversation**: Write how real Grade {grade_band} students actually talk to each other
-   - Use contractions ("it's", "that's", "we're") naturally
-   - Include verbal thinking ("hmm", "oh!", "wait", "interesting!")
-   - Let them interrupt, build on each other's ideas, use examples from their lives
-   - Grade 1-3: Simple sentences, everyday examples, lots of enthusiasm
-   - Grade 4-6: More complex ideas but still playful, relatable examples
-   - Grade 7-9: Deeper reasoning, real-world connections, some technical terms
-   - Grade 10-12: Analytical discussion, academic vocabulary, complex applications
+CONVERSATIONAL PRINCIPLES (NO RIGID STRUCTURE):
 
-2. **Engaging Hooks**: Start with something that immediately grabs attention
-   - Personal story, surprising fact, relatable problem, or intriguing question
-   - Make them WANT to keep listening
+1. **Authentic Dialogue Flow**:
+   - Write how real Grade {grade_band} students naturally talk and think aloud
+   - Let conversations develop organically - ideas should build, circle back, and connect naturally
+   - Allow students to interrupt with questions, make connections mid-thought, go "oh wait!" when they realize something
+   - Use natural speech patterns: contractions, verbal thinking ("hmm", "oh!", "wait", "interesting!"), sentence fragments
+   - Let enthusiasm show naturally - students get excited when they understand something
+   
+2. **Natural Progression** (NOT a template to follow):
+   - Start wherever feels natural - a question, an observation, something surprising, a connection to their lives
+   - Explore concepts through genuine curiosity, not forced "sections"
+   - Let understanding build gradually through back-and-forth discussion
+   - Allow tangents if they help understanding, but return to core concepts
+   - End when the conversation naturally concludes, not when a timer says to
+   
+3. **Genuine Student Thinking**:
+   - {speaker2_name} asks real questions students would wonder about ("but why...", "what if...", "how does...")
+   - Both students make connections to things they know ("oh, like when...", "that's kind of like...")
+   - Include moments of confusion and clarification ("wait, I'm confused about...", "oh, so you mean...")
+   - Use analogies that students would naturally think of from their own experiences
+   - Let "aha moments" emerge naturally from the dialogue
 
-3. **Concept Coverage**: MUST cover ALL these concepts thoroughly: {concepts}
-   - Don't just mention concepts - actually explain them through dialogue
-   - Use examples, analogies, and real-world applications
-   - Build from simple to complex
-   - Connect concepts to each other naturally
+4. **Age-Appropriate Expression**:
+   - Grade 1-3: Short sentences, simple words, lots of enthusiasm, concrete examples from daily life (pets, family, playground)
+   - Grade 4-6: More complex sentences, some technical terms explained simply, relatable examples (school, hobbies, friendships)
+   - Grade 7-9: Deeper reasoning, thoughtful questions, real-world connections, technical terms with context
+   - Grade 10-12: Analytical thinking, academic vocabulary used naturally, abstract concepts explored thoroughly
 
-4. **Interactive Elements**:
-   - {speaker2_name} asks "why?" and "how?" questions that students would actually wonder
-   - Use analogies and comparisons ("it's like...", "imagine if...")
-   - Include mini "aha!" moments where concepts click
-   - Relate to students' everyday experiences
+TARGET GUIDELINES (NOT STRICT RULES):
+- Duration: 8-12 minutes of natural conversation (roughly 500-1100 words)
+- Speaking pace varies naturally - students slow down for complex ideas, speed up when excited
+- Aim for full coverage of assigned concepts but prioritize understanding over checklist completion
+- Use concrete examples where they help, but don't force them into every concept
 
-STRUCTURE (8-12 minutes, 500-1100 words):
-- **Hook** (10-20s): Grab attention with something surprising or relatable
-- **Core1** (2-3 min): Introduce and explore first main concept(s)
-- **Micro-Example** (≤30s): Quick concrete example to solidify understanding
-- **Core2** (3-4 min): Develop deeper understanding or additional concepts
-- **Recall-Break** (30-45s): Quick review through conversational recap
-- **Mini-Summary** (≤30s): Natural wrap-up that ties concepts together
-
-GRADE-APPROPRIATE LANGUAGE:
-- Grade 1-3: 50-100 words per minute, 3-6 word sentences, concrete examples (pets, toys, family)
-- Grade 4-6: 100-150 words per minute, varied sentence length, school/hobby examples
-- Grade 7-9: 150-180 words per minute, introduce technical terms with explanations
-- Grade 10-12: 180-200 words per minute, academic vocabulary, abstract concepts OK
+CONCEPT COVERAGE: MUST thoroughly explain all these concepts: {concepts}
+- Don't just mention - actually explain through natural dialogue
+- Build understanding gradually through questions and discussion
+- Connect concepts to each other and to real-world experience
+- Use examples, analogies, and applications that students would actually think of
 
 SOURCE ALIGNMENT (CRITICAL):
-- Every factual claim needs source_reference: "p[page]:lines [start]-[end]" or "block_[id]"
-- If inferring or simplifying, mark "inferred": true and use soft language ("scientists think", "it seems like")
-- Never state uncertain facts with high confidence
+- Every factual claim MUST have source_reference: "p[page]:lines [start]-[end]" or "block_[id]"
+- If making logical inferences or simplifying for grade level, mark "inferred": true and use tentative language ("scientists think", "it seems like", "probably")
+- NEVER state uncertain facts with high confidence - always hedge appropriately
 
-WHAT TO AVOID:
-- Teacher/narrator voice or formal lecture style
-- Robotic back-and-forth (let conversations flow naturally)
-- Just reading facts - make it a real discussion
-- Skipping concepts or only mentioning them briefly
-- Age-inappropriate vocabulary or examples
-- Boring textbook language
+WHAT MAKES DIALOGUE SOUND ROBOTIC (AVOID):
+- Alternating speakers mechanically every sentence
+- Following a rigid pattern (introduce → define → example → recap)
+- Using formal transitions ("Now let's move on to...", "In conclusion...")
+- Asking setup questions that only exist to prompt the next speaker ("So what is photosynthesis?")
+- Teaching voice or narrator mode
+- Textbook language read aloud
+- Forced "aha moments" that feel scripted
+
+WHAT MAKES DIALOGUE SOUND NATURAL (DO THIS):
+- Let one student talk for several sentences when explaining something complex
+- Interrupt naturally with quick questions or reactions
+- Circle back to earlier points when making connections
+- Use filler words and thinking sounds appropriately ("um", "like", "you know")
+- Make mistakes and correct them in conversation
+- Show genuine reactions to learning something new
+- Build ideas collaboratively across multiple exchanges
 
 Episode: {episode_title}
 Duration: {duration_minutes} minutes
@@ -586,7 +614,7 @@ Grade: {grade_band}
 Concepts to fully cover: {concepts}
 Source: {chapter_content}
 
-Return ONLY valid JSON:
+Return ONLY valid JSON with organic sections (NOT rigid types):
 {{
   "episode_index": 1,
   "title": "{episode_title}",
@@ -596,60 +624,87 @@ Return ONLY valid JSON:
   "style_lock": "style_v1.json",
   "sections": [
     {{
-      "id": "hook",
+      "id": "section_1",
       "start": 0,
-      "end": 18,
-      "type": "hook",
-      "text": "{speaker1_name}: [Natural, engaging opening that hooks the listener]\\n{speaker2_name}: [Curious response that sets up the topic]",
-      "source_reference": "p1:lines 1-5",
-      "concepts_covered": ["concept_id"]
+      "end": 180,
+      "type": "dialogue",
+      "text": "{speaker1_name}: [Natural conversation line]\\n{speaker2_name}: [Natural response]\\n{speaker1_name}: [Continues thought...]",
+      "source_reference": "p1:lines 1-15",
+      "concepts_covered": ["concept_id1", "concept_id2"],
+      "dialogue_quality_notes": "Natural flow, authentic student voice, builds understanding gradually"
     }},
     {{
-      "id": "core1",
-      "start": 18,
-      "end": 180,
-      "type": "core",
-      "text": "[Actual conversation with both speakers exploring concepts naturally]",
-      "source_reference": "p2:lines 10-25",
-      "concepts_covered": ["concept_id1", "concept_id2"]
+      "id": "section_2",
+      "start": 180,
+      "end": 420,
+      "type": "dialogue",
+      "text": "[Continue natural conversation exploring concepts]",
+      "source_reference": "p2:lines 10-30",
+      "concepts_covered": ["concept_id3"],
+      "dialogue_quality_notes": "Includes student questions, connections, aha moments"
     }}
   ],
   "concept_ids": {concept_ids},
   "concepts_coverage_check": {{"concept_id": "fully_explained"}},
   "pronunciation_hints": {{"difficult_word": "pronunciation"}},
-  "age_appropriate_check": true
+  "age_appropriate_check": true,
+  "dialogue_naturalness_score": 9,
+  "vocabulary_level_appropriate": true
 }}
 """,
 
     "mcq_generation": """
-SYSTEM: You are an MCQ generator for educational content. Generate high-quality, thoughtful questions that test understanding, not trivial recall.
-INPUT: final_script, concept_list, episode_duration
-RULES:
-- Generate EXACTLY {count} MCQs strictly from script content
+SYSTEM: You are an expert MCQ generator for K-12 education. Create questions that test genuine understanding and thinking, never trivial recall.
+
+CRITICAL RULES:
+1. ABSOLUTELY BANNED phrases in questions:
+   - "According to the script..."
+   - "What did [speaker name] say..."
+   - "In the conversation..."
+   - "The students mentioned..."
+   - Any phrasing that asks students to recall literal dialogue
+
+2. QUESTION REQUIREMENTS:
+   - Test conceptual understanding (why/how something works)
+   - Require thinking and reasoning, not memory
+   - Apply concepts to NEW scenarios not in the script
+   - Make students demonstrate they understand, not that they remember
+   - Use grade-appropriate language and context
+
+3. DISTRACTOR REQUIREMENTS:
+   - Based on COMMON STUDENT MISCONCEPTIONS about the concept
+   - Plausible enough that students who don't understand would pick them
+   - Wrong for a specific conceptual reason (not just random)
+   - Show understanding of how students typically get confused
+
+4. QUESTION TYPES DISTRIBUTION:
+   - 0% trivial recall (BANNED)
+   - 30% conceptual understanding (why/how concepts work)
+   - 40% application (applying concepts to new situations)
+   - 30% analysis (comparing, evaluating, predicting)
+
+GOOD EXAMPLES:
+- "Why would a plant in a dark closet eventually die?" (tests photosynthesis understanding)
+- "If you wanted to make ice cream freeze faster, what should you add to the ice?" (tests heat transfer application)
+- "What would happen to Earth's seasons if the axis wasn't tilted?" (tests analysis)
+
+BAD EXAMPLES (NEVER DO THIS):
+- "According to the script, what is photosynthesis?" ❌
+- "What did Alex say about the three states of matter?" ❌
+- "The students mentioned that plants need sunlight. Why is this?" ❌
+
+REQUIREMENTS:
+- Generate EXACTLY {count} MCQs testing concepts from the script (~3 MCQs per concept)
+- Cover ALL concepts provided - create multiple questions per concept for comprehensive assessment
 - 4 options each, exactly 1 correct
-- Include timestamp_ref pointing to section start seconds  
-- Types: 20% recall (basic facts), 40% understanding (concepts), 40% application (real-world scenarios)
-- Plausible distractors from common student misconceptions
-- Grade-appropriate language
-- Each MCQ must reference substantial content from the script, not trivial details
-- Focus on WHY and HOW questions, not just WHAT questions
-- Use speaker names from script: {speaker1_name} and {speaker2_name}
-- Avoid questions about speaker names themselves or literal phrases
-
-AVOID:
-- Questions like "According to the script, what term is used..."
-- Questions that test only memorization of specific phrases
-- Questions about who said what
-- Trivial literal recall
-
-PREFER:
-- Questions that test conceptual understanding
-- Application to new scenarios
-- Analysis and reasoning
-- Making connections between concepts
+- Include timestamp_ref pointing to when concept was discussed
+- Use concept_misconceptions from concept_list to create realistic distractors
+- Grade-appropriate language for {grade_band}
+- Each question must require understanding, not memory
 
 Script: {script}
-Concepts: {concepts}
+Concepts with misconceptions: {concepts}
+Grade: {grade_band}
 Speakers: {speaker1_name}, {speaker2_name}
 
 Return valid JSON only:
@@ -660,16 +715,17 @@ Return valid JSON only:
       "timestamp_ref": 45,
       "concept_id": "photosynthesis",
       "difficulty": 3,
-      "type": "understanding",
-      "question_text": "Based on the conversation, why do plants need sunlight for photosynthesis?",
+      "type": "application",
+      "question_text": "A student put a healthy plant in a dark closet for two weeks. What would most likely happen and why?",
       "options": [
-        "Sunlight provides energy to convert water and CO2 into glucose",
-        "Sunlight heats the plant to make it grow faster", 
-        "Sunlight attracts insects that help plants",
-        "Sunlight changes the color of leaves to green"
+        "The plant would die because it can't produce food without light energy",
+        "The plant would grow taller trying to reach sunlight",
+        "The plant would turn brown but survive by eating nutrients from soil",
+        "The plant would be fine because it stores enough energy in its roots"
       ],
       "correct_index": 0,
-      "explanation": "{speaker1_name} explained that sunlight provides the energy plants need to convert water and carbon dioxide into glucose during photosynthesis."
+      "explanation": "Plants need sunlight to perform photosynthesis and create their own food (glucose). Without light, they cannot produce energy and will eventually die. This is different from animals which get energy by eating food.",
+      "misconception_addressed": "Plants eat soil for food"
     }}
   ]
 }}
@@ -781,6 +837,132 @@ SYSTEM: You enforce chapter-level style.
 INPUT: style_lock.json, all_episode_scripts[]. 
 TASK: For each episode that violates style rules (vocab level, speaker personality), regenerate only the offending episodes reusing prior prompts but with explicit style directives. 
 OUTPUT change_log with re-gen attempts.
+""",
+
+    "regen_natural_dialogue": """
+SYSTEM: You are a dialogue naturalness editor for K-12 educational content.
+INPUT: current_script, robotic_patterns_detected (list of specific issues), grade_band
+TASK: Rewrite dialogue to sound like real Grade {grade_band} students talking naturally.
+
+FIX THESE ROBOTIC PATTERNS:
+- Mechanical speaker alternation (A says one line, B says one line, repeat)
+- Formal transitions ("Now let's discuss...", "Moving on to...", "In conclusion...")
+- Setup questions that only exist to prompt next speaker ("So what is X?", "Can you explain Y?")
+- Textbook language read aloud
+- Forced structure (intro-body-conclusion)
+- Unnatural formality for student age
+
+MAKE IT NATURAL:
+- Let one speaker talk for multiple sentences when explaining something
+- Use natural interruptions and reactions ("Oh!", "Wait, so...", "That makes sense!")
+- Include thinking sounds ("Hmm", "Um", "Like")
+- Let students make connections to their own experiences organically
+- Show genuine curiosity and confusion followed by understanding
+- Build ideas collaboratively across multiple exchanges
+- Use contractions and informal language appropriate for age
+
+PRESERVE:
+- All factual content and source references
+- Concept coverage completeness
+- Word count within +/-15% of original
+- Section timing estimates
+
+OUTPUT: JSON {{script_text, sections:[...], naturalness_improvements:[list of specific changes], word_count}}
+""",
+
+    "regen_simplify_vocabulary": """
+SYSTEM: You are a vocabulary simplification specialist for K-12 content.
+INPUT: current_script, overly_complex_words_detected, target_grade_band, flesch_kincaid_target
+TASK: Simplify vocabulary to match Grade {grade_band} reading level while preserving meaning.
+
+GUIDELINES BY GRADE:
+- Grade 1-3: 3-6 word sentences, concrete nouns, basic verbs, everyday vocabulary
+- Grade 4-6: Varied sentence length, introduce some technical terms WITH simple explanations
+- Grade 7-9: More complex sentences, academic vocabulary explained in context
+- Grade 10-12: Advanced vocabulary appropriate for college prep
+
+SIMPLIFICATION STRATEGIES:
+- Replace complex words with simpler synonyms students know
+- Break long sentences into shorter ones
+- Explain technical terms using analogies and examples
+- Use "like" comparisons and "for example" to clarify
+- Keep explanations conversational, not dictionary definitions
+
+PRESERVE:
+- Technical terms that are learning objectives (but explain them better)
+- All source references
+- Conceptual accuracy
+- Natural dialogue flow
+- Student voice and personality
+
+TARGET: Flesch-Kincaid Grade Level = {grade_band} +/- 1 grade
+
+OUTPUT: JSON {{script_text, sections:[...], vocabulary_changes:[{{original_word, simplified_version, reason}}], flesch_kincaid_score, word_count}}
+""",
+
+    "regen_add_examples": """
+SYSTEM: You are a concrete example generator for K-12 educational content.
+INPUT: current_script, abstract_concepts_flagged (concepts lacking examples), grade_band
+TASK: Add concrete, relatable examples to make abstract concepts tangible for Grade {grade_band} students.
+
+EXAMPLE REQUIREMENTS:
+- Draw from students' actual daily lives (school, home, hobbies, friends, technology they use)
+- Age-appropriate and culturally relevant
+- Short (20-40 seconds in dialogue)
+- Integrated naturally into conversation, not forced asides
+- Actually illuminate the concept, not just name-drop an example
+
+EXAMPLE SOURCES BY GRADE:
+- Grade 1-3: Toys, pets, family, playground, food, cartoons
+- Grade 4-6: School activities, sports, video games, social media, cooking
+- Grade 7-9: Real-world technology, current events, social situations, future careers
+- Grade 10-12: Complex systems, societal issues, academic applications, career paths
+
+INTEGRATION STYLE:
+- Student naturally connects concept to their experience ("Oh, that's like when...")
+- Use analogy format ("It's kind of like how...")
+- Build on example to deepen understanding, don't just mention and move on
+- Other student can react, extend, or relate their own example
+
+PRESERVE:
+- All existing factual content and source references
+- Natural dialogue flow
+- Target word count +/- 10%
+- Timing estimates for sections
+
+OUTPUT: JSON {{script_text, sections:[...], examples_added:[{{concept_id, example_description, timestamp}}], word_count}}
+""",
+
+    "regen_fix_misconceptions": """
+SYSTEM: You are a misconception-addressing specialist for educational dialogue.
+INPUT: current_script, misconceptions_not_addressed (from concept analysis), grade_band
+TASK: Ensure common student misconceptions are explicitly addressed and corrected in the dialogue.
+
+MISCONCEPTION ADDRESSING STRATEGIES:
+- Have student voice the misconception as a genuine confusion ("Wait, I thought plants eat dirt for food?")
+- Other student gently corrects with clear explanation
+- Explicitly contrast correct understanding with misconception
+- Use examples that highlight why the misconception is wrong
+- Make the correction memorable through analogy or "aha moment"
+
+EFFECTIVE PATTERNS:
+Speaker A: "But doesn't [misconception]?"
+Speaker B: "Actually, that's a common mix-up! The real thing is [correct concept]. Here's why: [explanation]"
+Speaker A: "Oh! So it's not [misconception], it's [correct understanding]. That makes sense because [connection]."
+
+WHAT NOT TO DO:
+- Just state correct fact without acknowledging misconception
+- Make student sound dumb for having misconception
+- Rush past misconception without full explanation
+- Use teacher voice to lecture about it
+
+PRESERVE:
+- Natural student dialogue style
+- All source references
+- Word count within +/-15%
+- Other concept coverage
+
+OUTPUT: JSON {{script_text, sections:[...], misconceptions_addressed:[{{misconception, how_addressed, timestamp}}], word_count}}
 """,
 
     "human_review_summary": """
@@ -916,17 +1098,33 @@ async def generate_mcqs(request: MCQGenerationRequest):
         else:
             script_text = str(request.script)
 
-        concept_names = [c.get('name', c.get('id', 'Unknown')) for c in request.concepts]
+        # Format concepts with misconceptions for MCQ generation
+        concepts_with_misconceptions = []
+        for concept in request.concepts:
+            concept_info = {
+                'id': concept.get('id', 'unknown'),
+                'name': concept.get('name', concept.get('id', 'Unknown')),
+                'misconceptions': concept.get('common_misconceptions', []),
+                'definition': concept.get('definition', '')
+            }
+            concepts_with_misconceptions.append(concept_info)
+        
+        # Serialize concepts as JSON string for prompt
+        concepts_json = json.dumps(concepts_with_misconceptions, indent=2)
         
         # Get speaker names from request or use defaults
         speaker_config = getattr(request, 'speaker_config', {})
         speaker1_name = speaker_config.get('speaker1_name', 'StudentA')
         speaker2_name = speaker_config.get('speaker2_name', 'StudentB')
+        
+        # Get grade band for age-appropriate questions
+        grade_band = getattr(request, 'grade_band', '7')
 
         prompt = EDUCATIONAL_PROMPTS["mcq_generation"].format(
             count=request.count,
             script=script_text[:2000],  # Limit script size
-            concepts=concept_names,
+            concepts=concepts_json,
+            grade_band=grade_band,
             speaker1_name=speaker1_name,
             speaker2_name=speaker2_name
         )

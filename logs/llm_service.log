@@ -1524,3 +1524,8 @@ message: "API key not valid. Please pass a valid API key."
 2025-11-24 15:49:30,977 - __main__ - INFO - [OK] OpenAI API configured successfully
 2025-11-24 15:49:32,016 - __main__ - INFO - [OK] Gemini API configured and validated successfully
 2025-11-24 15:49:32,017 - __main__ - INFO - [OK] All systems operational
+2025-11-25 20:04:00,041 - __main__ - INFO - [AUTO MODE] Primary: OpenAI GPT-4o | Fallback: Gemini 2.0 Flash
+2025-11-25 20:04:00,200 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-25 20:04:01,299 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-25 20:04:01,300 - __main__ - INFO - [OK] All systems operational
+2025-11-25 20:16:42,632 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down

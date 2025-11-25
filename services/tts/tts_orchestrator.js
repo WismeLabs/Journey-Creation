@@ -55,38 +55,61 @@ class TTSOrchestrator {
    */
   getAvailableVoices() {
     return {
-      // Premium Chirp3 HD Voices (Best for Education)
+      // Premium Chirp3 HD Voices (Best for Education - Most Natural)
       chirp3_hd: {
         'en-US': [
           'en-US-Chirp3-HD-Achernar', 'en-US-Chirp3-HD-Achird', 'en-US-Chirp3-HD-Algenib',
           'en-US-Chirp3-HD-Aoede', 'en-US-Chirp3-HD-Autonoe', 'en-US-Chirp3-HD-Callirrhoe',
-          'en-US-Chirp3-HD-Charon', 'en-US-Chirp3-HD-Despina', 'en-US-Chirp3-HD-Enceladus'
+          'en-US-Chirp3-HD-Charon', 'en-US-Chirp3-HD-Despina', 'en-US-Chirp3-HD-Enceladus',
+          'en-US-Chirp3-HD-Ersa', 'en-US-Chirp3-HD-Iapetus', 'en-US-Chirp3-HD-Io',
+          'en-US-Chirp3-HD-Kale', 'en-US-Chirp3-HD-Leda', 'en-US-Chirp3-HD-Mimas',
+          'en-US-Chirp3-HD-Oberon', 'en-US-Chirp3-HD-Proteus', 'en-US-Chirp3-HD-Rhea',
+          'en-US-Chirp3-HD-Tethys', 'en-US-Chirp3-HD-Thebe', 'en-US-Chirp3-HD-Titan'
         ],
         'en-IN': [
           'en-IN-Chirp3-HD-Achernar', 'en-IN-Chirp3-HD-Achird', 'en-IN-Chirp3-HD-Algenib',
-          'en-IN-Chirp3-HD-Aoede', 'en-IN-Chirp3-HD-Autonoe', 'en-IN-Chirp3-HD-Callirrhoe'
+          'en-IN-Chirp3-HD-Aoede', 'en-IN-Chirp3-HD-Autonoe', 'en-IN-Chirp3-HD-Callirrhoe',
+          'en-IN-Chirp3-HD-Charon', 'en-IN-Chirp3-HD-Despina', 'en-IN-Chirp3-HD-Enceladus'
+        ],
+        'en-GB': [
+          'en-GB-Chirp3-HD-Achernar', 'en-GB-Chirp3-HD-Achird', 'en-GB-Chirp3-HD-Algenib',
+          'en-GB-Chirp3-HD-Aoede', 'en-GB-Chirp3-HD-Autonoe', 'en-GB-Chirp3-HD-Callirrhoe'
         ],
         'hi-IN': [
           'hi-IN-Chirp3-HD-Achernar', 'hi-IN-Chirp3-HD-Achird', 'hi-IN-Chirp3-HD-Algenib',
           'hi-IN-Chirp3-HD-Aoede', 'hi-IN-Chirp3-HD-Autonoe', 'hi-IN-Chirp3-HD-Callirrhoe'
         ]
       },
-      // Neural2 Voices (High Quality)
+      // Neural2 Voices (High Quality - Expressive)
       neural2: {
-        'en-US': ['en-US-Neural2-A', 'en-US-Neural2-C', 'en-US-Neural2-D', 'en-US-Neural2-E'],
+        'en-US': [
+          'en-US-Neural2-A', 'en-US-Neural2-C', 'en-US-Neural2-D', 'en-US-Neural2-E',
+          'en-US-Neural2-F', 'en-US-Neural2-G', 'en-US-Neural2-H', 'en-US-Neural2-I', 'en-US-Neural2-J'
+        ],
         'en-IN': ['en-IN-Neural2-A', 'en-IN-Neural2-B', 'en-IN-Neural2-C', 'en-IN-Neural2-D'],
+        'en-GB': ['en-GB-Neural2-A', 'en-GB-Neural2-B', 'en-GB-Neural2-C', 'en-GB-Neural2-D', 'en-GB-Neural2-F'],
         'hi-IN': ['hi-IN-Neural2-A', 'hi-IN-Neural2-B', 'hi-IN-Neural2-C', 'hi-IN-Neural2-D']
       },
-      // WaveNet Voices (Good Quality)
+      // WaveNet Voices (Good Quality - Natural Sounding)
       wavenet: {
-        'en-US': ['en-US-Wavenet-A', 'en-US-Wavenet-B', 'en-US-Wavenet-C', 'en-US-Wavenet-D'],
+        'en-US': [
+          'en-US-Wavenet-A', 'en-US-Wavenet-B', 'en-US-Wavenet-C', 'en-US-Wavenet-D',
+          'en-US-Wavenet-E', 'en-US-Wavenet-F', 'en-US-Wavenet-G', 'en-US-Wavenet-H',
+          'en-US-Wavenet-I', 'en-US-Wavenet-J'
+        ],
         'en-IN': ['en-IN-Wavenet-A', 'en-IN-Wavenet-B', 'en-IN-Wavenet-C', 'en-IN-Wavenet-D'],
+        'en-GB': ['en-GB-Wavenet-A', 'en-GB-Wavenet-B', 'en-GB-Wavenet-C', 'en-GB-Wavenet-D', 'en-GB-Wavenet-F'],
         'hi-IN': ['hi-IN-Wavenet-A', 'hi-IN-Wavenet-B', 'hi-IN-Wavenet-C', 'hi-IN-Wavenet-D']
       },
-      // Standard Voices (Cost Effective)
+      // Standard Voices (Cost Effective - Basic Quality)
       standard: {
-        'en-US': ['en-US-Standard-A', 'en-US-Standard-B', 'en-US-Standard-C', 'en-US-Standard-D'],
+        'en-US': [
+          'en-US-Standard-A', 'en-US-Standard-B', 'en-US-Standard-C', 'en-US-Standard-D',
+          'en-US-Standard-E', 'en-US-Standard-F', 'en-US-Standard-G', 'en-US-Standard-H',
+          'en-US-Standard-I', 'en-US-Standard-J'
+        ],
         'en-IN': ['en-IN-Standard-A', 'en-IN-Standard-B', 'en-IN-Standard-C', 'en-IN-Standard-D'],
+        'en-GB': ['en-GB-Standard-A', 'en-GB-Standard-B', 'en-GB-Standard-C', 'en-GB-Standard-D', 'en-GB-Standard-F'],
         'hi-IN': ['hi-IN-Standard-A', 'hi-IN-Standard-B', 'hi-IN-Standard-C', 'hi-IN-Standard-D']
       }
     };
@@ -294,7 +317,7 @@ class TTSOrchestrator {
   /**
    * Generate simple test audio (not a full episode)
    */
-  async generateTestAudio(testScript, outputDir = null) {
+  async generateTestAudio(testScript, outputDir = null, customVoiceConfig = null) {
     try {
       if (!this.googleTTSClient) {
         throw new Error('Google TTS not initialized');
@@ -312,7 +335,20 @@ class TTSOrchestrator {
       // Generate audio for each segment
       for (let i = 0; i < testScript.length; i++) {
         const segment = testScript[i];
-        const voiceConfig = this.voiceConfig[segment.speaker] || this.voiceConfig.StudentA;
+        
+        // Map speaker1/speaker2 to StudentA/StudentB or use custom config
+        let voiceConfig;
+        if (customVoiceConfig && customVoiceConfig.speakers) {
+          const speakerKey = segment.speaker === 'speaker1' ? 'speaker1' : 
+                           segment.speaker === 'speaker2' ? 'speaker2' : segment.speaker;
+          voiceConfig = customVoiceConfig.speakers[speakerKey] || 
+                       customVoiceConfig.speakers.StudentA || 
+                       this.voiceConfig.StudentA;
+        } else {
+          const mappedSpeaker = segment.speaker === 'speaker1' ? 'StudentA' : 
+                               segment.speaker === 'speaker2' ? 'StudentB' : segment.speaker;
+          voiceConfig = this.voiceConfig[mappedSpeaker] || this.voiceConfig.StudentA;
+        }
         const filename = `test_${timestamp}_${i}.mp3`;
         const outputPath = path.join(testDir, filename);
 

@@ -369,7 +369,7 @@ class EpisodePlanner {
   }
 
   /**
-   * Perform greedy clustering per MIGRATION.md requirements
+   * Perform semantic clustering with prerequisite awareness
    */
   performGreedyClustering(sortedConcepts, targetEpisodeCount, dependencyGraph, chapterMetadata) {
     const episodes = [];
@@ -381,7 +381,7 @@ class EpisodePlanner {
       const needNewEpisode = 
         !currentEpisode || 
         currentEpisode.concepts.length >= this.maxConceptsPerEpisode ||
-        !this.canAddConceptToEpisode(concept, currentEpisode, dependencyGraph);
+        !this.canAddConceptToEpisode(concept, currentEpisode, dependencyGraph, sortedConcepts);
 
       if (needNewEpisode) {
         // Finalize current episode if it exists
@@ -397,15 +397,24 @@ class EpisodePlanner {
           metadata: {
             difficulty_mix: [concept.difficulty],
             type_mix: [concept.type],
-            blooms_mix: [concept.blooms]
+            blooms_mix: [concept.blooms],
+            semantic_coherence: 1.0 // Will be updated as concepts are added
           }
         };
       } else {
+        // Calculate semantic similarity before adding
+        const similarity = this.calculateSemanticSimilarity(concept, currentEpisode.concepts);
+        
         // Add concept to current episode
         currentEpisode.concepts.push(concept);
         currentEpisode.metadata.difficulty_mix.push(concept.difficulty);
         currentEpisode.metadata.type_mix.push(concept.type);
         currentEpisode.metadata.blooms_mix.push(concept.blooms);
+        
+        // Update semantic coherence score
+        currentEpisode.metadata.semantic_coherence = 
+          (currentEpisode.metadata.semantic_coherence * (currentEpisode.concepts.length - 1) + similarity) / 
+          currentEpisode.concepts.length;
       }
 
       // Stop if we've reached target episode count and remaining concepts are few
@@ -424,18 +433,119 @@ class EpisodePlanner {
     }
 
     logger.info({ 
-      action: 'greedy_clustering_complete', 
+      action: 'semantic_clustering_complete', 
       episodeCount: episodes.length,
-      targetCount: targetEpisodeCount
+      targetCount: targetEpisodeCount,
+      avgCoherence: (episodes.reduce((sum, ep) => sum + (ep.metadata.semantic_coherence || 0), 0) / episodes.length).toFixed(2)
     });
 
     return episodes;
+  }
+  
+  /**
+   * Calculate semantic similarity between a concept and existing episode concepts
+   */
+  calculateSemanticSimilarity(newConcept, episodeConcepts) {
+    if (episodeConcepts.length === 0) return 1.0;
+    
+    let totalSimilarity = 0;
+    
+    for (const existingConcept of episodeConcepts) {
+      let similarity = 0;
+      
+      // Same parent concept = very high similarity
+      if (newConcept.parent_concept && newConcept.parent_concept === existingConcept.id) {
+        similarity += 0.5;
+      }
+      if (existingConcept.parent_concept && existingConcept.parent_concept === newConcept.id) {
+        similarity += 0.5;
+      }
+      
+      // Related concepts = high similarity
+      if (newConcept.related && newConcept.related.includes(existingConcept.id)) {
+        similarity += 0.4;
+      }
+      if (existingConcept.related && existingConcept.related.includes(newConcept.id)) {
+        similarity += 0.4;
+      }
+      
+      // Same type = moderate similarity
+      if (newConcept.type === existingConcept.type) {
+        similarity += 0.2;
+      }
+      
+      // Similar difficulty = moderate similarity
+      if (newConcept.difficulty === existingConcept.difficulty) {
+        similarity += 0.15;
+      }
+      
+      // Same Bloom's level = moderate similarity
+      if (newConcept.blooms === existingConcept.blooms) {
+        similarity += 0.15;
+      }
+      
+      // Text similarity in definitions
+      const textSimilarity = this.calculateTextSimilarity(
+        newConcept.definition || '', 
+        existingConcept.definition || ''
+      );
+      similarity += textSimilarity * 0.3;
+      
+      // Common misconceptions = should be together
+      if (this.hasCommonMisconceptions(newConcept, existingConcept)) {
+        similarity += 0.3;
+      }
+      
+      totalSimilarity += Math.min(1.0, similarity);
+    }
+    
+    return totalSimilarity / episodeConcepts.length;
+  }
+  
+  /**
+   * Calculate text similarity using simple word overlap
+   */
+  calculateTextSimilarity(text1, text2) {
+    const words1 = new Set(text1.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+    const words2 = new Set(text2.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+    
+    if (words1.size === 0 || words2.size === 0) return 0;
+    
+    const intersection = new Set([...words1].filter(w => words2.has(w)));
+    const union = new Set([...words1, ...words2]);
+    
+    return intersection.size / union.size;
+  }
+  
+  /**
+   * Check if concepts have common misconceptions (should be clarified together)
+   */
+  hasCommonMisconceptions(concept1, concept2) {
+    if (!concept1.common_misconceptions || !concept2.common_misconceptions) {
+      return false;
+    }
+    
+    const misc1 = concept1.common_misconceptions.map(m => m.toLowerCase());
+    const misc2 = concept2.common_misconceptions.map(m => m.toLowerCase());
+    
+    // Check for any overlapping words in misconceptions
+    for (const m1 of misc1) {
+      for (const m2 of misc2) {
+        const words1 = new Set(m1.split(/\s+/).filter(w => w.length > 3));
+        const words2 = new Set(m2.split(/\s+/).filter(w => w.length > 3));
+        const overlap = [...words1].filter(w => words2.has(w));
+        
+        if (overlap.length > 0) return true;
+      }
+    }
+    
+    return false;
   }
 
   /**
    * Check if concept can be added to current episode without violating constraints
    */
-  canAddConceptToEpisode(concept, episode, dependencyGraph) {
+  canAddConceptToEpisode(concept, episode, dependencyGraph, allConcepts) {
     if (!episode || episode.concepts.length >= this.maxConceptsPerEpisode) {
       return false;
     }
@@ -469,8 +579,51 @@ class EpisodePlanner {
         return false;
       }
     }
+    
+    // Check semantic similarity - avoid mixing unrelated concepts
+    const similarity = this.calculateSemanticSimilarity(concept, episode.concepts);
+    if (similarity < 0.2 && episode.concepts.length >= 2) {
+      // Concept is too dissimilar, start new episode
+      logger.info({
+        action: 'semantic_split',
+        concept: concept.name,
+        similarity: similarity.toFixed(2),
+        episode: episode.ep
+      });
+      return false;
+    }
+    
+    // Separate commonly confused concepts into different episodes
+    if (this.hasConfusionConflict(concept, episode.concepts)) {
+      logger.info({
+        action: 'confusion_separation',
+        concept: concept.name,
+        episode: episode.ep
+      });
+      return false;
+    }
 
     return true;
+  }
+  
+  /**
+   * Check if concept would cause confusion with existing episode concepts
+   */
+  hasConfusionConflict(newConcept, episodeConcepts) {
+    if (!newConcept.confusion_points) return false;
+    
+    const newConfusionLower = newConcept.confusion_points.toLowerCase();
+    
+    for (const existingConcept of episodeConcepts) {
+      // If confusion point mentions another concept by name, they should be separate
+      if (newConfusionLower.includes(existingConcept.name.toLowerCase()) ||
+          (existingConcept.confusion_points && 
+           existingConcept.confusion_points.toLowerCase().includes(newConcept.name.toLowerCase()))) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   /**

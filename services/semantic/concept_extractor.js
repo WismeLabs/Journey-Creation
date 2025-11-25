@@ -36,6 +36,15 @@ class ConceptExtractor {
     
     // Load canonical concept reference table (optional seed per MIGRATION.md)
     this.canonicalConcepts = this.loadCanonicalConcepts();
+    
+    // Cache directory for LLM responses (developer time/cost savings)
+    this.cacheDir = path.join(__dirname, '../../cache');
+    if (!fs.existsSync(this.cacheDir)) {
+      fs.mkdirSync(this.cacheDir, { recursive: true });
+      logger.info({ action: 'cache_directory_created', path: this.cacheDir });
+    }
+    this.cacheEnabled = process.env.LLM_CACHE_ENABLED !== 'false'; // Default enabled
+    this.cacheTTL = parseInt(process.env.LLM_CACHE_TTL) || 7 * 24 * 3600 * 1000; // 7 days default
   }
 
   /**
@@ -108,9 +117,27 @@ class ConceptExtractor {
 
   /**
    * AI-powered concept extraction using enhanced LLM service
+   * WITH CACHING for developer time/cost savings on re-runs
    */
   async extractConceptsWithAI(markdownContent, metadata) {
     try {
+      // Generate cache key from content + metadata
+      const cacheKey = this.generateCacheKey(markdownContent, metadata);
+      
+      // Check cache first (skip expensive LLM call if cached)
+      if (this.cacheEnabled) {
+        const cached = await this.getCachedResponse(cacheKey, 'concepts');
+        if (cached) {
+          logger.info({ 
+            action: 'cache_hit', 
+            type: 'concepts',
+            cacheKey: cacheKey.substring(0, 12),
+            savedCost: '$0.02-0.05' 
+          });
+          return cached.data;
+        }
+      }
+      
       const response = await fetch(`${this.llmServiceUrl}/extract_concepts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -137,16 +164,30 @@ class ConceptExtractor {
         throw new Error('Invalid AI response structure');
       }
 
-      logger.info({ 
-        action: 'ai_extraction_success', 
-        conceptCount: result.concepts.length 
-      });
-
-      return result.concepts.map(concept => ({
+      const concepts = result.concepts.map(concept => ({
         ...concept,
         extraction_method: 'ai',
         confidence: concept.confidence || 0.8
       }));
+
+      // Cache the result for future re-runs
+      if (this.cacheEnabled) {
+        await this.setCachedResponse(cacheKey, 'concepts', concepts);
+        logger.info({ 
+          action: 'cache_stored', 
+          type: 'concepts',
+          cacheKey: cacheKey.substring(0, 12),
+          conceptCount: concepts.length 
+        });
+      }
+
+      logger.info({ 
+        action: 'ai_extraction_success', 
+        conceptCount: concepts.length,
+        cached: false
+      });
+
+      return concepts;
 
     } catch (error) {
       logger.warn({ action: 'ai_extraction_failed', error: error.message });
@@ -716,6 +757,76 @@ class ConceptExtractor {
     }
     
     return {};
+  }
+
+  /**
+   * Generate cache key from content and metadata
+   * Uses SHA-256 hash for deterministic caching
+   */
+  generateCacheKey(content, metadata) {
+    const cacheInput = JSON.stringify({
+      content: content.substring(0, 5000), // First 5k chars (chapters rarely change structure)
+      subject: metadata.subject,
+      grade: metadata.grade_band,
+      llm_provider: metadata.llm_provider || 'auto'
+    });
+    
+    return crypto.createHash('sha256').update(cacheInput).digest('hex');
+  }
+
+  /**
+   * Get cached LLM response if available and not expired
+   */
+  async getCachedResponse(cacheKey, type) {
+    try {
+      const cacheFile = path.join(this.cacheDir, `${type}_${cacheKey}.json`);
+      
+      if (!fs.existsSync(cacheFile)) {
+        return null;
+      }
+      
+      const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+      
+      // Check if cache is expired
+      const age = Date.now() - cached.timestamp;
+      if (age > this.cacheTTL) {
+        logger.info({ 
+          action: 'cache_expired', 
+          type, 
+          age_days: Math.round(age / (24 * 3600 * 1000)) 
+        });
+        fs.unlinkSync(cacheFile); // Clean up expired cache
+        return null;
+      }
+      
+      return cached;
+      
+    } catch (error) {
+      logger.warn({ action: 'cache_read_failed', error: error.message });
+      return null;
+    }
+  }
+
+  /**
+   * Store LLM response in cache
+   */
+  async setCachedResponse(cacheKey, type, data) {
+    try {
+      const cacheFile = path.join(this.cacheDir, `${type}_${cacheKey}.json`);
+      
+      const cacheData = {
+        timestamp: Date.now(),
+        type,
+        cacheKey,
+        data
+      };
+      
+      fs.writeFileSync(cacheFile, JSON.stringify(cacheData, null, 2), 'utf8');
+      
+    } catch (error) {
+      logger.warn({ action: 'cache_write_failed', error: error.message });
+      // Don't fail on cache write errors - just continue without caching
+    }
   }
 }
 

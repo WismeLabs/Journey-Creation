@@ -7,6 +7,8 @@ const winston = require('winston');
 const { v4: uuidv4 } = require('uuid');
 const fetch = require('node-fetch'); // For LLM service calls
 const axios = require('axios'); // For HTTP requests
+const pLimit = require('p-limit'); // For controlled parallel processing
+const crypto = require('crypto'); // For content hashing
 
 // Import services
 const ingestService = require('./services/ingest/pdf_processor');
@@ -254,7 +256,7 @@ function convertScriptToRawText(script) {
   return script.sections.map(section => section.text || '').join('\n\n');
 }
 
-// Utility function to update job status
+// Utility function to update job status WITH cost tracking
 function updateJobStatus(jobId, status, progress = null, error = null, result = null) {
   const job = jobs.get(jobId);
   if (job) {
@@ -263,7 +265,17 @@ function updateJobStatus(jobId, status, progress = null, error = null, result = 
     job.lastUpdated = new Date();
     if (error) job.error = error;
     if (result) job.result = result;
-    logger.info(`Job ${jobId} status updated to ${status}`, { progress, error });
+    
+    // Developer-friendly logging with cost estimates
+    const logData = { 
+      jobId, 
+      status, 
+      progress, 
+      error,
+      cost_estimate: job.cost_tracking || null
+    };
+    
+    logger.info(`Job ${jobId} status updated to ${status}`, logData);
   }
 }
 
@@ -393,7 +405,7 @@ app.post('/api/v1/generate', async (req, res) => {
 
 /**
  * GET /api/v1/status/{job_id}
- * Returns progress + errors per MIGRATION.md
+ * Returns progress + errors + performance metrics
  */
 app.get('/api/v1/status/:jobId', (req, res) => {
   const { jobId } = req.params;
@@ -410,7 +422,13 @@ app.get('/api/v1/status/:jobId', (req, res) => {
     created_at: job.createdAt,
     last_updated: job.lastUpdated,
     error: job.error || null,
-    metadata: job.metadata
+    metadata: job.metadata,
+    // Developer info
+    performance: {
+      parallel_processing: 'enabled (3 concurrent episodes)',
+      cache_enabled: process.env.LLM_CACHE_ENABLED !== 'false',
+      estimated_cost: job.cost_tracking || 'calculating...'
+    }
   });
 });
 
@@ -622,6 +640,26 @@ app.get('/api/v1/preview/:chapter_id/:episode_index', (req, res) => {
  */
 app.get('/api/v1/metrics', (req, res) => {
   const uptime = process.uptime();
+  const fs = require('fs');
+  const cacheDir = path.join(__dirname, 'cache');
+  
+  // Count cache files
+  let cacheStats = { files: 0, total_size_mb: 0 };
+  try {
+    if (fs.existsSync(cacheDir)) {
+      const files = fs.readdirSync(cacheDir).filter(f => f.endsWith('.json'));
+      const totalSize = files.reduce((sum, file) => {
+        const stat = fs.statSync(path.join(cacheDir, file));
+        return sum + stat.size;
+      }, 0);
+      cacheStats = {
+        files: files.length,
+        total_size_mb: (totalSize / 1024 / 1024).toFixed(2)
+      };
+    }
+  } catch (err) {
+    logger.warn('Failed to read cache stats:', err.message);
+  }
   
   res.json({
     uptime_seconds: uptime,
@@ -633,8 +671,98 @@ app.get('/api/v1/metrics', (req, res) => {
     average_processing_time_ms: metrics.averageProcessingTime,
     hallucination_rate: metrics.totalJobs > 0 ? (metrics.hallucinations / metrics.totalJobs) : 0,
     queue_length: jobQueue.length,
-    is_processing: isProcessing
+    is_processing: isProcessing,
+    // Developer performance metrics
+    performance: {
+      parallel_episodes: true,
+      concurrency_limit: 3,
+      cache_enabled: process.env.LLM_CACHE_ENABLED !== 'false',
+      cache_stats: cacheStats
+    }
   });
+});
+
+/**
+ * GET /api/v1/cache/stats
+ * Developer endpoint for cache statistics and management
+ */
+app.get('/api/v1/cache/stats', (req, res) => {
+  const fs = require('fs');
+  const cacheDir = path.join(__dirname, 'cache');
+  
+  try {
+    if (!fs.existsSync(cacheDir)) {
+      return res.json({
+        enabled: process.env.LLM_CACHE_ENABLED !== 'false',
+        files: 0,
+        total_size_mb: 0,
+        oldest_cache: null,
+        newest_cache: null,
+        ttl_days: 7
+      });
+    }
+    
+    const files = fs.readdirSync(cacheDir).filter(f => f.endsWith('.json') && !f.startsWith('test_'));
+    const fileStats = files.map(file => {
+      const filePath = path.join(cacheDir, file);
+      const stat = fs.statSync(filePath);
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      return {
+        file,
+        type: data.type,
+        size_kb: (stat.size / 1024).toFixed(2),
+        age_hours: ((Date.now() - data.timestamp) / 3600000).toFixed(1),
+        timestamp: data.timestamp
+      };
+    });
+    
+    const totalSize = fileStats.reduce((sum, f) => sum + parseFloat(f.size_kb), 0);
+    const sortedByAge = [...fileStats].sort((a, b) => a.timestamp - b.timestamp);
+    
+    res.json({
+      enabled: process.env.LLM_CACHE_ENABLED !== 'false',
+      files: files.length,
+      total_size_mb: (totalSize / 1024).toFixed(2),
+      oldest_cache: sortedByAge[0] || null,
+      newest_cache: sortedByAge[sortedByAge.length - 1] || null,
+      ttl_days: 7,
+      cache_hits_saved_cost: `$${(files.length * 0.03).toFixed(2)}` // Rough estimate
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/v1/cache/clear
+ * Clear LLM response cache (developer tool)
+ */
+app.delete('/api/v1/cache/clear', (req, res) => {
+  const fs = require('fs');
+  const cacheDir = path.join(__dirname, 'cache');
+  
+  try {
+    if (!fs.existsSync(cacheDir)) {
+      return res.json({ message: 'Cache directory does not exist' });
+    }
+    
+    const files = fs.readdirSync(cacheDir).filter(f => f.endsWith('.json') && !f.startsWith('test_'));
+    let deletedCount = 0;
+    
+    files.forEach(file => {
+      fs.unlinkSync(path.join(cacheDir, file));
+      deletedCount++;
+    });
+    
+    logger.info({ action: 'cache_cleared', files: deletedCount });
+    
+    res.json({ 
+      message: 'Cache cleared successfully',
+      deleted_files: deletedCount
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Helper function for regeneration service calls
@@ -1062,8 +1190,8 @@ app.post('/api/v1/tts/test', async (req, res) => {
       throw new Error('Invalid testScript: array is empty');
     }
     
-    // Use the dedicated test audio generation method
-    const result = await ttsService.generateTestAudio(scriptArray);
+    // Use the dedicated test audio generation method with custom voice config
+    const result = await ttsService.generateTestAudio(scriptArray, null, config);
     
     logger.info(`Test audio result: ${JSON.stringify({ success: result.success, hasPath: !!result.audioPath })}`);
     
@@ -1581,44 +1709,78 @@ async function processChapter(jobId, pdfFile, markdownContent, metadata) {
     
     updateJobStatus(jobId, 'generating_scripts', 50);
 
-    // Step 4: Generate scripts and MCQs for each episode
-    logger.info(`Step 4: Generating content for ${episodePlan.episodes.length} episodes`);
+    // Step 4: Generate scripts and MCQs for each episode (PARALLEL with concurrency limit)
+    logger.info(`Step 4: Generating content for ${episodePlan.episodes.length} episodes in parallel`);
     const episodes = [];
     const failedEpisodes = [];
     
-    for (let i = 0; i < episodePlan.episodes.length; i++) {
-      const episodeConfig = episodePlan.episodes[i];
-      const progress = 50 + (i / episodePlan.episodes.length) * 30;
-      updateJobStatus(jobId, `generating_episode_${i + 1}`, Math.round(progress));
-
-      try {
-        // Generate script and MCQs via LLM service
-        const episodeContent = await generateEpisodeContent(episodeConfig, concepts, cleanedMarkdown, metadata);
+    // Limit to 3 concurrent LLM calls to avoid rate limits while improving speed
+    const limit = pLimit(3);
+    
+    const episodeGenerationPromises = episodePlan.episodes.map((episodeConfig, i) => 
+      limit(async () => {
+        const episodeNumber = i + 1;
+        const progress = 50 + (i / episodePlan.episodes.length) * 30;
+        updateJobStatus(jobId, `generating_episode_${episodeNumber}`, Math.round(progress));
         
-        // Validate content
-        const validationResult = await validationService.validateEpisode(episodeContent, episodeConfig);
-        if (!validationResult.isValid) {
-          // Auto-repair if needed
-          const repairedContent = await validationService.repairEpisode(episodeContent, validationResult.errors);
-          episodes.push(repairedContent);
-        } else {
-          episodes.push(episodeContent);
+        try {
+          // Generate script and MCQs via LLM service
+          const episodeContent = await generateEpisodeContent(episodeConfig, concepts, cleanedMarkdown, metadata);
+          
+          // Validate content (quality checks still apply)
+          const validationResult = await validationService.validateEpisode(episodeContent, episodeConfig);
+          let finalContent = episodeContent;
+          
+          if (!validationResult.isValid) {
+            // Auto-repair if needed
+            finalContent = await validationService.repairEpisode(episodeContent, validationResult.errors);
+          }
+          
+          return { success: true, episode: episodeConfig.ep, content: finalContent };
+          
+        } catch (episodeError) {
+          // Enhanced error logging for developers
+          logger.error({
+            message: `Episode ${episodeConfig.ep} generation failed`,
+            error: episodeError.message,
+            stack: episodeError.stack,
+            episode: episodeConfig.ep,
+            concepts: episodeConfig.concepts.map(c => c.name),
+            llm_provider: metadata.llm_provider || 'auto',
+            grade: metadata.grade_band
+          });
+          
+          return {
+            success: false,
+            episode: episodeConfig.ep,
+            error: episodeError.message,
+            stack: episodeError.stack,
+            timestamp: new Date().toISOString(),
+            concepts: episodeConfig.concepts.map(c => c.name)
+          };
         }
-      } catch (episodeError) {
-        logger.error(`Episode ${episodeConfig.ep} generation failed:`, episodeError.message);
-        
-        // Save error report for this episode
+      })
+    );
+    
+    // Wait for all episodes to complete (parallel execution)
+    const episodeResults = await Promise.allSettled(episodeGenerationPromises);
+    
+    // Process results maintaining episode order
+    episodeResults.forEach((result, i) => {
+      if (result.status === 'fulfilled' && result.value.success) {
+        episodes.push(result.value.content);
+      } else if (result.status === 'fulfilled' && !result.value.success) {
+        failedEpisodes.push(result.value);
+      } else if (result.status === 'rejected') {
+        // Shouldn't happen due to try-catch, but handle anyway
         failedEpisodes.push({
-          episode: episodeConfig.ep,
-          error: episodeError.message,
+          episode: episodePlan.episodes[i].ep,
+          error: result.reason.message,
           timestamp: new Date().toISOString(),
-          concepts: episodeConfig.concepts.map(c => c.name)
+          concepts: episodePlan.episodes[i].concepts.map(c => c.name)
         });
-        
-        // Continue with next episode instead of crashing entire chapter
-        continue;
       }
-    }
+    });
 
     // Skip audio generation unless explicitly requested
     // Audio will be generated separately via /api/v1/generate-audio endpoint
@@ -1633,7 +1795,7 @@ async function processChapter(jobId, pdfFile, markdownContent, metadata) {
     updateJobStatus(jobId, 'packaging_results', 85);
 
     // Step 6: Package and save results
-    const results = await packageResults(chapter_id, {
+    const packagedResults = await packageResults(chapter_id, {
       markdown: cleanedMarkdown,
       concepts,
       episodePlan,
@@ -1655,7 +1817,7 @@ async function processChapter(jobId, pdfFile, markdownContent, metadata) {
       metrics.hallucinations++;
     }
 
-    updateJobStatus(jobId, 'completed', 100, null, results);
+    updateJobStatus(jobId, 'completed', 100, null, packagedResults);
     logger.info(`Chapter processing completed for ${chapter_id}`, { jobId });
 
   } catch (error) {
@@ -1704,12 +1866,19 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
     // Get episode-specific concepts from episode config
     const episodeConcepts = episodeConfig.concepts || [];
     
+    // Map episode concept IDs to full concept objects with misconceptions
+    const fullConcepts = concepts.filter(c => 
+      episodeConcepts.some(ec => ec.id === c.id || ec === c.id)
+    );
+    
+    logger.info(`Episode ${episodeIndex}: Using ${fullConcepts.length} concepts with misconceptions for generation`);
+    
     // Generate script using enhanced backend with custom speaker names
     const scriptResponse = await fetch(`${process.env.HF_BACKEND_URL || 'http://localhost:8000'}/generate_script`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        concepts: episodeConcepts,
+        concepts: fullConcepts,  // Pass full concept objects
         episode_title: `${metadata.subject} - Episode ${episodeIndex}`,
         grade: metadata.grade_band || metadata.grade,
         subject: metadata.subject,
@@ -1735,14 +1904,15 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
     
     console.log('Script data structure:', JSON.stringify(scriptData, null, 2));
     
-    // Generate MCQs
+    // Generate MCQs with FULL concept objects including misconceptions
     const mcqResponse = await fetch(`${process.env.HF_BACKEND_URL || 'http://localhost:8000'}/generate_mcqs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        concepts: episodeConcepts,
+        concepts: fullConcepts,  // Pass full concept objects with misconceptions
         script: scriptData.script,
-        count: Math.max(3, Math.min(episodeConcepts.length, 5)), // At least 3 MCQs
+        count: fullConcepts.length * 3, // 3 MCQs per concept for comprehensive question bank
+        grade_band: metadata.grade_band || metadata.grade,  // Add grade_band for age-appropriate questions
         difficulty: parseInt(metadata.grade_band || metadata.grade) >= 10 ? 'medium' : 'easy',
         llm_provider: metadata.llm_provider || 'auto',
         speaker_config: {

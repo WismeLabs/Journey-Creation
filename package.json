@@ -1,13 +1,11 @@
 {
-  "name": "journey-creation-content-pipeline",
-  "version": "2.0.0",
-  "description": "AI-powered educational audio content generation pipeline for app development",
+  "name": "journey-creation",
+  "version": "3.0.0",
+  "description": "AI-powered educational content pipeline with parallel processing and LLM caching",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
-    "backend": "cd hf_backend && uvicorn main:app --host 127.0.0.1 --port 8000",
-    "test": "jest"
+    "backend": "cd hf_backend && python main.py"
   },
   "dependencies": {
     "@google-cloud/text-to-speech": "^5.0.0",

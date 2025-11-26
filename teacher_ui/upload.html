@@ -691,7 +691,8 @@
             try {
                 updateProgress(10, 'Preparing upload...');
                 const fd = new FormData();
-                fd.append('chapter_id', document.getElementById('chapterId').value);
+                const chapterId = document.getElementById('chapterId').value;
+                fd.append('chapter_id', chapterId);
                 fd.append('grade_band', document.getElementById('grade').value);
                 fd.append('subject', document.getElementById('subject').value);
                 fd.append('curriculum', document.getElementById('curriculum').value);
@@ -703,8 +704,8 @@
                     const s2 = currentVoiceConfig.speakers.speaker2 || currentVoiceConfig.speakers.StudentB;
                     fd.append('speaker1_name', s1?.name || s1?.displayName || 'StudentA');
                     fd.append('speaker2_name', s2?.name || s2?.displayName || 'StudentB');
-                    fd.append('speaker1_voice', s1?.voice || s1?.voiceId || 'en-US-Chirp3-HD-Achird');
-                    fd.append('speaker2_voice', s2?.voice || s2?.voiceId || 'en-US-Chirp3-HD-Aoede');
+                    fd.append('speaker1_voice', s1?.voice || s1?.voiceId || 'en-US-Neural2-D');
+                    fd.append('speaker2_voice', s2?.voice || s2?.voiceId || 'en-US-Neural2-A');
                 }
                 
                 if (currentTab === 'pdf') {
@@ -724,13 +725,21 @@
                 const r = await res.json();
                 if (!r.job_id) throw new Error('No job ID returned');
                 
+                // Save active job to sessionStorage so we can resume if user navigates away
+                sessionStorage.setItem('activeJob', JSON.stringify({
+                    jobId: r.job_id,
+                    chapterId: chapterId,
+                    startTime: Date.now()
+                }));
+                
                 updateProgress(30, 'Processing...');
-                await pollJobStatus(r.job_id, document.getElementById('chapterId').value);
+                await pollJobStatus(r.job_id, chapterId);
             } catch (err) {
                 document.getElementById('progressContainer').classList.remove('active');
                 document.getElementById('errorAlert').textContent = err.message;
                 document.getElementById('errorAlert').classList.add('active');
                 document.getElementById('submitBtn').disabled = false;
+                sessionStorage.removeItem('activeJob'); // Clear failed job
             }
         });
 
@@ -744,16 +753,21 @@
                 if (s.progress) updateProgress(s.progress, s.status || 'Processing...');
                 if (s.status === 'completed') {
                     updateProgress(100, 'Complete!');
+                    sessionStorage.setItem('lastCompletedChapter', chapterId); // Save for review page
+                    sessionStorage.removeItem('activeJob'); // Clear completed job
                     setTimeout(() => {
                         document.getElementById('progressContainer').classList.remove('active');
                         document.getElementById('successAlert').innerHTML = 
                             `✅ Complete! <a href="review.html?chapter=${chapterId}" style="color: var(--primary); text-decoration: underline; margin-left: 8px;">Review →</a>`;
                         document.getElementById('successAlert').classList.add('active');
                         document.getElementById('submitBtn').disabled = false;
+                        clearFormData(); // Clear form after successful upload
                     }, 500);
                 } else if (s.status === 'failed') {
+                    sessionStorage.removeItem('activeJob'); // Clear failed job
                     throw new Error(s.error || 'Job failed');
                 } else if (attempts >= 120) {
+                    sessionStorage.removeItem('activeJob'); // Clear timed out job
                     throw new Error('Timeout - check logs');
                 } else {
                     setTimeout(poll, 5000);
@@ -762,14 +776,117 @@
             await poll();
         }
 
+        // Check for active job on page load and resume polling
+        async function checkActiveJob() {
+            const activeJob = sessionStorage.getItem('activeJob');
+            if (activeJob) {
+                try {
+                    const { jobId, chapterId, startTime } = JSON.parse(activeJob);
+                    const elapsed = Date.now() - startTime;
+                    
+                    // If job started less than 30 minutes ago, resume polling
+                    if (elapsed < 30 * 60 * 1000) {
+                        document.getElementById('progressContainer').classList.add('active');
+                        document.getElementById('submitBtn').disabled = true;
+                        updateProgress(30, 'Resuming generation...');
+                        
+                        // Check job status immediately
+                        const res = await fetch(`/api/v1/status/${jobId}`);
+                        if (res.ok) {
+                            const s = await res.json();
+                            if (s.status === 'completed') {
+                                sessionStorage.setItem('lastCompletedChapter', chapterId); // Save for review page
+                                sessionStorage.removeItem('activeJob');
+                                document.getElementById('progressContainer').classList.remove('active');
+                                document.getElementById('successAlert').innerHTML = 
+                                    `✅ Complete! <a href="review.html?chapter=${chapterId}" style="color: var(--primary); text-decoration: underline; margin-left: 8px;">Review →</a>`;
+                                document.getElementById('successAlert').classList.add('active');
+                                document.getElementById('submitBtn').disabled = false;
+                            } else if (s.status === 'processing' || s.status === 'pending') {
+                                await pollJobStatus(jobId, chapterId);
+                            } else {
+                                sessionStorage.removeItem('activeJob');
+                                document.getElementById('progressContainer').classList.remove('active');
+                                document.getElementById('submitBtn').disabled = false;
+                            }
+                        } else {
+                            sessionStorage.removeItem('activeJob');
+                            document.getElementById('progressContainer').classList.remove('active');
+                            document.getElementById('submitBtn').disabled = false;
+                        }
+                    } else {
+                        // Job too old, clear it
+                        sessionStorage.removeItem('activeJob');
+                    }
+                } catch (e) {
+                    console.error('Failed to resume job:', e);
+                    sessionStorage.removeItem('activeJob');
+                }
+            }
+        }
+
         function updateProgress(pct, msg) {
             document.getElementById('progressBar').style.width = pct + '%';
             document.getElementById('progressText').textContent = msg;
         }
 
+        // Save form data to sessionStorage (clears on browser close/refresh)
+        function saveFormData() {
+            const formData = {
+                chapterId: document.getElementById('chapterId').value,
+                grade: document.getElementById('grade').value,
+                subject: document.getElementById('subject').value,
+                curriculum: document.getElementById('curriculum').value,
+                language: document.getElementById('language').value,
+                llmProvider: document.getElementById('llmProvider').value,
+                textContent: document.getElementById('textContent').value,
+                speaker1Name: document.getElementById('speaker1Name').value,
+                speaker1Voice: document.getElementById('speaker1Voice').value,
+                speaker2Name: document.getElementById('speaker2Name').value,
+                speaker2Voice: document.getElementById('speaker2Voice').value
+            };
+            sessionStorage.setItem('uploadFormData', JSON.stringify(formData));
+        }
+
+        // Restore form data from sessionStorage (only during same session)
+        function restoreFormData() {
+            try {
+                const saved = sessionStorage.getItem('uploadFormData');
+                if (saved) {
+                    const formData = JSON.parse(saved);
+                    Object.keys(formData).forEach(key => {
+                        const el = document.getElementById(key);
+                        if (el && formData[key]) el.value = formData[key];
+                    });
+                }
+            } catch (e) {
+                console.warn('Failed to restore form data:', e);
+            }
+        }
+
+        // Clear form data (on successful upload)
+        function clearFormData() {
+            sessionStorage.removeItem('uploadFormData');
+            document.getElementById('uploadForm').reset();
+            updateChapterId(); // Generate new chapter ID
+        }
+
+        // Auto-save on input changes
+        function setupAutoSave() {
+            const inputs = ['chapterId', 'grade', 'subject', 'curriculum', 'language', 'llmProvider', 'textContent',
+                           'speaker1Name', 'speaker1Voice', 'speaker2Name', 'speaker2Voice'];
+            inputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', saveFormData);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             loadVoiceConfig();
             updateChapterId();
+            restoreFormData();
+            setupAutoSave();
+            checkActiveJob(); // Check for in-progress job
             ['speaker1Name', 'speaker1Voice', 'speaker2Name', 'speaker2Voice'].forEach(id => {
                 document.getElementById(id)?.addEventListener('change', updateCurrentVoiceConfig);
             });

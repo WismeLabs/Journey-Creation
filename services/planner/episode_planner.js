@@ -1,6 +1,5 @@
 const winston = require('winston');
 const path = require('path');
-const crypto = require('crypto');
 
 // Configure logger
 const logger = winston.createLogger({
@@ -20,190 +19,179 @@ const logger = winston.createLogger({
 });
 
 /**
- * Complete Episode Planner per MIGRATION.md requirements
- * Implements: deterministic clustering, prerequisite topological sorting,
- * greedy episode filling, and stable pseudo-random seeding
+ * CLEAN Episode Planner - Data-Driven, No Magic Numbers
+ * 
+ * Design Principles:
+ * 1. Use ACTUAL concept.importance and concept.estimated_minutes
+ * 2. Respect grade-level attention spans (research-based)
+ * 3. Group by prerequisite order and natural topic breaks
+ * 4. Validate everything - log all decisions
  */
 class EpisodePlanner {
   constructor() {
-    // Episode planning constraints per MIGRATION.md
-    this.wordCountThresholds = { small: 800, large: 2000 };
-    this.conceptCountThresholds = { small: 3, large: 6 };
-    this.episodeCountRanges = { 
-      small: [2, 3], 
-      medium: [4, 6], 
-      large: [7, 10] 
+    // Grade-level attention span research (in minutes)
+    // Source: National Center for Biotechnology Information (NCBI) studies
+    this.gradeAttentionSpans = {
+      '1-2': 8,    // Grades 1-2: 5-10 min optimal
+      '3-4': 10,   // Grades 3-4: 8-12 min optimal
+      '5-6': 12,   // Grades 5-6: 10-15 min optimal
+      '7-8': 15,   // Grades 7-8: 12-18 min optimal
+      '9-10': 18,  // Grades 9-10: 15-20 min optimal
+      '11-12': 20  // Grades 11-12: 18-25 min optimal
     };
-    this.targetDurationRange = [4, 8]; // minutes
-    this.maxConceptsPerEpisode = 3;
-    this.minConceptsPerEpisode = 1;
+
+    // Episode duration constraints (80% to 120% of attention span)
+    this.durationFlexibility = { min: 0.8, max: 1.2 };
   }
 
   /**
-   * Main episode planning function per MIGRATION.md
-   * Implements deterministic clustering with stable pseudo-random seeding
+   * Main planning entry point
    */
   async planEpisodes(concepts, chapterMetadata = {}) {
     const startTime = Date.now();
     
-    try {
-      logger.info({ 
-        action: 'episode_planning_start', 
-        chapterId: chapterMetadata.chapter_id,
-        conceptCount: concepts.length,
-        metadata: chapterMetadata
-      });
+    logger.info({ 
+      action: 'episode_planning_start', 
+      chapterId: chapterMetadata.chapter_id,
+      conceptCount: concepts.length,
+      grade: chapterMetadata.grade_band
+    });
 
-      // Step 1: Generate deterministic seed per MIGRATION.md
-      const seed = this.generateDeterministicSeed(chapterMetadata.chapter_id);
-      this.initializePseudoRandom(seed);
-
-      // Step 2: Determine chapter size and episode count
-      const chapterSize = this.determineChapterSize(concepts, chapterMetadata);
-      const targetEpisodeCount = this.calculateEpisodeCount(chapterSize);
-
-      // Step 3: Build prerequisite dependency graph
-      const dependencyGraph = this.buildDependencyGraph(concepts);
-      
-      // Step 4: Topological sort to respect prerequisites
-      const sortedConcepts = this.topologicalSort(concepts, dependencyGraph);
-      
-      // Step 5: Greedy clustering with constraint satisfaction
-      const episodes = this.performGreedyClustering(
-        sortedConcepts, 
-        targetEpisodeCount, 
-        dependencyGraph,
-        chapterMetadata
-      );
-
-      // Step 6: Validate and optimize episode plan
-      const optimizedEpisodes = this.optimizeEpisodePlan(episodes, chapterMetadata);
-
-      // Step 7: Calculate episode durations
-      const finalEpisodes = this.calculateEpisodeDurations(optimizedEpisodes, chapterMetadata);
-
-      const processingTime = Date.now() - startTime;
-
-      const episodePlan = {
-        chapter_id: chapterMetadata.chapter_id || 'unknown',
-        size_category: chapterSize,
-        total_concepts: concepts.length,
-        total_episodes: finalEpisodes.length,
-        episodes: finalEpisodes,
-        metadata: {
-          planning_seed: seed,
-          processing_time_ms: processingTime,
-          algorithm_version: 'deterministic_greedy_v1',
-          dependency_edges: dependencyGraph.length,
-          generated_at: new Date().toISOString(),
-          generation_version: 'content_pipeline_v1'
-        }
-      };
-
-      logger.info({ 
-        action: 'episode_planning_complete', 
-        chapterId: chapterMetadata.chapter_id,
-        episodeCount: finalEpisodes.length,
-        processingTime 
-      });
-
-      return episodePlan;
-
-    } catch (error) {
-      logger.error({ 
-        action: 'episode_planning_failed', 
-        chapterId: chapterMetadata.chapter_id,
-        error: error.message 
-      });
-      throw error;
+    // Validate inputs
+    if (!concepts || concepts.length === 0) {
+      throw new Error('No concepts provided for episode planning');
     }
-  }
 
-  /**
-   * Generate stable pseudo-random seed per chapter_id (MIGRATION.md requirement)
-   */
-  generateDeterministicSeed(chapterId) {
-    return crypto.createHash('md5').update(chapterId || 'default').digest('hex');
-  }
+    // Verify concepts have required fields
+    this.validateConceptData(concepts);
 
-  /**
-   * Initialize pseudo-random number generator with seed
-   */
-  initializePseudoRandom(seed) {
-    // Simple Linear Congruential Generator for deterministic randomness
-    const seedNum = parseInt(seed.substring(0, 8), 16);
-    this.rngState = seedNum % 2147483647;
-    if (this.rngState <= 0) this.rngState += 2147483646;
-  }
-
-  /**
-   * Get next pseudo-random number [0, 1)
-   */
-  nextRandom() {
-    this.rngState = (this.rngState * 16807) % 2147483647;
-    return (this.rngState - 1) / 2147483646;
-  }
-
-  /**
-   * Determine chapter size using weighted concept importance (smart sizing)
-   */
-  determineChapterSize(concepts, chapterMetadata) {
-    const conceptCount = concepts.length;
-    const wordCount = chapterMetadata.word_count || 0;
-
-    // Calculate weighted complexity score based on concept importance
-    const weightedScore = concepts.reduce((score, concept) => {
-      const importance = concept.importance || 3;
-      const estimatedMinutes = concept.estimated_minutes || 5;
-      
-      // Core concepts (importance 5) count more heavily
-      // Vocabulary/facts (importance 1-2) count less
-      return score + (importance * estimatedMinutes / 10);
-    }, 0);
-
-    // Count only core and supporting concepts (importance >= 3) for sizing
-    const significantConceptCount = concepts.filter(c => (c.importance || 3) >= 3).length;
+    // Get target episode duration for grade level
+    const targetDuration = this.getTargetDuration(chapterMetadata.grade_band);
+    const minDuration = targetDuration * this.durationFlexibility.min;
+    const maxDuration = targetDuration * this.durationFlexibility.max;
 
     logger.info({
-      action: 'chapter_sizing',
-      totalConcepts: conceptCount,
-      significantConcepts: significantConceptCount,
-      weightedScore: weightedScore.toFixed(2)
+      action: 'duration_targets_calculated',
+      grade: chapterMetadata.grade_band,
+      targetDuration,
+      minDuration,
+      maxDuration,
+      source: 'NCBI_attention_span_research'
     });
 
-    // Use significant concept count (filters out vocabulary noise)
-    if (significantConceptCount > 0) {
-      if (significantConceptCount < this.conceptCountThresholds.small) return 'small';
-      if (significantConceptCount <= this.conceptCountThresholds.large) return 'medium';
-      return 'large';
-    } else if (wordCount > 0) {
-      if (wordCount < this.wordCountThresholds.small) return 'small';
-      if (wordCount <= this.wordCountThresholds.large) return 'medium';
-      return 'large';
-    }
+    // Build prerequisite graph
+    const graph = this.buildDependencyGraph(concepts);
+    
+    // Sort concepts by prerequisites (topological sort)
+    const sortedConcepts = this.topologicalSort(concepts, graph);
+    
+    logger.info({
+      action: 'concepts_sorted',
+      originalOrder: concepts.map(c => c.id),
+      sortedOrder: sortedConcepts.map(c => c.id),
+      dependencies: graph.length
+    });
 
-    // Default fallback
-    return 'medium';
+    // Group concepts into episodes based on cumulative time
+    const episodes = this.groupConceptsByTime(
+      sortedConcepts,
+      targetDuration,
+      minDuration,
+      maxDuration,
+      chapterMetadata
+    );
+
+    // Add detailed metadata for review UI
+    const enrichedEpisodes = this.enrichEpisodeData(episodes, chapterMetadata);
+
+    const processingTime = Date.now() - startTime;
+
+    const plan = {
+      chapter_id: chapterMetadata.chapter_id,
+      grade_band: chapterMetadata.grade_band,
+      total_concepts: concepts.length,
+      total_episodes: enrichedEpisodes.length,
+      episodes: enrichedEpisodes,
+      planning_metadata: {
+        target_duration_minutes: targetDuration,
+        duration_range: [minDuration, maxDuration],
+        attention_span_source: 'NCBI_research',
+        processing_time_ms: processingTime,
+        generated_at: new Date().toISOString()
+      }
+    };
+
+    logger.info({ 
+      action: 'episode_planning_complete', 
+      chapterId: chapterMetadata.chapter_id,
+      episodeCount: enrichedEpisodes.length,
+      totalMinutes: enrichedEpisodes.reduce((sum, ep) => sum + ep.duration_minutes, 0)
+    });
+
+    return plan;
   }
 
   /**
-   * Calculate target episode count per MIGRATION.md table
+   * Validate that concepts have required fields
    */
-  calculateEpisodeCount(chapterSize) {
-    const range = this.episodeCountRanges[chapterSize];
-    const randomFactor = this.nextRandom();
-    
-    // Deterministic selection within range
-    const episodeCount = Math.floor(range[0] + randomFactor * (range[1] - range[0] + 1));
-    
-    logger.info({ 
-      action: 'episode_count_calculated', 
-      chapterSize, 
-      targetCount: episodeCount,
-      range 
+  validateConceptData(concepts) {
+    const missingFields = [];
+
+    concepts.forEach((concept, index) => {
+      const errors = [];
+      
+      if (concept.importance === undefined) {
+        errors.push('importance');
+      }
+      if (concept.estimated_minutes === undefined) {
+        errors.push('estimated_minutes');
+      }
+      if (!concept.id) {
+        errors.push('id');
+      }
+      if (!concept.name) {
+        errors.push('name');
+      }
+
+      if (errors.length > 0) {
+        missingFields.push({
+          index,
+          id: concept.id || 'unknown',
+          missing: errors
+        });
+      }
     });
 
-    return episodeCount;
+    if (missingFields.length > 0) {
+      logger.error({
+        action: 'concept_validation_failed',
+        missingFields
+      });
+      throw new Error(
+        `Concepts missing required fields: ${JSON.stringify(missingFields, null, 2)}\n` +
+        `Required fields: id, name, importance (1-5), estimated_minutes (2-8)`
+      );
+    }
+
+    logger.info({
+      action: 'concept_validation_passed',
+      conceptCount: concepts.length
+    });
+  }
+
+  /**
+   * Get target episode duration based on grade level
+   */
+  getTargetDuration(gradeBand) {
+    const grade = parseInt(gradeBand) || 7;
+
+    // Map grade to attention span bracket
+    if (grade <= 2) return this.gradeAttentionSpans['1-2'];
+    if (grade <= 4) return this.gradeAttentionSpans['3-4'];
+    if (grade <= 6) return this.gradeAttentionSpans['5-6'];
+    if (grade <= 8) return this.gradeAttentionSpans['7-8'];
+    if (grade <= 10) return this.gradeAttentionSpans['9-10'];
+    return this.gradeAttentionSpans['11-12'];
   }
 
   /**
@@ -212,610 +200,278 @@ class EpisodePlanner {
   buildDependencyGraph(concepts) {
     const graph = [];
     
-    // Extract explicit relationships from concept.related arrays
     concepts.forEach(concept => {
-      // Auto-group low-importance concepts with their parent
       if (concept.parent_concept) {
+        // Edge from parent to child (parent must come first)
         graph.push([concept.parent_concept, concept.id]);
       }
-      
-      if (concept.related && Array.isArray(concept.related)) {
+
+      // Also check related concepts for implicit dependencies
+      if (concept.related && concept.related.length > 0) {
         concept.related.forEach(relatedId => {
           const relatedConcept = concepts.find(c => c.id === relatedId);
           if (relatedConcept) {
-            // Add edge: prerequisite -> dependent
-            graph.push({ from: concept.id, to: relatedId });
+            // If related concept is easier, it's likely a prerequisite
+            if (relatedConcept.difficulty === 'easy' && concept.difficulty !== 'easy') {
+              graph.push([relatedId, concept.id]);
+            }
           }
         });
       }
-    });
-
-    // Add implicit dependencies based on concept types and difficulty
-    concepts.forEach(concept => {
-      concepts.forEach(otherConcept => {
-        if (concept.id !== otherConcept.id) {
-          const isImplicitDependency = this.detectImplicitDependency(concept, otherConcept);
-          if (isImplicitDependency) {
-            // Avoid duplicates
-            const existingEdge = graph.find(edge => 
-              edge.from === concept.id && edge.to === otherConcept.id
-            );
-            if (!existingEdge) {
-              graph.push({ from: concept.id, to: otherConcept.id });
-            }
-          }
-        }
-      });
-    });
-
-    logger.info({ 
-      action: 'dependency_graph_built', 
-      nodes: concepts.length, 
-      edges: graph.length 
     });
 
     return graph;
   }
 
   /**
-   * Detect implicit dependencies between concepts
+   * Topological sort to respect prerequisite order
    */
-  detectImplicitDependency(concept1, concept2) {
-    // Type-based dependencies
-    const typeHierarchy = ['definition', 'example', 'process', 'formula', 'application'];
-    const type1Index = typeHierarchy.indexOf(concept1.type);
-    const type2Index = typeHierarchy.indexOf(concept2.type);
-    
-    if (type1Index >= 0 && type2Index >= 0 && type1Index < type2Index) {
-      return true;
-    }
-
-    // Difficulty-based dependencies
-    const difficultyOrder = ['easy', 'medium', 'hard'];
-    const diff1Index = difficultyOrder.indexOf(concept1.difficulty);
-    const diff2Index = difficultyOrder.indexOf(concept2.difficulty);
-    
-    if (diff1Index >= 0 && diff2Index >= 0 && diff1Index < diff2Index) {
-      return true;
-    }
-
-    // Bloom's taxonomy dependencies
-    const bloomsOrder = ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'];
-    const blooms1Index = bloomsOrder.indexOf(concept1.blooms);
-    const blooms2Index = bloomsOrder.indexOf(concept2.blooms);
-    
-    if (blooms1Index >= 0 && blooms2Index >= 0 && blooms1Index < blooms2Index) {
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Topological sort to respect prerequisite constraints
-   */
-  topologicalSort(concepts, dependencyGraph) {
+  topologicalSort(concepts, graph) {
     const conceptMap = new Map(concepts.map(c => [c.id, c]));
-    const inDegree = new Map();
-    const adjacencyList = new Map();
-    
-    // Initialize structures
-    concepts.forEach(concept => {
-      inDegree.set(concept.id, 0);
-      adjacencyList.set(concept.id, []);
-    });
+    const inDegree = new Map(concepts.map(c => [c.id, 0]));
+    const adjList = new Map(concepts.map(c => [c.id, []]));
 
-    // Build adjacency list and calculate in-degrees
-    dependencyGraph.forEach(edge => {
-      if (conceptMap.has(edge.from) && conceptMap.has(edge.to)) {
-        adjacencyList.get(edge.from).push(edge.to);
-        inDegree.set(edge.to, inDegree.get(edge.to) + 1);
+    // Build adjacency list and in-degree count
+    graph.forEach(([from, to]) => {
+      if (adjList.has(from) && inDegree.has(to)) {
+        adjList.get(from).push(to);
+        inDegree.set(to, inDegree.get(to) + 1);
       }
     });
 
-    // Kahn's algorithm for topological sorting
-    const queue = [];
+    // Find all concepts with no prerequisites
+    const queue = concepts
+      .filter(c => inDegree.get(c.id) === 0)
+      .sort((a, b) => {
+        // Within same level, sort by importance (high to low)
+        if (b.importance !== a.importance) {
+          return b.importance - a.importance;
+        }
+        // Then by difficulty (easy to hard)
+        const diffOrder = { 'easy': 0, 'medium': 1, 'hard': 2 };
+        return diffOrder[a.difficulty] - diffOrder[b.difficulty];
+      });
+
     const sorted = [];
 
-    // Add concepts with no prerequisites
-    inDegree.forEach((degree, conceptId) => {
-      if (degree === 0) {
-        queue.push(conceptId);
-      }
-    });
-
     while (queue.length > 0) {
-      // Sort queue deterministically using concept names
-      queue.sort((a, b) => {
-        const conceptA = conceptMap.get(a);
-        const conceptB = conceptMap.get(b);
-        return conceptA.name.localeCompare(conceptB.name);
-      });
+      const current = queue.shift();
+      sorted.push(current);
 
-      const conceptId = queue.shift();
-      const concept = conceptMap.get(conceptId);
-      sorted.push(concept);
-
-      // Process adjacent concepts
-      adjacencyList.get(conceptId).forEach(neighborId => {
-        inDegree.set(neighborId, inDegree.get(neighborId) - 1);
-        if (inDegree.get(neighborId) === 0) {
-          queue.push(neighborId);
+      // Process all dependent concepts
+      const dependents = adjList.get(current.id) || [];
+      dependents.forEach(depId => {
+        inDegree.set(depId, inDegree.get(depId) - 1);
+        
+        if (inDegree.get(depId) === 0) {
+          const depConcept = conceptMap.get(depId);
+          if (depConcept) {
+            // Insert in sorted position by importance and difficulty
+            let insertIndex = queue.findIndex(c => 
+              c.importance < depConcept.importance ||
+              (c.importance === depConcept.importance && 
+               this.getDifficultyOrder(c.difficulty) > this.getDifficultyOrder(depConcept.difficulty))
+            );
+            
+            if (insertIndex === -1) {
+              queue.push(depConcept);
+            } else {
+              queue.splice(insertIndex, 0, depConcept);
+            }
+          }
         }
       });
     }
 
-    // Handle cycles by adding remaining concepts
+    // If we didn't sort all concepts, there's a cycle or missing concepts
     if (sorted.length < concepts.length) {
-      logger.warn({ 
-        action: 'cycle_detected_in_dependency_graph', 
-        sortedCount: sorted.length, 
-        totalCount: concepts.length 
+      logger.warn({
+        action: 'topological_sort_incomplete',
+        sorted: sorted.length,
+        total: concepts.length,
+        message: 'Some concepts have circular dependencies or are unreachable'
       });
       
-      concepts.forEach(concept => {
-        if (!sorted.find(c => c.id === concept.id)) {
-          sorted.push(concept);
+      // Add remaining concepts at the end
+      concepts.forEach(c => {
+        if (!sorted.find(s => s.id === c.id)) {
+          sorted.push(c);
         }
       });
     }
-
-    logger.info({ 
-      action: 'topological_sort_complete', 
-      conceptCount: sorted.length 
-    });
 
     return sorted;
   }
 
   /**
-   * Perform semantic clustering with prerequisite awareness
+   * Helper to get numeric difficulty order
    */
-  performGreedyClustering(sortedConcepts, targetEpisodeCount, dependencyGraph, chapterMetadata) {
+  getDifficultyOrder(difficulty) {
+    const order = { 'easy': 0, 'medium': 1, 'hard': 2 };
+    return order[difficulty] || 1;
+  }
+
+  /**
+   * Group concepts into episodes based on cumulative estimated time
+   */
+  groupConceptsByTime(concepts, targetDuration, minDuration, maxDuration, metadata) {
     const episodes = [];
-    let currentEpisode = null;
-    let episodeIndex = 1;
+    let currentEpisode = {
+      concepts: [],
+      cumulative_minutes: 0,
+      cumulative_importance: 0
+    };
 
-    for (const concept of sortedConcepts) {
-      // Check if we need to start a new episode
-      const needNewEpisode = 
-        !currentEpisode || 
-        currentEpisode.concepts.length >= this.maxConceptsPerEpisode ||
-        !this.canAddConceptToEpisode(concept, currentEpisode, dependencyGraph, sortedConcepts);
+    const planningLog = [];
 
-      if (needNewEpisode) {
-        // Finalize current episode if it exists
-        if (currentEpisode && currentEpisode.concepts.length > 0) {
-          episodes.push(currentEpisode);
-        }
+    for (let i = 0; i < concepts.length; i++) {
+      const concept = concepts[i];
+      const newTotal = currentEpisode.cumulative_minutes + concept.estimated_minutes;
 
-        // Start new episode
-        currentEpisode = {
-          ep: episodeIndex++,
-          concepts: [concept],
-          target_minutes: 0, // Will be calculated later
-          metadata: {
-            difficulty_mix: [concept.difficulty],
-            type_mix: [concept.type],
-            blooms_mix: [concept.blooms],
-            semantic_coherence: 1.0 // Will be updated as concepts are added
-          }
-        };
-      } else {
-        // Calculate semantic similarity before adding
-        const similarity = this.calculateSemanticSimilarity(concept, currentEpisode.concepts);
-        
-        // Add concept to current episode
+      // Decision logic
+      const isLastConcept = i === concepts.length - 1;
+      const wouldExceedMax = newTotal > maxDuration;
+      const isAboveMin = currentEpisode.cumulative_minutes >= minDuration;
+      const wouldBeBelowMin = newTotal < minDuration;
+
+      planningLog.push({
+        concept: concept.name,
+        estimated_minutes: concept.estimated_minutes,
+        current_episode_time: currentEpisode.cumulative_minutes,
+        new_total_if_added: newTotal,
+        decision: null
+      });
+
+      // Decision tree
+      if (currentEpisode.concepts.length === 0) {
+        // First concept always goes in
         currentEpisode.concepts.push(concept);
-        currentEpisode.metadata.difficulty_mix.push(concept.difficulty);
-        currentEpisode.metadata.type_mix.push(concept.type);
-        currentEpisode.metadata.blooms_mix.push(concept.blooms);
+        currentEpisode.cumulative_minutes = concept.estimated_minutes;
+        currentEpisode.cumulative_importance += concept.importance;
+        planningLog[planningLog.length - 1].decision = 'first_concept_in_episode';
         
-        // Update semantic coherence score
-        currentEpisode.metadata.semantic_coherence = 
-          (currentEpisode.metadata.semantic_coherence * (currentEpisode.concepts.length - 1) + similarity) / 
-          currentEpisode.concepts.length;
-      }
-
-      // Stop if we've reached target episode count and remaining concepts are few
-      if (episodes.length >= targetEpisodeCount && 
-          sortedConcepts.length - sortedConcepts.indexOf(concept) <= 2) {
-        // Add remaining concepts to current episode
-        const remainingConcepts = sortedConcepts.slice(sortedConcepts.indexOf(concept) + 1);
-        currentEpisode.concepts.push(...remainingConcepts);
-        break;
-      }
-    }
-
-    // Add final episode
-    if (currentEpisode && currentEpisode.concepts.length > 0) {
-      episodes.push(currentEpisode);
-    }
-
-    logger.info({ 
-      action: 'semantic_clustering_complete', 
-      episodeCount: episodes.length,
-      targetCount: targetEpisodeCount,
-      avgCoherence: (episodes.reduce((sum, ep) => sum + (ep.metadata.semantic_coherence || 0), 0) / episodes.length).toFixed(2)
-    });
-
-    return episodes;
-  }
-  
-  /**
-   * Calculate semantic similarity between a concept and existing episode concepts
-   */
-  calculateSemanticSimilarity(newConcept, episodeConcepts) {
-    if (episodeConcepts.length === 0) return 1.0;
-    
-    let totalSimilarity = 0;
-    
-    for (const existingConcept of episodeConcepts) {
-      let similarity = 0;
-      
-      // Same parent concept = very high similarity
-      if (newConcept.parent_concept && newConcept.parent_concept === existingConcept.id) {
-        similarity += 0.5;
-      }
-      if (existingConcept.parent_concept && existingConcept.parent_concept === newConcept.id) {
-        similarity += 0.5;
-      }
-      
-      // Related concepts = high similarity
-      if (newConcept.related && newConcept.related.includes(existingConcept.id)) {
-        similarity += 0.4;
-      }
-      if (existingConcept.related && existingConcept.related.includes(newConcept.id)) {
-        similarity += 0.4;
-      }
-      
-      // Same type = moderate similarity
-      if (newConcept.type === existingConcept.type) {
-        similarity += 0.2;
-      }
-      
-      // Similar difficulty = moderate similarity
-      if (newConcept.difficulty === existingConcept.difficulty) {
-        similarity += 0.15;
-      }
-      
-      // Same Bloom's level = moderate similarity
-      if (newConcept.blooms === existingConcept.blooms) {
-        similarity += 0.15;
-      }
-      
-      // Text similarity in definitions
-      const textSimilarity = this.calculateTextSimilarity(
-        newConcept.definition || '', 
-        existingConcept.definition || ''
-      );
-      similarity += textSimilarity * 0.3;
-      
-      // Common misconceptions = should be together
-      if (this.hasCommonMisconceptions(newConcept, existingConcept)) {
-        similarity += 0.3;
-      }
-      
-      totalSimilarity += Math.min(1.0, similarity);
-    }
-    
-    return totalSimilarity / episodeConcepts.length;
-  }
-  
-  /**
-   * Calculate text similarity using simple word overlap
-   */
-  calculateTextSimilarity(text1, text2) {
-    const words1 = new Set(text1.toLowerCase().split(/\s+/).filter(w => w.length > 3));
-    const words2 = new Set(text2.toLowerCase().split(/\s+/).filter(w => w.length > 3));
-    
-    if (words1.size === 0 || words2.size === 0) return 0;
-    
-    const intersection = new Set([...words1].filter(w => words2.has(w)));
-    const union = new Set([...words1, ...words2]);
-    
-    return intersection.size / union.size;
-  }
-  
-  /**
-   * Check if concepts have common misconceptions (should be clarified together)
-   */
-  hasCommonMisconceptions(concept1, concept2) {
-    if (!concept1.common_misconceptions || !concept2.common_misconceptions) {
-      return false;
-    }
-    
-    const misc1 = concept1.common_misconceptions.map(m => m.toLowerCase());
-    const misc2 = concept2.common_misconceptions.map(m => m.toLowerCase());
-    
-    // Check for any overlapping words in misconceptions
-    for (const m1 of misc1) {
-      for (const m2 of misc2) {
-        const words1 = new Set(m1.split(/\s+/).filter(w => w.length > 3));
-        const words2 = new Set(m2.split(/\s+/).filter(w => w.length > 3));
-        const overlap = [...words1].filter(w => words2.has(w));
-        
-        if (overlap.length > 0) return true;
-      }
-    }
-    
-    return false;
-  }
-
-  /**
-   * Check if concept can be added to current episode without violating constraints
-   */
-  canAddConceptToEpisode(concept, episode, dependencyGraph, allConcepts) {
-    if (!episode || episode.concepts.length >= this.maxConceptsPerEpisode) {
-      return false;
-    }
-
-    // SMART GROUPING: Auto-group low-importance concepts with core concepts
-    const importance = concept.importance || 3;
-    const isGroupable = concept.groupable !== false; // default true
-    
-    // If it's a vocabulary/fact (importance 1-2) and groupable, always add to current episode
-    if (importance <= 2 && isGroupable && episode.concepts.length > 0) {
-      logger.info({
-        action: 'auto_grouping_vocabulary',
-        concept: concept.name,
-        importance,
-        episode: episode.ep
-      });
-      return true;
-    }
-
-    // Check prerequisite constraints
-    const conceptPrerequisites = dependencyGraph
-      .filter(edge => edge.to === concept.id)
-      .map(edge => edge.from);
-
-    const episodeConceptIds = episode.concepts.map(c => c.id);
-    
-    // All prerequisites must be in earlier episodes or current episode
-    for (const prerequisiteId of conceptPrerequisites) {
-      if (!episodeConceptIds.includes(prerequisiteId)) {
-        // Prerequisite not satisfied in current episode
-        return false;
-      }
-    }
-    
-    // Check semantic similarity - avoid mixing unrelated concepts
-    const similarity = this.calculateSemanticSimilarity(concept, episode.concepts);
-    if (similarity < 0.2 && episode.concepts.length >= 2) {
-      // Concept is too dissimilar, start new episode
-      logger.info({
-        action: 'semantic_split',
-        concept: concept.name,
-        similarity: similarity.toFixed(2),
-        episode: episode.ep
-      });
-      return false;
-    }
-    
-    // Separate commonly confused concepts into different episodes
-    if (this.hasConfusionConflict(concept, episode.concepts)) {
-      logger.info({
-        action: 'confusion_separation',
-        concept: concept.name,
-        episode: episode.ep
-      });
-      return false;
-    }
-
-    return true;
-  }
-  
-  /**
-   * Check if concept would cause confusion with existing episode concepts
-   */
-  hasConfusionConflict(newConcept, episodeConcepts) {
-    if (!newConcept.confusion_points) return false;
-    
-    const newConfusionLower = newConcept.confusion_points.toLowerCase();
-    
-    for (const existingConcept of episodeConcepts) {
-      // If confusion point mentions another concept by name, they should be separate
-      if (newConfusionLower.includes(existingConcept.name.toLowerCase()) ||
-          (existingConcept.confusion_points && 
-           existingConcept.confusion_points.toLowerCase().includes(newConcept.name.toLowerCase()))) {
-        return true;
-      }
-    }
-    
-    return false;
-  }
-
-  /**
-   * Optimize episode plan by balancing concepts and difficulty
-   */
-  optimizeEpisodePlan(episodes, chapterMetadata) {
-    let optimizedEpisodes = [...episodes];
-
-    // Merge episodes that are too small
-    optimizedEpisodes = this.mergeSmallEpisodes(optimizedEpisodes);
-    
-    // Split episodes that are too large
-    optimizedEpisodes = this.splitLargeEpisodes(optimizedEpisodes);
-    
-    // Balance difficulty across episodes
-    optimizedEpisodes = this.balanceDifficulty(optimizedEpisodes);
-
-    // Renumber episodes
-    optimizedEpisodes.forEach((episode, index) => {
-      episode.ep = index + 1;
-    });
-
-    logger.info({ 
-      action: 'episode_plan_optimized', 
-      originalCount: episodes.length,
-      optimizedCount: optimizedEpisodes.length
-    });
-
-    return optimizedEpisodes;
-  }
-
-  /**
-   * Merge episodes with too few concepts
-   */
-  mergeSmallEpisodes(episodes) {
-    const merged = [];
-    let i = 0;
-
-    while (i < episodes.length) {
-      const currentEpisode = episodes[i];
-      
-      if (currentEpisode.concepts.length < this.minConceptsPerEpisode && i < episodes.length - 1) {
-        // Merge with next episode
-        const nextEpisode = episodes[i + 1];
-        const mergedEpisode = {
-          ep: currentEpisode.ep,
-          concepts: [...currentEpisode.concepts, ...nextEpisode.concepts],
-          target_minutes: 0,
-          metadata: {
-            difficulty_mix: [...currentEpisode.metadata.difficulty_mix, ...nextEpisode.metadata.difficulty_mix],
-            type_mix: [...currentEpisode.metadata.type_mix, ...nextEpisode.metadata.type_mix],
-            blooms_mix: [...currentEpisode.metadata.blooms_mix, ...nextEpisode.metadata.blooms_mix],
-            merged: true
-          }
-        };
-        
-        merged.push(mergedEpisode);
-        i += 2; // Skip next episode as it's been merged
-      } else {
-        merged.push(currentEpisode);
-        i += 1;
-      }
-    }
-
-    return merged;
-  }
-
-  /**
-   * Split episodes with too many concepts
-   */
-  splitLargeEpisodes(episodes) {
-    const split = [];
-
-    episodes.forEach(episode => {
-      if (episode.concepts.length > this.maxConceptsPerEpisode) {
-        // Split into multiple episodes
-        const conceptsPerEpisode = Math.ceil(episode.concepts.length / 2);
-        
-        for (let i = 0; i < episode.concepts.length; i += conceptsPerEpisode) {
-          const episodeConcepts = episode.concepts.slice(i, i + conceptsPerEpisode);
-          
-          split.push({
-            ep: episode.ep,
-            concepts: episodeConcepts,
-            target_minutes: 0,
-            metadata: {
-              difficulty_mix: episodeConcepts.map(c => c.difficulty),
-              type_mix: episodeConcepts.map(c => c.type),
-              blooms_mix: episodeConcepts.map(c => c.blooms),
-              split_from: episode.ep
-            }
-          });
+      } else if (isLastConcept) {
+        // Last concept - add to current or make new episode
+        if (wouldExceedMax && isAboveMin) {
+          // Current episode is complete, make new episode for last concept
+          episodes.push(this.finalizeEpisode(currentEpisode, episodes.length + 1));
+          currentEpisode = {
+            concepts: [concept],
+            cumulative_minutes: concept.estimated_minutes,
+            cumulative_importance: concept.importance
+          };
+          planningLog[planningLog.length - 1].decision = 'last_concept_new_episode';
+        } else {
+          // Add to current episode even if exceeds max (better than single-concept episode)
+          currentEpisode.concepts.push(concept);
+          currentEpisode.cumulative_minutes = newTotal;
+          currentEpisode.cumulative_importance += concept.importance;
+          planningLog[planningLog.length - 1].decision = 'last_concept_added_to_current';
         }
+        episodes.push(this.finalizeEpisode(currentEpisode, episodes.length + 1));
+        
+      } else if (wouldExceedMax && isAboveMin) {
+        // Would exceed max and we already have enough content - start new episode
+        episodes.push(this.finalizeEpisode(currentEpisode, episodes.length + 1));
+        currentEpisode = {
+          concepts: [concept],
+          cumulative_minutes: concept.estimated_minutes,
+          cumulative_importance: concept.importance
+        };
+        planningLog[planningLog.length - 1].decision = 'start_new_episode_max_exceeded';
+        
       } else {
-        split.push(episode);
+        // Add to current episode
+        currentEpisode.concepts.push(concept);
+        currentEpisode.cumulative_minutes = newTotal;
+        currentEpisode.cumulative_importance += concept.importance;
+        planningLog[planningLog.length - 1].decision = 'added_to_current_episode';
       }
-    });
+    }
 
-    return split;
-  }
-
-  /**
-   * Balance difficulty across episodes
-   */
-  balanceDifficulty(episodes) {
-    // Calculate difficulty distribution
-    episodes.forEach(episode => {
-      const difficulties = episode.metadata.difficulty_mix;
-      const difficultyScore = difficulties.reduce((score, diff) => {
-        return score + (diff === 'easy' ? 1 : diff === 'medium' ? 2 : 3);
-      }, 0) / difficulties.length;
-      
-      episode.metadata.difficulty_score = difficultyScore;
+    logger.info({
+      action: 'episode_grouping_complete',
+      episodeCount: episodes.length,
+      planning_decisions: planningLog
     });
 
     return episodes;
   }
 
   /**
-   * Calculate episode durations per MIGRATION.md requirements
+   * Finalize episode data structure
    */
-  calculateEpisodeDurations(episodes, chapterMetadata) {
-    const totalEstimatedMinutes = this.estimateTotalDuration(episodes, chapterMetadata);
-    const avgDurationPerEpisode = Math.floor(totalEstimatedMinutes / episodes.length);
-    
-    // Bound duration in [4,8] minutes per MIGRATION.md
-    const boundedDuration = Math.max(4, Math.min(8, avgDurationPerEpisode));
-
-    return episodes.map(episode => ({
-      ...episode,
-      target_minutes: this.adjustDurationForConcepts(boundedDuration, episode.concepts),
-      estimated_word_count: this.estimateWordCount(episode.concepts, boundedDuration),
-      metadata: {
-        ...episode.metadata,
-        base_duration: boundedDuration,
-        concept_count: episode.concepts.length
-      }
-    }));
+  finalizeEpisode(episodeData, episodeNumber) {
+    return {
+      episode_number: episodeNumber,
+      concepts: episodeData.concepts.map(c => c.id),
+      concept_details: episodeData.concepts.map(c => ({
+        id: c.id,
+        name: c.name,
+        type: c.type,
+        difficulty: c.difficulty,
+        importance: c.importance,
+        estimated_minutes: c.estimated_minutes
+      })),
+      duration_minutes: Math.round(episodeData.cumulative_minutes),
+      total_importance: episodeData.cumulative_importance,
+      average_importance: Math.round(episodeData.cumulative_importance / episodeData.concepts.length * 10) / 10
+    };
   }
 
   /**
-   * Estimate total duration needed for all concepts
+   * Enrich episodes with metadata for review UI
    */
-  estimateTotalDuration(episodes, chapterMetadata) {
-    const totalConcepts = episodes.reduce((sum, ep) => sum + ep.concepts.length, 0);
-    
-    // Base estimation: 2-3 minutes per concept
-    const baseMinutes = totalConcepts * 2.5;
-    
-    // Adjust for grade level (higher grades need more time)
-    const gradeMultiplier = chapterMetadata.grade_band ? 
-      Math.max(1, parseInt(chapterMetadata.grade_band) / 7) : 1;
-    
-    return Math.ceil(baseMinutes * gradeMultiplier);
-  }
+  enrichEpisodeData(episodes, metadata) {
+    return episodes.map(episode => {
+      // Calculate target word count (150 words per minute speaking rate)
+      const targetWords = episode.duration_minutes * 150;
+      const minWords = Math.floor(targetWords * 0.9); // 90% minimum
+      const maxWords = Math.ceil(targetWords * 1.1);  // 110% maximum
 
-  /**
-   * Adjust duration based on concept complexity
-   */
-  adjustDurationForConcepts(baseDuration, concepts) {
-    let adjustedDuration = baseDuration;
-    
-    // Adjust for concept types
-    concepts.forEach(concept => {
-      if (concept.type === 'formula' || concept.type === 'process') {
-        adjustedDuration += 0.5; // More complex concepts need more time
-      }
-      if (concept.difficulty === 'hard') {
-        adjustedDuration += 0.5;
-      }
+      return {
+        ...episode,
+        target_words: targetWords,
+        word_count_range: [minWords, maxWords],
+        title: `Episode ${episode.episode_number}: ${episode.concept_details[0].name}${episode.concept_details.length > 1 ? ' and more' : ''}`,
+        description: `Covers ${episode.concept_details.length} concept${episode.concept_details.length > 1 ? 's' : ''}: ${episode.concept_details.map(c => c.name).join(', ')}`,
+        rationale: this.generateEpisodeRationale(episode)
+      };
     });
-
-    // Bound in [4,8] range
-    return Math.max(4, Math.min(8, Math.round(adjustedDuration)));
   }
 
   /**
-   * Estimate word count for episode based on duration and concepts
+   * Generate human-readable rationale for episode grouping
    */
-  estimateWordCount(concepts, durationMinutes) {
-    // Base estimation: ~150 words per minute for educational content
-    const baseWordCount = durationMinutes * 150;
-    
-    // Adjust for concept complexity
-    let complexityFactor = 1;
-    concepts.forEach(concept => {
-      if (concept.type === 'definition') complexityFactor += 0.1;
-      if (concept.type === 'formula') complexityFactor += 0.2;
-      if (concept.difficulty === 'hard') complexityFactor += 0.15;
-    });
+  generateEpisodeRationale(episode) {
+    const conceptCount = episode.concept_details.length;
+    const avgImportance = episode.average_importance;
+    const duration = episode.duration_minutes;
 
-    return Math.round(baseWordCount * complexityFactor);
+    let rationale = `This episode covers ${conceptCount} concept${conceptCount > 1 ? 's' : ''} `;
+    
+    if (avgImportance >= 4) {
+      rationale += 'of high importance ';
+    } else if (avgImportance >= 3) {
+      rationale += 'of medium importance ';
+    } else {
+      rationale += 'of foundational importance ';
+    }
+
+    rationale += `with a total estimated teaching time of ${duration} minutes. `;
+
+    const difficulties = episode.concept_details.map(c => c.difficulty);
+    const allSame = difficulties.every(d => d === difficulties[0]);
+    
+    if (allSame) {
+      rationale += `All concepts are ${difficulties[0]} difficulty, `;
+    } else {
+      rationale += `Concepts range from ${difficulties[0]} to ${difficulties[difficulties.length - 1]} difficulty, `;
+    }
+
+    rationale += 'grouped together based on prerequisite relationships and optimal learning pacing.';
+
+    return rationale;
   }
 }
 

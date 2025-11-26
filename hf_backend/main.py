@@ -233,14 +233,23 @@ async def generate_with_llm(prompt: str, temperature: float = 0.4, max_tokens: i
             
             messages = [{"role": "user", "content": prompt}]
             
+            # Handle gpt-5.1's different parameter requirements
+            is_gpt51 = "gpt-5.1" in model_name.lower() or "gpt-5" in model_name.lower()
+            
             kwargs = {
                 "model": model_name,
                 "messages": messages,
                 "temperature": temperature,
-                "max_tokens": max_tokens
             }
             
-            if json_mode:
+            # gpt-5.1 uses max_completion_tokens instead of max_tokens
+            if is_gpt51:
+                kwargs["max_completion_tokens"] = max_tokens
+            else:
+                kwargs["max_tokens"] = max_tokens
+            
+            # gpt-5.1 doesn't support response_format in some API versions
+            if json_mode and not is_gpt51:
                 kwargs["response_format"] = {"type": "json_object"}
             
             logger.info(f"[OpenAI] Trying model: {model_name}")
@@ -249,28 +258,38 @@ async def generate_with_llm(prompt: str, temperature: float = 0.4, max_tokens: i
                 response = await client.chat.completions.create(**kwargs)
                 return response.choices[0].message.content
             except Exception as chat_err:
-                logger.warning(f"[OpenAI] {model_name} via chat.completions failed: {str(chat_err)[:100]}")
-                # Try Responses API as fallback for this model
-                try:
-                    rsp_kwargs = {
-                        "model": model_name,
-                        "input": prompt,
-                        "temperature": temperature,
-                    }
-                    if json_mode:
-                        rsp_kwargs["response_format"] = {"type": "json_object"}
-                    rsp = await client.responses.create(**rsp_kwargs)
-                    if hasattr(rsp, "output_text") and rsp.output_text:
-                        return rsp.output_text
+                error_str = str(chat_err)
+                
+                # Check for rate limit (429) - skip retry and fail fast
+                if "429" in error_str or "rate limit" in error_str.lower():
+                    logger.warning(f"[OpenAI] {model_name} rate limited (429), skipping retry")
+                    raise chat_err
+                
+                logger.warning(f"[OpenAI] {model_name} via chat.completions failed: {error_str[:100]}")
+                # Try Responses API as fallback for this model (skip for gpt-5.1 as it's incompatible)
+                if not is_gpt51:
                     try:
-                        parts = rsp.output[0].content if hasattr(rsp, "output") else []
-                        texts = [p.text for p in parts if hasattr(p, "text")]
-                        return "\n".join(texts) if texts else json.dumps(rsp.model_dump())
-                    except Exception:
-                        return json.dumps(getattr(rsp, "model_dump", lambda: str(rsp))())
-                except Exception as rsp_err:
-                    logger.warning(f"[OpenAI] {model_name} via responses API also failed: {str(rsp_err)[:100]}")
-                    raise chat_err  # Re-raise original error for fallback handling
+                        rsp_kwargs = {
+                            "model": model_name,
+                            "input": prompt,
+                            "temperature": temperature,
+                        }
+                        if json_mode:
+                            rsp_kwargs["response_format"] = {"type": "json_object"}
+                        rsp = await client.responses.create(**rsp_kwargs)
+                        if hasattr(rsp, "output_text") and rsp.output_text:
+                            return rsp.output_text
+                        try:
+                            parts = rsp.output[0].content if hasattr(rsp, "output") else []
+                            texts = [p.text for p in parts if hasattr(p, "text")]
+                            return "\n".join(texts) if texts else json.dumps(rsp.model_dump())
+                        except Exception:
+                            return json.dumps(getattr(rsp, "model_dump", lambda: str(rsp))())
+                    except Exception as rsp_err:
+                        logger.warning(f"[OpenAI] {model_name} via responses API also failed: {str(rsp_err)[:100]}")
+                        raise chat_err  # Re-raise original error for fallback handling
+                else:
+                    raise chat_err  # For gpt-5.1, don't try Responses API
             
         else:  # Gemini
             model, _ = get_gemini_model()
@@ -403,6 +422,9 @@ class ScriptGenerationRequest(BaseModel):
     subject: str
     duration_minutes: int
     source_content: str
+    target_words: Optional[int] = None  # From episode planner
+    word_count_range: Optional[List[int]] = None  # [min, max] from planner
+    episode_rationale: Optional[str] = None  # Why concepts grouped together
     speaker_config: Optional[Dict[str, str]] = {
         "speaker1_name": "StudentA",
         "speaker2_name": "StudentB",
@@ -573,11 +595,12 @@ CONVERSATIONAL PRINCIPLES (NO RIGID STRUCTURE):
    - Grade 7-9: Deeper reasoning, thoughtful questions, real-world connections, technical terms with context
    - Grade 10-12: Analytical thinking, academic vocabulary used naturally, abstract concepts explored thoroughly
 
-TARGET GUIDELINES (NOT STRICT RULES):
-- Duration: 8-12 minutes of natural conversation (roughly 500-1100 words)
+TARGET GUIDELINES (STRICT REQUIREMENTS):
+- Duration: {duration_minutes} minutes of natural conversation
+- Word count: MINIMUM {min_words} words, TARGET {target_words} words (based on 150 words/minute speaking pace)
 - Speaking pace varies naturally - students slow down for complex ideas, speed up when excited
-- Aim for full coverage of assigned concepts but prioritize understanding over checklist completion
-- Use concrete examples where they help, but don't force them into every concept
+- MUST thoroughly cover ALL assigned concepts - this is not optional
+- Use concrete examples to ensure deep understanding
 
 CONCEPT COVERAGE: MUST thoroughly explain all these concepts: {concepts}
 - Don't just mention - actually explain through natural dialogue
@@ -1014,6 +1037,76 @@ async def extract_concepts(request: ConceptExtractionRequest):
             track_job(job_id, "failed", {"error": str(e)})
         raise HTTPException(status_code=500, detail=f"Concept extraction failed: {str(e)}")
 
+def validate_script(script_data: Dict[str, Any], min_words: int, max_words: int, concept_names: List[str], grade_band: str) -> tuple[bool, List[str]]:
+    """
+    Validate generated script for quality and completeness
+    
+    Returns: (is_valid, list_of_errors)
+    """
+    errors = []
+    
+    # Check required fields
+    if not script_data.get("sections"):
+        errors.append("Script missing 'sections' field")
+        return False, errors
+    
+    sections = script_data["sections"]
+    
+    if len(sections) == 0:
+        errors.append("Script has no sections")
+        return False, errors
+    
+    # Count total words
+    total_words = 0
+    for section in sections:
+        text = section.get("text", "")
+        if text:
+            total_words += len(text.split())
+    
+    # Word count validation
+    if total_words < min_words:
+        shortage = min_words - total_words
+        shortage_pct = int((shortage / min_words) * 100)
+        errors.append(f"Script too short: {total_words} words (need {min_words}-{max_words}). SHORT BY {shortage} words ({shortage_pct}%). MUST write more content to meet target duration.")
+    elif total_words > max_words:
+        excess = total_words - max_words
+        excess_pct = int((excess / max_words) * 100)
+        errors.append(f"Script too long: {total_words} words (need {min_words}-{max_words}). EXCEEDED BY {excess} words ({excess_pct}%). MUST reduce content.")
+    
+    # Concept coverage validation
+    script_text = " ".join([s.get("text", "") for s in sections]).lower()
+    uncovered_concepts = []
+    
+    for concept_name in concept_names:
+        if concept_name.lower() not in script_text:
+            uncovered_concepts.append(concept_name)
+    
+    if uncovered_concepts:
+        errors.append(f"Concepts not covered in script: {', '.join(uncovered_concepts)}. MUST include explanations for ALL concepts.")
+    
+    # Section structure validation
+    if len(sections) < 3:
+        errors.append(f"Script has only {len(sections)} sections. Educational scripts should have at least 3 sections (introduction, main content, conclusion).")
+    
+    # Check for speaker dialogue (educational requirement)
+    has_dialogue = any(section.get("speaker") for section in sections)
+    if not has_dialogue:
+        errors.append("Script has no speaker assignments. Educational scripts should be dialogues between speakers.")
+    
+    # Reading level check (simple heuristic)
+    grade = int(grade_band.split('-')[0]) if '-' in grade_band else int(grade_band or 7)
+    avg_word_length = sum(len(word) for section in sections for word in section.get("text", "").split()) / max(total_words, 1)
+    
+    # Very rough grade level check
+    if grade <= 5 and avg_word_length > 6:
+        errors.append(f"Language may be too complex for grade {grade}. Average word length: {avg_word_length:.1f} letters (should be < 6 for elementary).")
+    elif grade <= 8 and avg_word_length > 7:
+        errors.append(f"Language may be too complex for grade {grade}. Average word length: {avg_word_length:.1f} letters (should be < 7 for middle school).")
+    
+    is_valid = len(errors) == 0
+    
+    return is_valid, errors
+
 @app.post("/generate_script")
 async def generate_script(request: ScriptGenerationRequest):
     """Generate educational script per MIGRATION.md requirements"""
@@ -1034,6 +1127,21 @@ async def generate_script(request: ScriptGenerationRequest):
         concept_names = [c.get('name', c.get('id', 'Unknown')) for c in request.concepts]
         concept_ids = [c.get('id', 'unknown') for c in request.concepts]
         duration_seconds = request.duration_minutes * 60
+        
+        # Use target_words from episode planner if provided, otherwise calculate
+        if hasattr(request, 'target_words') and request.target_words:
+            target_words = request.target_words
+            if hasattr(request, 'word_count_range') and request.word_count_range and len(request.word_count_range) == 2:
+                min_words = request.word_count_range[0]
+                max_words = request.word_count_range[1]
+            else:
+                min_words = int(target_words * 0.85)
+                max_words = int(target_words * 1.15)
+        else:
+            # Fallback: calculate from duration (150 words/minute speaking pace)
+            target_words = int(request.duration_minutes * 150)
+            min_words = int(target_words * 0.85)
+            max_words = int(target_words * 1.15)
 
         # Get speaker configuration with defaults
         speaker_config = request.speaker_config or {}
@@ -1042,31 +1150,82 @@ async def generate_script(request: ScriptGenerationRequest):
         speaker1_personality = speaker_config.get('speaker1_personality', 'confident')
         speaker2_personality = speaker_config.get('speaker2_personality', 'curious')
 
+        # Add episode rationale context if provided by planner
+        episode_context = ""
+        if hasattr(request, 'episode_rationale') and request.episode_rationale:
+            episode_context = f"\n\nPLANNING CONTEXT:\nThese concepts were grouped together because: {request.episode_rationale}\nEnsure your dialogue flows naturally given this pedagogical reasoning.\n"
+        
         prompt = EDUCATIONAL_PROMPTS["episode_script"].format(
             concepts=concept_names,
             episode_title=request.episode_title,
             grade_band=request.grade,
             duration_minutes=request.duration_minutes,
             duration_seconds=duration_seconds,
+            target_words=target_words,
+            min_words=min_words,
+            max_words=max_words,
             concept_ids=concept_ids,
             chapter_content=request.source_content[:3000],
             speaker1_name=speaker1_name,
             speaker2_name=speaker2_name,
             speaker1_personality=speaker1_personality,
             speaker2_personality=speaker2_personality
-        )
+        ) + episode_context
 
-        response_text = await generate_with_llm(prompt, temperature=0.4, max_tokens=3000, json_mode=True, provider_override=provider_override)
-
-        result = json.loads(response_text)
+        # Generate script with validation retry loop (max 2 attempts)
+        max_attempts = 2
+        validation_errors = []
         
-        # Validate required fields
-        if not result.get("sections"):
-            raise ValueError("Script generation failed - no sections created")
-
-        logger.info(f"[{job_id}] Successfully generated script with {len(result['sections'])} sections")
-        track_job(job_id, "completed", {"sections_count": len(result['sections'])})
-        return {"script": result}
+        for attempt in range(1, max_attempts + 1):
+            logger.info(f"[{job_id}] Script generation attempt {attempt}/{max_attempts}")
+            
+            # Add feedback from previous attempt if retrying
+            attempt_prompt = prompt
+            if attempt > 1 and validation_errors:
+                feedback = "\\n\\nPREVIOUS ATTEMPT FAILED WITH THESE ISSUES:\\n" + "\\n".join(validation_errors)
+                feedback += "\\n\\nPLEASE FIX THESE ISSUES IN THIS ATTEMPT."
+                attempt_prompt = prompt + feedback
+            
+            response_text = await generate_with_llm(attempt_prompt, temperature=0.4, max_tokens=3000, json_mode=True, provider_override=provider_override)
+            result = json.loads(response_text)
+            
+            # Validate script
+            is_valid, errors = validate_script(
+                result, 
+                min_words, 
+                max_words, 
+                concept_names,
+                request.grade
+            )
+            
+            if is_valid:
+                logger.info(f"[{job_id}] Script validation passed on attempt {attempt}")
+                logger.info(f"[{job_id}] Successfully generated script with {len(result['sections'])} sections")
+                track_job(job_id, "completed", {"sections_count": len(result['sections']), "attempts": attempt})
+                return {"script": result, "validation": {"passed": True, "attempts": attempt}}
+            else:
+                validation_errors = errors
+                logger.warning(f"[{job_id}] Script validation failed on attempt {attempt}: {errors}")
+                
+                if attempt < max_attempts:
+                    logger.info(f"[{job_id}] Retrying script generation...")
+                else:
+                    logger.error(f"[{job_id}] Script validation failed after {max_attempts} attempts")
+                    # Return the script anyway but with validation warnings
+                    track_job(job_id, "completed_with_warnings", {
+                        "sections_count": len(result['sections']),
+                        "validation_errors": errors,
+                        "attempts": attempt
+                    })
+                    return {
+                        "script": result,
+                        "validation": {
+                            "passed": False,
+                            "errors": errors,
+                            "attempts": attempt,
+                            "warning": "Script generated but did not pass all validation checks"
+                        }
+                    }
 
     except Exception as e:
         logger.error(f"[{job_id}] Script generation failed: {str(e)}")

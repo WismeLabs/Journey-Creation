@@ -450,13 +450,25 @@ class ConceptExtractor {
         blooms: concept.blooms || this.assessBloomsLevel(concept.type),
         source_excerpt: concept.source_excerpt || 'auto_generated',
         related: concept.related || [],
-        confidence: concept.confidence || 0.5,
+        confidence: concept.confidence !== undefined ? concept.confidence : 0.5,
         extraction_method: concept.extraction_method || 'unknown',
         
         // Additional enhancements
         definition: concept.definition || concept.description || `${concept.name} concept`,
         grade_appropriate: this.isGradeAppropriate(concept, metadata.grade_band),
-        curriculum_alignment: this.assessCurriculumAlignment(concept, metadata.subject)
+        curriculum_alignment: concept.curriculum_alignment || this.assessCurriculumAlignment(concept, metadata.subject),
+        
+        // CRITICAL FIELDS FOR EPISODE PLANNING - Use LLM values if present, calculate only if missing
+        // Use !== undefined to preserve 0 values from LLM
+        importance: concept.importance !== undefined ? concept.importance : this.calculateImportance(concept, metadata),
+        estimated_minutes: concept.estimated_minutes !== undefined ? concept.estimated_minutes : this.estimateConceptMinutes(concept, metadata),
+        parent_concept: concept.parent_concept !== undefined ? concept.parent_concept : this.findParentConcept(concept, concepts, graph),
+        groupable: concept.groupable !== undefined ? concept.groupable : this.isGroupable(concept, concepts),
+        
+        // Preserve LLM-generated fields if present
+        common_misconceptions: concept.common_misconceptions || [],
+        confusion_points: concept.confusion_points || null,
+        prerequisite_gaps: concept.prerequisite_gaps || null
       };
 
       // Add pronunciation hints for complex terms
@@ -466,6 +478,138 @@ class ConceptExtractor {
 
       return enhanced;
     });
+  }
+
+  /**
+   * Calculate concept importance (1-5 scale) based on curriculum alignment and complexity
+   */
+  calculateImportance(concept, metadata) {
+    let importance = 3; // Default medium importance
+
+    // Curriculum alignment boost
+    if (concept.curriculum_alignment === 'high') {
+      importance += 1;
+    } else if (concept.curriculum_alignment === 'low') {
+      importance -= 1;
+    }
+
+    // Bloom's taxonomy level boost (higher cognitive levels = more important)
+    const bloomsWeight = {
+      'remember': 0,
+      'understand': 0,
+      'apply': 1,
+      'analyze': 1,
+      'evaluate': 2,
+      'create': 2
+    };
+    importance += bloomsWeight[concept.blooms] || 0;
+
+    // Type-based importance
+    const typeWeight = {
+      'definition': 0,      // Foundational but basic
+      'process': 1,         // Important for understanding
+      'formula': 1,         // Key for application
+      'example': -1,        // Supporting material
+      'application': 1      // High-value learning
+    };
+    importance += typeWeight[concept.type] || 0;
+
+    // Confidence penalty (low confidence concepts are less important)
+    if (concept.confidence < 0.5) {
+      importance -= 1;
+    }
+
+    // Clamp to 1-5 range
+    return Math.max(1, Math.min(5, importance));
+  }
+
+  /**
+   * Estimate time needed to teach concept (in minutes) based on complexity and content
+   */
+  estimateConceptMinutes(concept, metadata) {
+    let minutes = 3; // Default base time
+
+    // Difficulty multiplier
+    const difficultyTime = {
+      'easy': 2,
+      'medium': 3,
+      'hard': 5
+    };
+    minutes = difficultyTime[concept.difficulty] || 3;
+
+    // Type-based time adjustment
+    const typeTime = {
+      'definition': 2,      // Quick to explain
+      'process': 4,         // Needs step-by-step explanation
+      'formula': 3,         // Needs derivation and examples
+      'example': 1,         // Quick illustration
+      'application': 4      // Needs context and practice
+    };
+    minutes = Math.max(minutes, typeTime[concept.type] || 3);
+
+    // Content length factor (if definition exists, use it to estimate)
+    if (concept.definition) {
+      const wordCount = concept.definition.split(/\s+/).length;
+      if (wordCount > 50) minutes += 1;
+      if (wordCount > 100) minutes += 1;
+    }
+
+    // Bloom's level adjustment (higher levels need more time)
+    const bloomsTime = {
+      'remember': 0,
+      'understand': 0,
+      'apply': 1,
+      'analyze': 2,
+      'evaluate': 2,
+      'create': 3
+    };
+    minutes += bloomsTime[concept.blooms] || 0;
+
+    // Related concepts complexity (more relationships = more context needed)
+    if (concept.related && concept.related.length > 2) {
+      minutes += 1;
+    }
+
+    return Math.max(2, Math.min(8, minutes)); // Clamp to 2-8 minutes per concept
+  }
+
+  /**
+   * Find parent concept in prerequisite hierarchy
+   */
+  findParentConcept(concept, allConcepts, graph) {
+    // Look for prerequisites in graph
+    const prerequisites = graph
+      .filter(([prereq, dependent]) => dependent === concept.id)
+      .map(([prereq, _]) => prereq);
+
+    if (prerequisites.length === 0) return null;
+
+    // Return the most important prerequisite
+    const parentCandidates = allConcepts.filter(c => prerequisites.includes(c.id));
+    if (parentCandidates.length === 0) return null;
+
+    // Sort by importance if available, otherwise return first
+    parentCandidates.sort((a, b) => {
+      const aImportance = this.calculateImportance(a, {});
+      const bImportance = this.calculateImportance(b, {});
+      return bImportance - aImportance;
+    });
+
+    return parentCandidates[0].id;
+  }
+
+  /**
+   * Determine if concept can be grouped with others
+   */
+  isGroupable(concept, allConcepts) {
+    // Concepts with same type and difficulty are groupable
+    const similarConcepts = allConcepts.filter(c => 
+      c.id !== concept.id &&
+      c.type === concept.type &&
+      c.difficulty === concept.difficulty
+    );
+
+    return similarConcepts.length > 0;
   }
 
   /**

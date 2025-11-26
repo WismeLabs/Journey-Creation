@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review Content - Journey Creation</title>
+    <title>Comprehensive Review - Journey Creation</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -91,45 +91,25 @@
         .page-header h1 {
             font-size: 32px;
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-bottom: 16px;
         }
 
         .chapter-meta {
             display: flex;
             gap: 24px;
-            margin-top: 16px;
-            font-size: 14px;
+            margin: 16px 0;
+            flex-wrap: wrap;
         }
 
         .chapter-meta span {
             color: var(--gray-600);
+            font-size: 14px;
         }
 
         .chapter-meta strong {
             color: var(--gray-900);
-            margin-left: 4px;
+            font-weight: 600;
         }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            padding: 8px 16px;
-            font-size: 14px;
-            font-weight: 500;
-            border-radius: 6px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-            text-decoration: none;
-        }
-
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-dark); }
-        .btn-success { background: var(--success); color: white; }
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-secondary { background: white; color: var(--gray-700); border: 1px solid var(--gray-300); }
-        .btn-secondary:hover { background: var(--gray-50); }
 
         .actions {
             display: flex;
@@ -137,95 +117,318 @@
             margin-top: 16px;
         }
 
-        .episodes-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-            gap: 24px;
-        }
-
-        .episode-card {
-            background: white;
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            padding: 20px;
-        }
-
-        .episode-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 16px;
-        }
-
-        .episode-title {
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        .episode-status {
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .status-pending { background: rgba(245, 158, 11, 0.1); color: #92400e; }
-        .status-approved { background: rgba(16, 185, 129, 0.1); color: #065f46; }
-        .status-rejected { background: rgba(239, 68, 68, 0.1); color: #991b1b; }
-
-        .script-preview {
-            background: var(--gray-50);
-            padding: 16px;
+        .btn {
+            padding: 10px 20px;
+            border: none;
             border-radius: 6px;
-            margin: 16px 0;
-            max-height: 200px;
-            overflow-y: auto;
             font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .mcq-section {
-            background: rgba(37, 99, 235, 0.05);
-            padding: 12px;
-            border-radius: 6px;
-            margin: 12px 0;
-            font-size: 14px;
-        }
-
-        .mcq-question {
             font-weight: 600;
-            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .mcq-option {
-            margin: 4px 0 4px 16px;
+        .btn-primary {
+            background: var(--primary);
+            color: white;
         }
 
-        .mcq-option.correct {
-            color: var(--success);
-            font-weight: 500;
+        .btn-primary:hover {
+            background: var(--primary-dark);
         }
 
-        .episode-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 16px;
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--gray-600);
+            color: white;
         }
 
         .loading {
             text-align: center;
             padding: 60px 20px;
             color: var(--gray-500);
+            font-size: 18px;
         }
 
-        @media (max-width: 768px) {
-            .episodes-grid {
-                grid-template-columns: 1fr;
-            }
-            .chapter-meta {
-                flex-direction: column;
-                gap: 8px;
-            }
+        .content-section {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .content-section h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+        }
+
+        .concepts-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .concepts-table th {
+            background: var(--gray-100);
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-700);
+            border-bottom: 2px solid var(--gray-300);
+        }
+
+        .concepts-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--gray-200);
+            font-size: 14px;
+        }
+
+        .concepts-table tbody tr:hover {
+            background: var(--gray-50);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-easy { background: #d1fae5; color: #065f46; }
+        .badge-medium { background: #fed7aa; color: #92400e; }
+        .badge-hard { background: #fecaca; color: #991b1b; }
+
+        .badge-definition { background: #dbeafe; color: #1e40af; }
+        .badge-process { background: #e0e7ff; color: #3730a3; }
+        .badge-formula { background: #fce7f3; color: #831843; }
+        .badge-example { background: #d1fae5; color: #065f46; }
+        .badge-application { background: #fef3c7; color: #92400e; }
+
+        .importance-bar {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+        }
+
+        .importance-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--gray-300);
+        }
+
+        .importance-dot.filled {
+            background: var(--primary);
+        }
+
+        .episode-plan-card {
+            background: var(--gray-50);
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .episode-plan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--gray-300);
+        }
+
+        .episode-plan-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .episode-duration {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            background: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .episode-concepts-list {
+            margin: 12px 0;
+        }
+
+        .concept-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .concept-item-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .concept-item-meta {
+            display: flex;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .episode-rationale {
+            background: white;
+            border-left: 3px solid var(--primary);
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--gray-600);
+            font-style: italic;
+        }
+
+        .script-card {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .script-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .script-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .script-meta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+
+        .script-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .script-meta-item strong {
+            color: var(--gray-900);
+        }
+
+        .validation-status {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .validation-passed {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        .validation-failed {
+            background: #fecaca;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+
+        .validation-warnings {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+
+        .validation-errors {
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+
+        .validation-errors ul {
+            margin: 8px 0 0 20px;
+            color: #991b1b;
+        }
+
+        .script-content {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            padding: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Georgia', serif;
+            line-height: 1.8;
+            font-size: 15px;
+        }
+
+        .script-section {
+            margin-bottom: 20px;
+        }
+
+        .script-speaker {
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .script-text {
+            color: var(--gray-800);
         }
     </style>
 </head>
@@ -236,17 +439,16 @@
             <div class="nav-links">
                 <a href="upload.html" class="nav-link">Upload</a>
                 <a href="review.html" class="nav-link active">Review</a>
-                <a href="logs.html" class="nav-link">Logs</a>
-                <a href="dev-stats.html" class="nav-link">Stats</a>
+                <a href="voice-config.html" class="nav-link">Voice Config</a>
             </div>
         </div>
     </nav>
 
     <div class="container">
         <div class="page-header">
-            <h1>Content Review</h1>
+            <h1>Comprehensive Chapter Review</h1>
             <div class="chapter-meta">
-                <span>Chapter: <strong id="chapterId">Loading...</strong></span>
+                <span>Chapter ID: <strong id="chapterId">Loading...</strong></span>
                 <span>Subject: <strong id="chapterSubject">Loading...</strong></span>
                 <span>Grade: <strong id="chapterGrade">Loading...</strong></span>
                 <span>Episodes: <strong id="episodeCount">Loading...</strong></span>
@@ -260,7 +462,52 @@
 
         <div id="loadingState" class="loading">Loading chapter content...</div>
 
-        <div id="episodesContainer" class="episodes-grid" style="display: none;"></div>
+        <!-- Section 1: Extracted Concepts -->
+        <div id="conceptsSection" class="content-section" style="display: none;">
+            <h2>📚 Extracted Concepts</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalConcepts">0</div>
+                    <div class="stat-label">Total Concepts</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgImportance">0</div>
+                    <div class="stat-label">Avg Importance</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalMinutes">0</div>
+                    <div class="stat-label">Total Teaching Time</div>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="concepts-table">
+                    <thead>
+                        <tr>
+                            <th>Concept Name</th>
+                            <th>Type</th>
+                            <th>Difficulty</th>
+                            <th>Importance (1-5)</th>
+                            <th>Est. Minutes</th>
+                            <th>Bloom's Level</th>
+                            <th>Curriculum Alignment</th>
+                        </tr>
+                    </thead>
+                    <tbody id="conceptsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Section 2: Episode Plan -->
+        <div id="episodePlanSection" class="content-section" style="display: none;">
+            <h2>🎬 Episode Plan</h2>
+            <div id="episodePlanContainer"></div>
+        </div>
+
+        <!-- Section 3: Scripts -->
+        <div id="scriptsSection" class="content-section" style="display: none;">
+            <h2>📝 Generated Scripts</h2>
+            <div id="scriptsContainer"></div>
+        </div>
     </div>
 
     <script>
@@ -268,59 +515,225 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
-            const chapterId = params.get('chapter');
+            let chapterId = params.get('chapter');
+            
+            if (!chapterId) {
+                const lastCompleted = sessionStorage.getItem('lastCompletedChapter');
+                const activeJob = sessionStorage.getItem('activeJob');
+                
+                if (lastCompleted) {
+                    chapterId = lastCompleted;
+                } else if (activeJob) {
+                    try {
+                        const job = JSON.parse(activeJob);
+                        chapterId = job.chapterId;
+                    } catch (e) {
+                        console.error('Failed to parse activeJob:', e);
+                    }
+                }
+            }
+            
             if (chapterId) {
+                console.log('Loading chapter:', chapterId);
                 loadChapterData(chapterId);
             } else {
-                document.getElementById('loadingState').textContent = 'No chapter specified';
+                console.warn('No chapterId found');
+                document.getElementById('loadingState').textContent = 'No chapter specified. Please generate a chapter first.';
             }
         });
 
         async function loadChapterData(chapterId) {
             try {
-                const res = await fetch(`/api/v1/chapters/${chapterId}`);
-                if (!res.ok) throw new Error('Failed to load chapter');
+                console.log('Fetching chapter:', `/api/v1/chapter/${chapterId}`);
+                const res = await fetch(`/api/v1/chapter/${chapterId}`);
+                if (!res.ok) throw new Error(`Failed to load chapter: ${res.status}`);
                 currentChapter = await res.json();
+                console.log('Loaded chapter:', currentChapter);
                 displayChapter();
             } catch (e) {
+                console.error('Error:', e);
                 document.getElementById('loadingState').textContent = 'Error: ' + e.message;
             }
         }
 
         function displayChapter() {
             document.getElementById('chapterId').textContent = currentChapter.chapter_id || 'N/A';
-            document.getElementById('chapterSubject').textContent = currentChapter.subject || 'N/A';
-            document.getElementById('chapterGrade').textContent = currentChapter.grade || 'N/A';
+            document.getElementById('chapterSubject').textContent = currentChapter.metadata?.subject || 'N/A';
+            document.getElementById('chapterGrade').textContent = currentChapter.metadata?.grade_band || 'N/A';
             document.getElementById('episodeCount').textContent = currentChapter.episodes?.length || 0;
             
             document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('episodesContainer').style.display = 'grid';
             
-            const container = document.getElementById('episodesContainer');
+            displayConcepts();
+            displayEpisodePlan();
+            displayScripts();
+        }
+
+        function displayConcepts() {
+            const concepts = currentChapter.concepts || [];
+            
+            if (concepts.length === 0) {
+                document.getElementById('conceptsSection').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('conceptsSection').style.display = 'block';
+            
+            const totalConcepts = concepts.length;
+            const avgImportance = concepts.reduce((sum, c) => sum + (c.importance || 3), 0) / totalConcepts;
+            const totalMinutes = concepts.reduce((sum, c) => sum + (c.estimated_minutes || 3), 0);
+            
+            document.getElementById('totalConcepts').textContent = totalConcepts;
+            document.getElementById('avgImportance').textContent = avgImportance.toFixed(1);
+            document.getElementById('totalMinutes').textContent = totalMinutes + ' min';
+            
+            const tbody = document.getElementById('conceptsTableBody');
+            tbody.innerHTML = '';
+            
+            concepts.forEach(concept => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${concept.name || concept.id}</strong></td>
+                    <td><span class="badge badge-${concept.type}">${concept.type || 'unknown'}</span></td>
+                    <td><span class="badge badge-${concept.difficulty}">${concept.difficulty || 'medium'}</span></td>
+                    <td>
+                        <div class="importance-bar">
+                            ${[1,2,3,4,5].map(i => 
+                                `<div class="importance-dot ${i <= (concept.importance || 3) ? 'filled' : ''}"></div>`
+                            ).join('')}
+                            <span style="margin-left: 8px; font-weight: 600;">${concept.importance || 3}/5</span>
+                        </div>
+                    </td>
+                    <td><strong>${concept.estimated_minutes || 3}</strong> min</td>
+                    <td>${concept.blooms || 'understand'}</td>
+                    <td>${concept.curriculum_alignment || 'medium'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function displayEpisodePlan() {
+            const episodePlan = currentChapter.episode_plan || {};
+            const episodes = episodePlan.episodes || [];
+            
+            if (episodes.length === 0) {
+                document.getElementById('episodePlanSection').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('episodePlanSection').style.display = 'block';
+            
+            const container = document.getElementById('episodePlanContainer');
             container.innerHTML = '';
             
-            (currentChapter.episodes || []).forEach((ep, idx) => {
+            episodes.forEach((episode, idx) => {
                 const card = document.createElement('div');
-                card.className = 'episode-card';
+                card.className = 'episode-plan-card';
+                
+                const conceptDetails = episode.concept_details || [];
+                
                 card.innerHTML = `
-                    <div class="episode-header">
-                        <div class="episode-title">Episode ${idx + 1}: ${ep.title || 'Untitled'}</div>
-                        <span class="episode-status status-pending">Pending</span>
+                    <div class="episode-plan-header">
+                        <div class="episode-plan-title">${episode.title || `Episode ${episode.episode_number}`}</div>
+                        <div class="episode-duration">${episode.duration_minutes} minutes (${episode.target_words} words)</div>
                     </div>
-                    <div class="script-preview">${ep.script?.slice(0, 300) || 'No script available'}...</div>
-                    ${ep.mcqs && ep.mcqs.length ? `
-                        <div class="mcq-section">
-                            <div class="mcq-question">${ep.mcqs[0].question}</div>
-                            ${ep.mcqs[0].options.map((opt, i) => 
-                                `<div class="mcq-option ${i === ep.mcqs[0].correct_index ? 'correct' : ''}">${opt}</div>`
-                            ).join('')}
+                    <div class="episode-concepts-list">
+                        <strong>Concepts Covered (${conceptDetails.length}):</strong>
+                        ${conceptDetails.map(c => `
+                            <div class="concept-item">
+                                <div class="concept-item-name">${c.name}</div>
+                                <div class="concept-item-meta">
+                                    <span class="badge badge-${c.type}">${c.type}</span>
+                                    <span class="badge badge-${c.difficulty}">${c.difficulty}</span>
+                                    <span>⭐ ${c.importance}/5</span>
+                                    <span>🕒 ${c.estimated_minutes}min</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${episode.rationale ? `
+                        <div class="episode-rationale">
+                            <strong>Planning Rationale:</strong> ${episode.rationale}
                         </div>
                     ` : ''}
-                    <div class="episode-actions">
-                        <button class="btn btn-success" onclick="approveEpisode(${idx})">Approve</button>
-                        <button class="btn btn-danger" onclick="rejectEpisode(${idx})">Reject</button>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        function displayScripts() {
+            const episodes = currentChapter.episodes || [];
+            
+            if (episodes.length === 0) {
+                document.getElementById('scriptsSection').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('scriptsSection').style.display = 'block';
+            
+            const container = document.getElementById('scriptsContainer');
+            container.innerHTML = '';
+            
+            episodes.forEach((episode, idx) => {
+                const script = episode.script_data || {};
+                const sections = script.sections || [];
+                
+                const totalWords = sections.reduce((sum, s) => sum + (s.text || '').split(/\s+/).length, 0);
+                const durationMinutes = Math.round((totalWords / 150) * 10) / 10;
+                
+                const validation = episode.validation || {};
+                const validationPassed = validation.passed !== false;
+                const validationErrors = validation.errors || [];
+                
+                const card = document.createElement('div');
+                card.className = 'script-card';
+                
+                card.innerHTML = `
+                    <div class="script-header">
+                        <div>
+                            <div class="script-title">${episode.title || `Episode ${idx + 1}`}</div>
+                            <div class="script-meta">
+                                <div class="script-meta-item">
+                                    <span>📝</span> <strong>${totalWords}</strong> words
+                                </div>
+                                <div class="script-meta-item">
+                                    <span>🕒</span> <strong>${durationMinutes}</strong> minutes
+                                </div>
+                                <div class="script-meta-item">
+                                    <span>📚</span> <strong>${sections.length}</strong> sections
+                                </div>
+                                ${validation.attempts ? `
+                                    <div class="script-meta-item">
+                                        <span>🔄</span> <strong>${validation.attempts}</strong> attempts
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="validation-status ${validationPassed ? 'validation-passed' : validationErrors.length > 0 ? 'validation-failed' : 'validation-warnings'}">
+                            ${validationPassed ? '✓ Validation Passed' : validationErrors.length > 0 ? '✗ Validation Failed' : '⚠ Has Warnings'}
+                        </div>
+                    </div>
+                    
+                    ${validationErrors.length > 0 ? `
+                        <div class="validation-errors">
+                            <strong>Validation Issues:</strong>
+                            <ul>
+                                ${validationErrors.map(err => `<li>${err}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="script-content">
+                        ${sections.map(section => `
+                            <div class="script-section">
+                                ${section.speaker ? `<div class="script-speaker">${section.speaker}:</div>` : ''}
+                                <div class="script-text">${section.text || ''}</div>
+                            </div>
+                        `).join('')}
                     </div>
                 `;
+                
                 container.appendChild(card);
             });
         }
@@ -341,14 +754,6 @@
             if (confirm('Generate audio for all approved episodes?')) {
                 alert('Audio generation started');
             }
-        }
-
-        function approveEpisode(idx) {
-            alert(`Episode ${idx + 1} approved`);
-        }
-
-        function rejectEpisode(idx) {
-            alert(`Episode ${idx + 1} rejected`);
         }
     </script>
 </body>

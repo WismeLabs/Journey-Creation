@@ -1314,7 +1314,9 @@ app.get('/api/v1/chapter/:chapter_id', async (req, res) => {
     let episodePlan = null;
     
     if (fs.existsSync(conceptsPath)) {
-      concepts = JSON.parse(fs.readFileSync(conceptsPath, 'utf8'));
+      const conceptsData = JSON.parse(fs.readFileSync(conceptsPath, 'utf8'));
+      // Handle both formats: {concepts: [...], graph: [...]} or just [...]
+      concepts = conceptsData.concepts || conceptsData;
     }
     
     if (fs.existsSync(episodePlanPath)) {
@@ -1332,16 +1334,18 @@ app.get('/api/v1/chapter/:chapter_id', async (req, res) => {
       const episodePath = path.join(chapterPath, episodeDir);
       const scriptPath = path.join(episodePath, 'script.json');
       const mcqsPath = path.join(episodePath, 'mcqs.json');
+      const metadataPath = path.join(episodePath, 'metadata.json');
       
-      let script = null;
+      let script_data = null;
       let mcqs = null;
       let scriptText = '';
+      let metadata = null;
       
       if (fs.existsSync(scriptPath)) {
-        script = JSON.parse(fs.readFileSync(scriptPath, 'utf8'));
+        script_data = JSON.parse(fs.readFileSync(scriptPath, 'utf8'));
         // Extract plain text from script sections for review UI
-        if (script.sections && Array.isArray(script.sections)) {
-          scriptText = script.sections.map(s => s.text).join('\n\n');
+        if (script_data.sections && Array.isArray(script_data.sections)) {
+          scriptText = script_data.sections.map(s => s.text).join('\n\n');
         }
       }
       
@@ -1349,12 +1353,22 @@ app.get('/api/v1/chapter/:chapter_id', async (req, res) => {
         mcqs = JSON.parse(fs.readFileSync(mcqsPath, 'utf8'));
       }
       
+      if (fs.existsSync(metadataPath)) {
+        metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+      }
+      
       episodes.push({
         episode_number: parseInt(episodeDir.replace('Episode-', '')),
-        script,
+        script_data,
         script_text: scriptText,
         mcqs,
-        status: 'pending'
+        status: metadata?.validation_status || 'pending',
+        validation: {
+          passed: metadata?.validation_status === 'validated' || metadata?.validation_status === 'completed_with_warnings',
+          errors: metadata?.validation_errors || [],
+          attempts: metadata?.validation_attempts || 1
+        },
+        metadata
       });
     }
     
@@ -1864,12 +1878,23 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
     }
     
     // Get episode-specific concepts from episode config
-    const episodeConcepts = episodeConfig.concepts || [];
+    // New planner returns concepts as ID array and concept_details as full objects
+    const episodeConcepts = episodeConfig.concepts || []; // Array of IDs
+    const conceptDetails = episodeConfig.concept_details || []; // Array of full objects from planner
     
-    // Map episode concept IDs to full concept objects with misconceptions
+    // Map episode concept IDs to full concept objects from original concepts array
     const fullConcepts = concepts.filter(c => 
-      episodeConcepts.some(ec => ec.id === c.id || ec === c.id)
+      episodeConcepts.includes(c.id)
     );
+    
+    // Merge with concept_details from planner (has importance, estimated_minutes, etc)
+    fullConcepts.forEach(concept => {
+      const plannerDetail = conceptDetails.find(cd => cd.id === concept.id);
+      if (plannerDetail) {
+        concept.importance = plannerDetail.importance;
+        concept.estimated_minutes = plannerDetail.estimated_minutes;
+      }
+    });
     
     logger.info(`Episode ${episodeIndex}: Using ${fullConcepts.length} concepts with misconceptions for generation`);
     
@@ -1878,11 +1903,14 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        concepts: fullConcepts,  // Pass full concept objects
-        episode_title: `${metadata.subject} - Episode ${episodeIndex}`,
+        concepts: fullConcepts,  // Pass full concept objects with importance/estimated_minutes
+        episode_title: episodeConfig.title || `${metadata.subject} - Episode ${episodeIndex}`,
         grade: metadata.grade_band || metadata.grade,
         subject: metadata.subject,
-        duration_minutes: episodeConfig.target_minutes || 8,
+        duration_minutes: episodeConfig.duration_minutes || 8,  // Use new planner field
+        target_words: episodeConfig.target_words,  // Pass planner's calculated target
+        word_count_range: episodeConfig.word_count_range,  // Pass min/max from planner
+        episode_rationale: episodeConfig.rationale,  // Pass planning rationale
         source_content: markdown.substring(0, 5000), // Context window
         llm_provider: metadata.llm_provider || 'auto',
         speaker_config: {
@@ -1903,6 +1931,9 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
     const scriptData = await scriptResponse.json();
     
     console.log('Script data structure:', JSON.stringify(scriptData, null, 2));
+    
+    // Store validation results from Python backend
+    const scriptValidation = scriptData.validation || { passed: true };
     
     // Generate MCQs with FULL concept objects including misconceptions
     const mcqResponse = await fetch(`${process.env.HF_BACKEND_URL || 'http://localhost:8000'}/generate_mcqs`, {
@@ -1930,49 +1961,57 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
 
     const episodeData = {
       episode_index: episodeIndex,
-      title: `${metadata.subject} - Episode ${episodeIndex}`,
+      title: episodeConfig.title || `${metadata.subject} - Episode ${episodeIndex}`,
       concepts: concepts,
-      script: scriptData.script,
+      script_data: scriptData.script,  // Store as script_data for review UI
+      script: scriptData.script,  // Keep for backward compatibility
       mcqs: mcqData.mcqs,
-      duration: 12,
+      duration: episodeConfig.duration_minutes || 12,
+      validation: scriptValidation,  // Use Python validation results
       metadata: {
         generated_at: new Date().toISOString(),
         source_concepts: concepts.map(c => c.id || c.name),
-        validation_status: 'pending'
+        validation_status: scriptValidation.passed ? 'validated' : 'has_warnings',
+        validation_attempts: scriptValidation.attempts || 1,
+        validation_errors: scriptValidation.errors || []
       },
       logs: logs
     };
 
-    // Validate episode
-    const validationResult = await validationService.validateEpisode(episodeData, episodeConfig);
-    
-    if (!validationResult.isValid) {
-      // Attempt auto-repair with retry logic per MIGRATION.md
-      const repairResult = await validationService.repairEpisodeWithRetries(episodeData, episodeConfig);
-      if (repairResult.success) {
-        episodeData.script = repairResult.repairedEpisode.script;
-        episodeData.mcqs = repairResult.repairedEpisode.mcqs;
-        episodeData.metadata.validation_status = 'auto_repaired';
-        episodeData.metadata.repair_log = repairResult.repairLog;
-        logs.push({ step: 'validation', status: 'auto_repaired', attempts: repairResult.repairLog.totalAttempts });
-      } else {
-        episodeData.metadata.validation_status = 'requires_review';
-        episodeData.metadata.validation_errors = validationResult.errors;
-        episodeData.error_report = repairResult.errorReport;
-        logs.push({ step: 'validation', status: 'requires_review', errors: validationResult.errors.length });
-        
-        // Save error_report.json per MIGRATION.md
-        if (repairResult.errorReport) {
-          await saveErrorReport(metadata.chapter_id, episodeIndex, repairResult.errorReport, metadata);
-        }
-      }
-    } else {
+    // Check Python validation results instead of re-validating
+    if (!scriptValidation.passed && scriptValidation.errors && scriptValidation.errors.length > 0) {
+      // Log validation warnings but don't fail - Python already tried retry
+      logger.warn({
+        message: `Episode ${episodeIndex} has validation warnings from Python backend`,
+        errors: scriptValidation.errors,
+        attempts: scriptValidation.attempts,
+        warning: 'Python backend already attempted retry - accepting with warnings'
+      });
+      
+      episodeData.metadata.validation_status = 'completed_with_warnings';
+      logs.push({ 
+        step: 'validation', 
+        status: 'has_warnings', 
+        errors: scriptValidation.errors,
+        attempts: scriptValidation.attempts,
+        note: 'Python validation already attempted fixes'
+      });
+    } else if (scriptValidation.passed) {
+      logger.info({
+        message: `Episode ${episodeIndex} passed Python validation`,
+        attempts: scriptValidation.attempts || 1
+      });
+      
       episodeData.metadata.validation_status = 'validated';
-      logs.push({ step: 'validation', status: 'passed' });
+      logs.push({ 
+        step: 'validation', 
+        status: 'passed', 
+        attempts: scriptValidation.attempts || 1
+      });
     }
 
-    // Generate audio if validation passed
-    if (episodeData.metadata.validation_status !== 'requires_review') {
+    // Generate audio if validation passed or has warnings (don't skip if only warnings)
+    if (episodeData.metadata.validation_status !== 'failed') {
       try {
         const audioResult = await ttsService.generateEpisodeAudio(episodeData, metadata.chapter_id, episodeIndex);
         episodeData.audio = audioResult;

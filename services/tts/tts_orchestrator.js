@@ -21,20 +21,20 @@ class TTSOrchestrator {
     // Language-specific voice mappings for K-12 education
     this.educationalVoices = {
       'en-US': {
-        StudentA: { name: 'en-US-Chirp3-HD-Achird', gender: 'MALE', personality: 'confident' },
-        StudentB: { name: 'en-US-Chirp3-HD-Aoede', gender: 'FEMALE', personality: 'curious' }
+        StudentA: { name: 'en-US-Neural2-D', gender: 'MALE', personality: 'confident' },
+        StudentB: { name: 'en-US-Neural2-F', gender: 'FEMALE', personality: 'curious' }
       },
       'en-IN': {
-        StudentA: { name: 'en-IN-Chirp3-HD-Achird', gender: 'MALE', personality: 'confident' },
-        StudentB: { name: 'en-IN-Chirp3-HD-Aoede', gender: 'FEMALE', personality: 'curious' }
+        StudentA: { name: 'en-IN-Neural2-B', gender: 'MALE', personality: 'confident' },
+        StudentB: { name: 'en-IN-Neural2-A', gender: 'FEMALE', personality: 'curious' }
       },
       'en-GB': {
-        StudentA: { name: 'en-GB-Chirp3-HD-Achird', gender: 'MALE', personality: 'confident' },
-        StudentB: { name: 'en-GB-Chirp3-HD-Aoede', gender: 'FEMALE', personality: 'curious' }
+        StudentA: { name: 'en-GB-Neural2-B', gender: 'MALE', personality: 'confident' },
+        StudentB: { name: 'en-GB-Neural2-A', gender: 'FEMALE', personality: 'curious' }
       },
       'hi-IN': {
-        StudentA: { name: 'hi-IN-Chirp3-HD-Achird', gender: 'MALE', personality: 'confident' },
-        StudentB: { name: 'hi-IN-Chirp3-HD-Aoede', gender: 'FEMALE', personality: 'curious' }
+        StudentA: { name: 'hi-IN-Neural2-B', gender: 'MALE', personality: 'confident' },
+        StudentB: { name: 'hi-IN-Neural2-A', gender: 'FEMALE', personality: 'curious' }
       }
     };
 
@@ -52,32 +52,20 @@ class TTSOrchestrator {
 
   /**
    * Get comprehensive available voices from Google TTS
+   * Updated list - only verified working voices
    */
   getAvailableVoices() {
     return {
-      // Premium Chirp3 HD Voices (Best for Education - Most Natural)
-      chirp3_hd: {
+      // Journey Voices (Latest Generation - Best for Education)
+      journey: {
         'en-US': [
-          'en-US-Chirp3-HD-Achernar', 'en-US-Chirp3-HD-Achird', 'en-US-Chirp3-HD-Algenib',
-          'en-US-Chirp3-HD-Aoede', 'en-US-Chirp3-HD-Autonoe', 'en-US-Chirp3-HD-Callirrhoe',
-          'en-US-Chirp3-HD-Charon', 'en-US-Chirp3-HD-Despina', 'en-US-Chirp3-HD-Enceladus',
-          'en-US-Chirp3-HD-Ersa', 'en-US-Chirp3-HD-Iapetus', 'en-US-Chirp3-HD-Io',
-          'en-US-Chirp3-HD-Kale', 'en-US-Chirp3-HD-Leda', 'en-US-Chirp3-HD-Mimas',
-          'en-US-Chirp3-HD-Oberon', 'en-US-Chirp3-HD-Proteus', 'en-US-Chirp3-HD-Rhea',
-          'en-US-Chirp3-HD-Tethys', 'en-US-Chirp3-HD-Thebe', 'en-US-Chirp3-HD-Titan'
-        ],
-        'en-IN': [
-          'en-IN-Chirp3-HD-Achernar', 'en-IN-Chirp3-HD-Achird', 'en-IN-Chirp3-HD-Algenib',
-          'en-IN-Chirp3-HD-Aoede', 'en-IN-Chirp3-HD-Autonoe', 'en-IN-Chirp3-HD-Callirrhoe',
-          'en-IN-Chirp3-HD-Charon', 'en-IN-Chirp3-HD-Despina', 'en-IN-Chirp3-HD-Enceladus'
-        ],
-        'en-GB': [
-          'en-GB-Chirp3-HD-Achernar', 'en-GB-Chirp3-HD-Achird', 'en-GB-Chirp3-HD-Algenib',
-          'en-GB-Chirp3-HD-Aoede', 'en-GB-Chirp3-HD-Autonoe', 'en-GB-Chirp3-HD-Callirrhoe'
-        ],
-        'hi-IN': [
-          'hi-IN-Chirp3-HD-Achernar', 'hi-IN-Chirp3-HD-Achird', 'hi-IN-Chirp3-HD-Algenib',
-          'hi-IN-Chirp3-HD-Aoede', 'hi-IN-Chirp3-HD-Autonoe', 'hi-IN-Chirp3-HD-Callirrhoe'
+          'en-US-Journey-D', 'en-US-Journey-F', 'en-US-Journey-O'
+        ]
+      },
+      // Studio Voices (High Quality Natural)
+      studio: {
+        'en-US': [
+          'en-US-Studio-O', 'en-US-Studio-Q'
         ]
       },
       // Neural2 Voices (High Quality - Expressive)
@@ -120,26 +108,30 @@ class TTSOrchestrator {
    */
   getOptimalVoiceConfig() {
     const language = process.env.TTS_LANGUAGE || 'en-IN';
-    const voiceType = process.env.TTS_VOICE_TYPE || 'chirp3_hd'; // chirp3_hd, neural2, wavenet, standard
+    const voiceType = process.env.TTS_VOICE_TYPE || 'neural2'; // neural2, wavenet, journey, studio, standard
+    
+    // Ensure educationalVoices is initialized before accessing
+    const eduVoices = this.educationalVoices || {};
+    const langVoices = eduVoices[language] || eduVoices['en-IN'] || {};
     
     return {
       language: language,
       voiceType: voiceType,
       StudentA: {
-        name: this.educationalVoices[language]?.StudentA?.name || 'en-IN-Chirp3-HD-Achird',
+        name: langVoices.StudentA?.name || 'en-IN-Neural2-B',
         displayName: 'StudentA', // Default display name, can be customized
         languageCode: language,
-        ssmlGender: this.educationalVoices[language]?.StudentA?.gender || 'MALE',
+        ssmlGender: langVoices.StudentA?.gender || 'MALE',
         personality: 'confident',
         role: 'student',
         ssmlPrefix: '<prosody rate="medium" pitch="+0.5st" volume="+2dB">',
         ssmlSuffix: '</prosody>'
       },
       StudentB: {
-        name: this.educationalVoices[language]?.StudentB?.name || 'en-IN-Chirp3-HD-Aoede',
+        name: langVoices.StudentB?.name || 'en-IN-Neural2-A',
         displayName: 'StudentB', // Default display name, can be customized
         languageCode: language,
-        ssmlGender: this.educationalVoices[language]?.StudentB?.gender || 'FEMALE',
+        ssmlGender: langVoices.StudentB?.gender || 'FEMALE',
         personality: 'curious',
         role: 'student',
         ssmlPrefix: '<prosody rate="medium" pitch="-0.5st" volume="+1dB">',
@@ -272,12 +264,18 @@ class TTSOrchestrator {
     try {
       // Test with comprehensive configuration
       const testConfig = this.voiceConfig.StudentA;
+      
+      // Ensure languageCode is set with fallback
+      const languageCode = testConfig.languageCode || this.voiceConfig.language || 'en-IN';
+      const voiceName = testConfig.name || 'en-IN-Chirp3-HD-Achird';
+      const ssmlGender = testConfig.ssmlGender || 'MALE';
+      
       const [response] = await this.googleTTSClient.synthesizeSpeech({
         input: { text: 'Test synthesis for K-12 educational content pipeline.' },
         voice: {
-          languageCode: testConfig.languageCode,
-          name: testConfig.name,
-          ssmlGender: testConfig.ssmlGender
+          languageCode: languageCode,
+          name: voiceName,
+          ssmlGender: ssmlGender
         },
         audioConfig: {
           audioEncoding: this.audioConfig.audioEncoding,
@@ -288,7 +286,7 @@ class TTSOrchestrator {
       });
       
       logger.info('✅ Google TTS connection test successful');
-      logger.info(`✅ Voice: ${testConfig.name} (${testConfig.languageCode})`);
+      logger.info(`✅ Voice: ${voiceName} (${languageCode})`);
       logger.info(`✅ Audio: ${this.audioConfig.audioEncoding} @ ${this.audioConfig.sampleRateHertz}Hz`);
       
       return {
@@ -306,8 +304,8 @@ class TTSOrchestrator {
         throw new Error('Invalid Google TTS API key. Please check GOOGLE_TTS_API_KEY in .env file.');
       } else if (error.message.includes('quota')) {
         throw new Error('Google TTS quota exceeded. Please check your billing and usage limits.');
-      } else if (error.message.includes('voice')) {
-        throw new Error(`Voice not available: ${this.voiceConfig.StudentA.name}. Please check voice availability in your region.`);
+      } else if (error.message.includes('voice') || error.message.includes('language')) {
+        throw new Error(`Voice not available: ${this.voiceConfig.StudentA.name}. Please check voice availability and language code in your region.`);
       } else {
         throw new Error(`TTS configuration error: ${error.message}`);
       }
@@ -341,23 +339,34 @@ class TTSOrchestrator {
         if (customVoiceConfig && customVoiceConfig.speakers) {
           const speakerKey = segment.speaker === 'speaker1' ? 'speaker1' : 
                            segment.speaker === 'speaker2' ? 'speaker2' : segment.speaker;
-          voiceConfig = customVoiceConfig.speakers[speakerKey] || 
-                       customVoiceConfig.speakers.StudentA || 
-                       this.voiceConfig.StudentA;
+          const customSpeaker = customVoiceConfig.speakers[speakerKey] || 
+                               customVoiceConfig.speakers.StudentA || 
+                               this.voiceConfig.StudentA;
+          
+          // Extract languageCode and voice name from voice/voiceId field
+          const voiceName = customSpeaker.voice || customSpeaker.voiceId || customSpeaker.name || 'en-IN-Neural2-A';
+          const languageCode = voiceName.split('-').slice(0, 2).join('-'); // Extract 'en-IN' from 'en-IN-Neural2-A'
+          
+          voiceConfig = {
+            name: voiceName,
+            languageCode: languageCode,
+            ssmlGender: customSpeaker.ssmlGender || 'NEUTRAL'
+          };
         } else {
           const mappedSpeaker = segment.speaker === 'speaker1' ? 'StudentA' : 
                                segment.speaker === 'speaker2' ? 'StudentB' : segment.speaker;
           voiceConfig = this.voiceConfig[mappedSpeaker] || this.voiceConfig.StudentA;
         }
+        
         const filename = `test_${timestamp}_${i}.mp3`;
         const outputPath = path.join(testDir, filename);
 
         const request = {
           input: { text: segment.text },
           voice: {
-            languageCode: voiceConfig.languageCode,
-            name: voiceConfig.name,
-            ssmlGender: voiceConfig.ssmlGender
+            languageCode: voiceConfig.languageCode || 'en-IN',
+            name: voiceConfig.name || 'en-IN-Neural2-A',
+            ssmlGender: voiceConfig.ssmlGender || 'NEUTRAL'
           },
           audioConfig: {
             audioEncoding: this.audioConfig.audioEncoding,

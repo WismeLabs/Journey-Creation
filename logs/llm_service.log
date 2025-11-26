@@ -1529,3 +1529,369 @@ message: "API key not valid. Please pass a valid API key."
 2025-11-25 20:04:01,299 - __main__ - INFO - [OK] Gemini API configured and validated successfully
 2025-11-25 20:04:01,300 - __main__ - INFO - [OK] All systems operational
 2025-11-25 20:16:42,632 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-26 16:24:49,547 - __main__ - INFO - [AUTO MODE] Primary: OpenAI GPT-4o | Fallback: Gemini 2.0 Flash
+2025-11-26 16:24:49,797 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:24:50,853 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-26 16:24:50,853 - __main__ - INFO - [OK] All systems operational
+2025-11-26 16:31:45,255 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-26 16:33:54,983 - __main__ - INFO - [AUTO MODE] Primary: OpenAI GPT-4o | Fallback: Gemini 2.0 Flash
+2025-11-26 16:33:55,216 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:33:56,299 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-26 16:33:56,300 - __main__ - INFO - [OK] All systems operational
+2025-11-26 16:38:44,367 - __main__ - INFO - Job concept_extraction_1764155324_505bc08f: processing
+2025-11-26 16:38:44,369 - __main__ - INFO - [concept_extraction_1764155324_505bc08f] Extracting concepts for Science content using OPENAI
+2025-11-26 16:38:45,551 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:38:45,552 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:38:48,626 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:38:48,630 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:38:48,895 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:38:48,896 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:38:50,113 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:38:50,114 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:39:06,109 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:39:06,117 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:39:06,118 - __main__ - INFO - [concept_extraction_1764155324_505bc08f] Successfully extracted 5 concepts
+2025-11-26 16:39:06,118 - __main__ - INFO - Job concept_extraction_1764155324_505bc08f: completed
+2025-11-26 16:39:06,138 - __main__ - INFO - Job script_generation_1764155346_3ebdce59: processing
+2025-11-26 16:39:06,139 - __main__ - INFO - [script_generation_1764155346_3ebdce59] Generating script for episode: Science - Episode 1 using OPENAI
+2025-11-26 16:39:06,296 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:39:06,297 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:39:06,299 - __main__ - INFO - Job script_generation_1764155346_c40072d5: processing
+2025-11-26 16:39:06,300 - __main__ - INFO - [script_generation_1764155346_c40072d5] Generating script for episode: Science - Episode 2 using OPENAI
+2025-11-26 16:39:06,459 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:39:06,459 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:39:07,505 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:39:07,506 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:39:07,506 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:39:07,507 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:39:07,668 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:39:07,669 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:39:07,686 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:39:07,686 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:39:07,687 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:39:07,687 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:39:07,847 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:39:07,848 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:39:22,557 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:39:22,565 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:39:22,565 - __main__ - INFO - [script_generation_1764155346_3ebdce59] Successfully generated script with 2 sections
+2025-11-26 16:39:22,565 - __main__ - INFO - Job script_generation_1764155346_3ebdce59: completed
+2025-11-26 16:39:22,568 - __main__ - INFO - Job mcq_generation_1764155362_3ff0b6da: processing
+2025-11-26 16:39:22,568 - __main__ - INFO - [mcq_generation_1764155362_3ff0b6da] Generating 6 MCQs using OPENAI
+2025-11-26 16:39:22,733 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:39:22,733 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:39:23,824 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:39:23,825 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:39:23,825 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:39:23,826 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:39:23,987 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:39:23,988 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:39:26,792 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:39:26,799 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:39:26,800 - __main__ - INFO - [script_generation_1764155346_c40072d5] Successfully generated script with 2 sections
+2025-11-26 16:39:26,800 - __main__ - INFO - Job script_generation_1764155346_c40072d5: completed
+2025-11-26 16:39:26,802 - __main__ - INFO - Job mcq_generation_1764155366_4b430464: processing
+2025-11-26 16:39:26,802 - __main__ - INFO - [mcq_generation_1764155366_4b430464] Generating 3 MCQs using OPENAI
+2025-11-26 16:39:26,967 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:39:26,967 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:39:28,031 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:39:28,031 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:39:38,687 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:39:38,701 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:39:38,701 - __main__ - INFO - [mcq_generation_1764155362_3ff0b6da] Successfully generated 6 MCQs
+2025-11-26 16:39:38,701 - __main__ - INFO - Job mcq_generation_1764155362_3ff0b6da: completed
+2025-11-26 16:39:38,718 - __main__ - INFO - Job regenerate_1764155378_a4c38e01: processing
+2025-11-26 16:39:38,718 - __main__ - INFO - [regenerate_1764155378_a4c38e01] Running regeneration prompt: regen_mcq_sync using OPENAI
+2025-11-26 16:39:38,880 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:39:38,880 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:39:39,265 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:39:39,267 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:39:39,267 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:39:39,267 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:39:39,430 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:39:39,431 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:39:48,354 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:39:48,355 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:39:48,621 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:39:48,622 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:39:48,623 - __main__ - INFO - [regenerate_1764155378_a4c38e01] Successfully completed regeneration: regen_mcq_sync
+2025-11-26 16:39:48,623 - __main__ - INFO - Job regenerate_1764155378_a4c38e01: completed
+2025-11-26 16:39:48,634 - __main__ - INFO - Job regenerate_1764155388_87609edb: processing
+2025-11-26 16:39:48,634 - __main__ - INFO - [regenerate_1764155388_87609edb] Running regeneration prompt: regen_remove_hallucination using OPENAI
+2025-11-26 16:39:48,796 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:39:48,796 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:39:49,177 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:39:49,178 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:39:49,179 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:39:49,179 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:39:49,343 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:39:49,343 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:39:49,673 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:39:49,674 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:40:08,722 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:40:08,725 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:40:08,725 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:40:08,726 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:40:09,893 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:40:09,896 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:40:17,719 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:40:17,725 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:40:17,726 - __main__ - INFO - [regenerate_1764155388_87609edb] Successfully completed regeneration: regen_remove_hallucination
+2025-11-26 16:40:17,728 - __main__ - INFO - Job regenerate_1764155388_87609edb: completed
+2025-11-26 16:40:17,744 - __main__ - INFO - Job regenerate_1764155417_f7979abf: processing
+2025-11-26 16:40:17,746 - __main__ - INFO - [regenerate_1764155417_f7979abf] Running regeneration prompt: regen_simplify_vocabulary using OPENAI
+2025-11-26 16:40:18,944 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:40:18,945 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:40:19,292 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:40:19,293 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:40:19,589 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:40:19,600 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:40:19,600 - __main__ - INFO - [mcq_generation_1764155366_4b430464] Successfully generated 3 MCQs
+2025-11-26 16:40:19,603 - __main__ - INFO - Job mcq_generation_1764155366_4b430464: completed
+2025-11-26 16:40:19,623 - __main__ - INFO - Job regenerate_1764155419_a4c38e01: processing
+2025-11-26 16:40:19,623 - __main__ - INFO - [regenerate_1764155419_a4c38e01] Running regeneration prompt: regen_mcq_sync using OPENAI
+2025-11-26 16:40:20,809 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:40:20,809 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:40:21,142 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:40:21,143 - openai._base_client - INFO - Retrying request to /chat/completions in 2.850000 seconds
+2025-11-26 16:40:24,291 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:40:24,292 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:40:39,650 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:40:39,651 - openai._base_client - INFO - Retrying request to /chat/completions in 5.070000 seconds
+2025-11-26 16:40:44,607 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:40:44,608 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObux
+2025-11-26 16:40:44,608 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:40:44,608 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObuxgiWnOQU9Y1DqflGF on requests per min (RPM): Limit 
+2025-11-26 16:40:44,772 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:40:44,772 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:40:45,112 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:40:45,113 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObux
+2025-11-26 16:40:45,113 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:40:45,113 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObuxgiWnOQU9Y1DqflGF on requests per min (RPM): Limit 
+2025-11-26 16:40:45,276 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:40:45,277 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:40:51,860 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:40:51,868 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:40:51,868 - __main__ - INFO - [regenerate_1764155417_f7979abf] Successfully completed regeneration: regen_simplify_vocabulary
+2025-11-26 16:40:51,868 - __main__ - INFO - Job regenerate_1764155417_f7979abf: completed
+2025-11-26 16:40:51,871 - __main__ - INFO - Job regenerate_1764155451_bfbaed2c: processing
+2025-11-26 16:40:51,871 - __main__ - INFO - [regenerate_1764155451_bfbaed2c] Running regeneration prompt: regen_dedup using OPENAI
+2025-11-26 16:40:52,038 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:40:52,038 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:40:52,395 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:40:52,396 - openai._base_client - INFO - Retrying request to /chat/completions in 19.200000 seconds
+2025-11-26 16:40:53,905 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:40:53,912 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:40:53,912 - __main__ - INFO - [regenerate_1764155419_a4c38e01] Successfully completed regeneration: regen_mcq_sync
+2025-11-26 16:40:53,912 - __main__ - INFO - Job regenerate_1764155419_a4c38e01: completed
+2025-11-26 16:40:53,915 - __main__ - INFO - Job regenerate_1764155453_87609edb: processing
+2025-11-26 16:40:53,915 - __main__ - INFO - [regenerate_1764155453_87609edb] Running regeneration prompt: regen_remove_hallucination using OPENAI
+2025-11-26 16:40:54,078 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:40:54,078 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:40:54,395 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:40:54,396 - openai._base_client - INFO - Retrying request to /chat/completions in 16.002000 seconds
+2025-11-26 16:41:10,741 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:41:10,742 - openai._base_client - INFO - Retrying request to /chat/completions in 5.730000 seconds
+2025-11-26 16:41:11,949 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:41:11,950 - openai._base_client - INFO - Retrying request to /chat/completions in 7.710000 seconds
+2025-11-26 16:41:16,810 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:41:16,811 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObux
+2025-11-26 16:41:16,811 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:41:16,811 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObuxgiWnOQU9Y1DqflGF on requests per min (RPM): Limit 
+2025-11-26 16:41:16,971 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:41:16,971 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:41:20,003 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:41:20,005 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObux
+2025-11-26 16:41:20,005 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:41:20,005 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObuxgiWnOQU9Y1DqflGF on tokens per min (TPM): Limit 10
+2025-11-26 16:41:20,167 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:41:20,168 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:41:20,480 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:41:20,481 - openai._base_client - INFO - Retrying request to /chat/completions in 10.446000 seconds
+2025-11-26 16:41:23,023 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:41:23,029 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:41:23,029 - __main__ - INFO - [regenerate_1764155453_87609edb] Successfully completed regeneration: regen_remove_hallucination
+2025-11-26 16:41:23,029 - __main__ - INFO - Job regenerate_1764155453_87609edb: completed
+2025-11-26 16:41:23,033 - __main__ - INFO - Job regenerate_1764155483_f7979abf: processing
+2025-11-26 16:41:23,033 - __main__ - INFO - [regenerate_1764155483_f7979abf] Running regeneration prompt: regen_simplify_vocabulary using OPENAI
+2025-11-26 16:41:23,193 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:41:23,193 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:41:23,493 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:41:23,494 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:41:31,273 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:41:31,274 - openai._base_client - INFO - Retrying request to /chat/completions in 2.838000 seconds
+2025-11-26 16:41:34,415 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:41:34,416 - __main__ - WARNING - [OpenAI] gpt-4o via chat.completions failed: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-hnKFObuxg
+2025-11-26 16:41:34,417 - __main__ - WARNING - [OpenAI] gpt-4o via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:41:34,417 - __main__ - WARNING - ✗ OpenAI (gpt-4o): Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-hnKFObuxgiWnOQU9Y1DqflGF on requests per min (RPM): Limit 3
+2025-11-26 16:41:34,418 - __main__ - WARNING - → All OpenAI models failed. Attempting Gemini fallback...
+2025-11-26 16:41:35,289 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-26 16:41:35,289 - __main__ - INFO - [Gemini] Using model: gemini-2.0-flash-001
+2025-11-26 16:41:41,214 - __main__ - INFO - ✓ Successfully generated content using fallback Gemini
+2025-11-26 16:41:41,216 - __main__ - INFO - [regenerate_1764155451_bfbaed2c] Successfully completed regeneration: regen_dedup
+2025-11-26 16:41:41,217 - __main__ - INFO - Job regenerate_1764155451_bfbaed2c: completed
+2025-11-26 16:41:41,268 - __main__ - INFO - Job regenerate_1764155501_a344ece3: processing
+2025-11-26 16:41:41,269 - __main__ - INFO - [regenerate_1764155501_a344ece3] Running regeneration prompt: regen_tone_fix using OPENAI
+2025-11-26 16:41:42,413 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:41:42,415 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:41:42,789 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:41:42,792 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:41:42,793 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:41:42,794 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:41:43,973 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:41:43,975 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:41:44,371 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:41:44,372 - openai._base_client - INFO - Retrying request to /chat/completions in 9.372000 seconds
+2025-11-26 16:41:44,392 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:41:44,394 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:41:54,860 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:41:54,861 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:41:54,862 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:41:54,863 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:41:56,030 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:41:56,032 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:42:04,790 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:42:04,792 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:42:08,808 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:42:08,811 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:42:08,812 - __main__ - INFO - [regenerate_1764155483_f7979abf] Successfully completed regeneration: regen_simplify_vocabulary
+2025-11-26 16:42:08,812 - __main__ - INFO - Job regenerate_1764155483_f7979abf: completed
+2025-11-26 16:42:08,820 - __main__ - INFO - Job regenerate_1764155528_bfbaed2c: processing
+2025-11-26 16:42:08,821 - __main__ - INFO - [regenerate_1764155528_bfbaed2c] Running regeneration prompt: regen_dedup using OPENAI
+2025-11-26 16:42:09,961 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:42:09,962 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:42:10,332 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:42:10,334 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:42:10,335 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:42:10,339 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:42:11,578 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:42:11,579 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:42:11,936 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:42:11,940 - openai._base_client - INFO - Retrying request to /chat/completions in 2.934000 seconds
+2025-11-26 16:42:15,180 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:42:15,181 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:42:25,148 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:42:25,151 - __main__ - WARNING - [OpenAI] gpt-4o via chat.completions failed: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-hnKFObuxg
+2025-11-26 16:42:25,152 - __main__ - WARNING - [OpenAI] gpt-4o via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:42:25,152 - __main__ - WARNING - ✗ OpenAI (gpt-4o): Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-hnKFObuxgiWnOQU9Y1DqflGF on tokens per min (TPM): Limit 100
+2025-11-26 16:42:25,153 - __main__ - WARNING - → All OpenAI models failed. Attempting Gemini fallback...
+2025-11-26 16:42:26,199 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-26 16:42:26,200 - __main__ - INFO - [Gemini] Using model: gemini-2.0-flash-001
+2025-11-26 16:42:33,454 - __main__ - INFO - ✓ Successfully generated content using fallback Gemini
+2025-11-26 16:42:33,455 - __main__ - INFO - [regenerate_1764155501_a344ece3] Successfully completed regeneration: regen_tone_fix
+2025-11-26 16:42:33,455 - __main__ - INFO - Job regenerate_1764155501_a344ece3: completed
+2025-11-26 16:42:33,458 - __main__ - INFO - Job regenerate_1764155553_a344ece3: processing
+2025-11-26 16:42:33,458 - __main__ - INFO - [regenerate_1764155553_a344ece3] Running regeneration prompt: regen_tone_fix using OPENAI
+2025-11-26 16:42:33,625 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:42:33,625 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:42:33,996 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:42:33,997 - openai._base_client - INFO - Retrying request to /chat/completions in 1.056000 seconds
+2025-11-26 16:42:35,361 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:42:35,361 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:42:48,602 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:42:48,606 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:42:48,606 - __main__ - INFO - [regenerate_1764155528_bfbaed2c] Successfully completed regeneration: regen_dedup
+2025-11-26 16:42:48,606 - __main__ - INFO - Job regenerate_1764155528_bfbaed2c: completed
+2025-11-26 16:42:48,613 - __main__ - INFO - Job regenerate_1764155568_a344ece3: processing
+2025-11-26 16:42:48,613 - __main__ - INFO - [regenerate_1764155568_a344ece3] Running regeneration prompt: regen_tone_fix using OPENAI
+2025-11-26 16:42:48,781 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:42:48,781 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:42:49,100 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:42:49,103 - openai._base_client - INFO - Retrying request to /chat/completions in 3.827000 seconds
+2025-11-26 16:42:53,273 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:42:53,275 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:42:55,746 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:42:55,750 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObux
+2025-11-26 16:42:55,751 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:42:55,752 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObuxgiWnOQU9Y1DqflGF on tokens per min (TPM): Limit 10
+2025-11-26 16:42:56,969 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:42:56,971 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:42:57,307 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:42:57,309 - openai._base_client - INFO - Retrying request to /chat/completions in 8.334000 seconds
+2025-11-26 16:43:06,162 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:43:06,164 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:43:13,628 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:43:13,629 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:43:13,630 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:43:13,630 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:43:14,835 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:43:14,836 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:43:15,169 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:43:15,171 - openai._base_client - INFO - Retrying request to /chat/completions in 8.208000 seconds
+2025-11-26 16:43:23,732 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:43:23,735 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:43:26,517 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:43:26,520 - __main__ - WARNING - [OpenAI] gpt-4o via chat.completions failed: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-hnKFObuxg
+2025-11-26 16:43:26,521 - __main__ - WARNING - [OpenAI] gpt-4o via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:43:26,522 - __main__ - WARNING - ✗ OpenAI (gpt-4o): Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-hnKFObuxgiWnOQU9Y1DqflGF on tokens per min (TPM): Limit 100
+2025-11-26 16:43:26,522 - __main__ - WARNING - → All OpenAI models failed. Attempting Gemini fallback...
+2025-11-26 16:43:27,455 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-26 16:43:27,455 - __main__ - INFO - [Gemini] Using model: gemini-2.0-flash-001
+2025-11-26 16:43:33,484 - __main__ - INFO - ✓ Successfully generated content using fallback Gemini
+2025-11-26 16:43:33,484 - __main__ - INFO - [regenerate_1764155553_a344ece3] Successfully completed regeneration: regen_tone_fix
+2025-11-26 16:43:33,485 - __main__ - INFO - Job regenerate_1764155553_a344ece3: completed
+2025-11-26 16:43:33,489 - __main__ - INFO - Job regenerate_1764155613_87609edb: processing
+2025-11-26 16:43:33,489 - __main__ - INFO - [regenerate_1764155613_87609edb] Running regeneration prompt: regen_remove_hallucination using OPENAI
+2025-11-26 16:43:33,647 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:43:33,648 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:43:34,008 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:43:34,009 - openai._base_client - INFO - Retrying request to /chat/completions in 2.454000 seconds
+2025-11-26 16:43:36,756 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:43:36,756 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:43:52,292 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:43:52,299 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:43:52,299 - __main__ - INFO - [regenerate_1764155568_a344ece3] Successfully completed regeneration: regen_tone_fix
+2025-11-26 16:43:52,300 - __main__ - INFO - Job regenerate_1764155568_a344ece3: completed
+2025-11-26 16:43:52,302 - __main__ - INFO - Job regenerate_1764155632_a344ece3: processing
+2025-11-26 16:43:52,302 - __main__ - INFO - [regenerate_1764155632_a344ece3] Running regeneration prompt: regen_tone_fix using OPENAI
+2025-11-26 16:43:52,467 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:43:52,468 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:43:52,795 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:43:52,796 - openai._base_client - INFO - Retrying request to /chat/completions in 6.042000 seconds
+2025-11-26 16:43:57,117 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:43:57,119 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObux
+2025-11-26 16:43:57,119 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:43:57,120 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObuxgiWnOQU9Y1DqflGF on tokens per min (TPM): Limit 10
+2025-11-26 16:43:58,372 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:43:58,374 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:43:58,711 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:43:58,713 - openai._base_client - INFO - Retrying request to /chat/completions in 11.658000 seconds
+2025-11-26 16:43:59,176 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:43:59,185 - openai._base_client - INFO - Retrying request to /chat/completions in 20.000000 seconds
+2025-11-26 16:44:16,683 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:44:16,695 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:44:16,696 - __main__ - INFO - [regenerate_1764155613_87609edb] Successfully completed regeneration: regen_remove_hallucination
+2025-11-26 16:44:16,697 - __main__ - INFO - Job regenerate_1764155613_87609edb: completed
+2025-11-26 16:44:19,547 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:44:19,549 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObux
+2025-11-26 16:44:19,550 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:44:19,551 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.1 in organization org-hnKFObuxgiWnOQU9Y1DqflGF on tokens per min (TPM): Limit 10
+2025-11-26 16:44:20,779 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:44:20,780 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:44:21,115 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:44:21,117 - openai._base_client - INFO - Retrying request to /chat/completions in 13.464000 seconds
+2025-11-26 16:44:49,880 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:44:49,884 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:44:49,885 - __main__ - INFO - [regenerate_1764155632_a344ece3] Successfully completed regeneration: regen_tone_fix
+2025-11-26 16:44:49,885 - __main__ - INFO - Job regenerate_1764155632_a344ece3: completed
+2025-11-26 16:44:49,887 - __main__ - INFO - Job regenerate_1764155689_87609edb: processing
+2025-11-26 16:44:49,887 - __main__ - INFO - [regenerate_1764155689_87609edb] Running regeneration prompt: regen_remove_hallucination using OPENAI
+2025-11-26 16:44:50,050 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:44:50,050 - __main__ - INFO - [OpenAI] Trying model: gpt-5.1
+2025-11-26 16:44:50,450 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2025-11-26 16:44:50,451 - __main__ - WARNING - [OpenAI] gpt-5.1 via chat.completions failed: Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with t
+2025-11-26 16:44:50,451 - __main__ - WARNING - [OpenAI] gpt-5.1 via responses API also failed: AsyncResponses.create() got an unexpected keyword argument 'response_format'
+2025-11-26 16:44:50,451 - __main__ - WARNING - ✗ OpenAI (gpt-5.1): Error code: 400 - {'error': {'message': "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 
+2025-11-26 16:44:50,616 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:44:50,616 - __main__ - INFO - [OpenAI] Trying model: gpt-4o
+2025-11-26 16:44:50,929 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-11-26 16:44:50,929 - openai._base_client - INFO - Retrying request to /chat/completions in 9.006000 seconds
+2025-11-26 16:45:04,763 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-26 16:45:04,764 - __main__ - INFO - ✓ Successfully generated content using OpenAI (gpt-4o)
+2025-11-26 16:45:04,765 - __main__ - INFO - [regenerate_1764155689_87609edb] Successfully completed regeneration: regen_remove_hallucination
+2025-11-26 16:45:04,765 - __main__ - INFO - Job regenerate_1764155689_87609edb: completed
+2025-11-26 16:49:40,755 - __main__ - INFO - [SHUTDOWN] LLM Service shutting down
+2025-11-26 16:50:02,129 - __main__ - INFO - [AUTO MODE] Primary: OpenAI GPT-4o | Fallback: Gemini 2.0 Flash
+2025-11-26 16:50:02,351 - __main__ - INFO - [OK] OpenAI API configured successfully
+2025-11-26 16:50:03,362 - __main__ - INFO - [OK] Gemini API configured and validated successfully
+2025-11-26 16:50:03,363 - __main__ - INFO - [OK] All systems operational

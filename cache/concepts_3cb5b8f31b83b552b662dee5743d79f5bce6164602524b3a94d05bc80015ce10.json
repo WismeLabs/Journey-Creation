@@ -1,0 +1,121 @@
+{
+  "timestamp": 1764155346120,
+  "type": "concepts",
+  "cacheKey": "3cb5b8f31b83b552b662dee5743d79f5bce6164602524b3a94d05bc80015ce10",
+  "data": [
+    {
+      "id": "investigative_science",
+      "name": "Investigative Science",
+      "importance": 5,
+      "groupable": false,
+      "type": "process",
+      "difficulty": "medium",
+      "blooms": "understand",
+      "source_excerpt": "p2:lines 1-12",
+      "related": [],
+      "parent_concept": null,
+      "definition": "The process of asking focused questions, designing experiments, and using observations to improve understanding.",
+      "estimated_minutes": 10,
+      "common_misconceptions": [
+        "Investigation is only about finding new facts",
+        "Science is static and does not evolve"
+      ],
+      "confusion_points": "Difference between simple observation and investigative questioning",
+      "prerequisite_gaps": "Basic understanding of scientific inquiry from previous grades",
+      "extraction_method": "ai",
+      "confidence": 0.8
+    },
+    {
+      "id": "microorganisms",
+      "name": "Microorganisms",
+      "importance": 5,
+      "groupable": false,
+      "type": "core",
+      "difficulty": "medium",
+      "blooms": "understand",
+      "source_excerpt": "p3:lines 1-7",
+      "related": [],
+      "parent_concept": null,
+      "definition": "Tiny organisms that can be beneficial or harmful, playing roles in digestion, medicine production, and causing infections.",
+      "estimated_minutes": 10,
+      "common_misconceptions": [
+        "All microorganisms are harmful",
+        "Microorganisms can be seen with the naked eye"
+      ],
+      "confusion_points": "Understanding the dual role of microorganisms as both beneficial and harmful",
+      "prerequisite_gaps": "Basic knowledge of cells and organisms",
+      "extraction_method": "ai",
+      "confidence": 0.8
+    },
+    {
+      "id": "electric_current",
+      "name": "Electric Current",
+      "importance": 5,
+      "groupable": false,
+      "type": "core",
+      "difficulty": "medium",
+      "blooms": "understand",
+      "source_excerpt": "p3:lines 12-15",
+      "related": [],
+      "parent_concept": null,
+      "definition": "Flow of electric charge used in various applications like heating and powering machines.",
+      "estimated_minutes": 10,
+      "common_misconceptions": [
+        "Electric current is the same as voltage",
+        "Electricity is only used for lighting"
+      ],
+      "confusion_points": "Difference between electric current and other electrical concepts like voltage and resistance",
+      "prerequisite_gaps": "Basic understanding of electricity from previous grades",
+      "extraction_method": "ai",
+      "confidence": 0.8
+    },
+    {
+      "id": "nutrition_and_health",
+      "name": "Nutrition and Health",
+      "importance": 4,
+      "groupable": true,
+      "type": "application",
+      "difficulty": "medium",
+      "blooms": "apply",
+      "source_excerpt": "p3:lines 8-10",
+      "related": [
+        "microorganisms"
+      ],
+      "parent_concept": null,
+      "definition": "The role of nutritious food, exercise, medicines, and vaccines in maintaining health and fighting infections.",
+      "estimated_minutes": 8,
+      "common_misconceptions": [
+        "Vaccines are only for children",
+        "Exercise is not necessary if you eat healthily"
+      ],
+      "confusion_points": "Understanding the comprehensive approach to health involving multiple factors",
+      "prerequisite_gaps": "Basic knowledge of human body systems and health",
+      "extraction_method": "ai",
+      "confidence": 0.8
+    },
+    {
+      "id": "fundamental_forces",
+      "name": "Fundamental Forces",
+      "importance": 4,
+      "groupable": true,
+      "type": "process",
+      "difficulty": "medium",
+      "blooms": "understand",
+      "source_excerpt": "p3:lines 16-18",
+      "related": [
+        "electric_current"
+      ],
+      "parent_concept": null,
+      "definition": "Forces that govern physical phenomena, including those that enable electricity and magnetism.",
+      "estimated_minutes": 8,
+      "common_misconceptions": [
+        "Forces are only related to motion",
+        "Magnetism and electricity are unrelated"
+      ],
+      "confusion_points": "Interrelation between different fundamental forces",
+      "prerequisite_gaps": "Basic understanding of physical forces and their effects",
+      "extraction_method": "ai",
+      "confidence": 0.8
+    }
+  ]
+}

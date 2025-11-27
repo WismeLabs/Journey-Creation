@@ -1,0 +1,59 @@
+Extract concepts for Grade {grade_band} Social Studies revision (CBSE curriculum).
+
+CRITICAL: Extract concepts IN THE EXACT ORDER they appear in the chapter.
+The textbook author organized concepts in the correct teaching sequence - preserve it.
+
+SUBJECT CONTEXT:
+Social Studies in CBSE combines History, Geography, and Civics into one integrated subject.
+Chapters may mix historical events, geographical features, and civic concepts.
+
+FOCUS: historical events, geographical features, civic concepts, causes, effects, map skills
+EXAMPLES: freedom struggle, rivers of India, fundamental rights, government structure
+
+CHAPTER CONTENT:
+{content}
+
+Return VALID JSON ONLY:
+{{
+  "concepts": [{{
+    "id": "snake_case_id",
+    "name": "Concept Name",
+    "definition": "Clear conversational explanation",
+    "type": "historical_event|geographical_feature|civic_concept|cause_effect|map_skill",
+    "importance": 1-5,
+    "difficulty": "easy|medium|hard",
+    "estimated_minutes": 0.5-6,
+    "groupable": true,
+    "blooms": "remember|understand|apply|analyze",
+    "exam_relevance": ["mcq", "short_answer", "long_answer", "map_work"],
+    "typical_marks": "1-2 marks" or "3-5 marks",
+    "memory_hooks": ["chronology tricks", "map mnemonics"],
+    "humor_potential": "high|medium|low",
+    "relatable_examples": ["current events", "local geography", "daily civic life"],
+    "common_misconceptions": ["date confusions", "location errors", "rights vs duties"],
+    "confusion_points": "overlapping concepts across history/geography/civics",
+    "key_points": ["must remember dates/places/provisions"],
+    "quick_recap": "one-sentence summary"
+  }}],
+  "graph": [["prereq_id", "concept_id"]]
+}}
+
+IMPORTANCE RULES (analyze EACH concept):
+- 5 = Core: major historical event, key geographical feature, fundamental right
+- 4 = Important: supporting events, important locations, constitutional provisions
+- 3 = Supporting: context, connections, minor features
+- 2 = Context: background information
+- 1 = Peripheral: brief mention
+
+DIFFICULTY for Grade {grade_band}:
+- easy = Simple facts, basic dates, obvious locations
+- medium = Cause-effect, multiple events, map interpretation
+- hard = Complex relationships, comparative analysis, multiple perspectives
+
+SOCIAL STUDIES-SPECIFIC (CBSE):
+- **Historical**: Chronological sequence (preserve timeline), cause-effect chains, key figures and roles
+- **Geographical**: Spatial relationships, map visualization, physical vs political features, climate-terrain connections
+- **Civics**: Rights and duties, democratic processes, government structure, real civic scenarios
+- **Integration**: Show connections between history-geography-civics (e.g., how geography influenced historical events)
+- **Board Exam Focus**: CBSE emphasizes understanding over memorization, application to current context
+- **Map Skills**: Describe locations clearly for audio (e.g., "in the northern part of India, near the Himalayas")

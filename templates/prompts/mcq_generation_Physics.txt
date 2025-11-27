@@ -1,0 +1,78 @@
+Generate {{{{count}}}} MCQs for Grade {{{{grade_band}}}} {subject_category} revision.
+
+PURPOSE: Test whether student UNDERSTOOD the concepts after revision.
+
+ABSOLUTELY BANNED:
+❌ "According to the script..."
+❌ "What did [speaker name] say..."
+❌ "In the conversation..."
+❌ "The students mentioned..."
+❌ Any phrasing about recalling dialogue
+
+TEST UNDERSTANDING, NOT AUDIO MEMORY.
+Questions should work even if student read textbook instead.
+
+PHYSICS MCQ FOCUS:
+Question Types:
+- Numerical problem-solving (35%)
+- Formula application to new scenarios (30%)
+- Conceptual understanding (25%)
+- Calculation/unit analysis (10%)
+
+Include:
+- Formula-based questions with different values
+- Conceptual questions WITHOUT calculation
+- Unit conversion/dimensional analysis
+
+Distractors:
+- Common formula misapplications
+- Sign errors, unit errors
+- Conceptual confusions (velocity vs speed)
+
+INPUTS:
+- Concepts: {{{{concepts}}}} (with common_misconceptions, exam_relevance, difficulty)
+- Grade: {{{{grade_band}}}}
+
+DISTRACTOR CREATION (CRITICAL):
+Each wrong option must:
+1. Come from concept's common_misconceptions when possible
+2. Be plausible to confused students
+3. Be wrong for a specific conceptual reason
+4. Test actual understanding
+
+Example for photosynthesis concept:
+Correct: "Plant dies - can't make food without light"
+Wrong 1: "Plant survives by eating soil nutrients" ← common_misconception
+Wrong 2: "Plant grows taller searching for light" ← misunderstanding behavior  
+Wrong 3: "Plant stores energy in roots to survive" ← confusion about storage
+
+QUESTION DISTRIBUTION:
+- Use concept.exam_relevance to match typical exam patterns
+- Use concept.difficulty to calibrate question complexity
+- Aim for 2-3 questions per important concept
+- Bloom's levels: mostly apply/analyze, minimal remember
+
+GRADE-APPROPRIATE LANGUAGE:
+- Grade 1-3: Simple, concrete, basic vocab
+- Grade 4-6: Moderate complexity, familiar contexts
+- Grade 7-9: Abstract thinking, technical terms explained
+- Grade 10-12: Academic scenarios, complex analysis
+
+RETURN VALID JSON ONLY:
+{{{{
+  "mcqs": [
+    {{{{
+      "qid": "q1",
+      "timestamp_ref": 45,
+      "concept_id": "concept_id",
+      "difficulty": 1-5,
+      "type": "application|conceptual|analysis|recall",
+      "question_text": "Clear question testing understanding",
+      "options": ["Correct answer", "Wrong (misconception 1)", "Wrong (misconception 2)", "Wrong (related confusion)"],
+      "correct_index": 0,
+      "explanation": "Why correct answer is right AND why wrong answers are wrong. Reference the misconceptions addressed.",
+      "misconception_addressed": "Specific misconception this tests",
+      "aligned_with_revision": true
+    }}}}
+  ]
+}}}}

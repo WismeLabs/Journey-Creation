@@ -1,0 +1,19 @@
+Extract geography concepts for Grade {grade_band} audio revision.
+
+CRITICAL: Extract concepts IN THE EXACT ORDER they appear in the chapter.
+The textbook author organized concepts in the correct teaching sequence - preserve it.
+
+FOCUS: places, features, climate, maps, human-environment interaction
+EXAMPLES: landforms, climate zones, resource distribution
+
+CHAPTER CONTENT:
+{content}
+
+Return VALID JSON ONLY with same structure as Science.
+
+GEOGRAPHY-SPECIFIC:
+- Spatial relationships and map visualization
+- Physical features described clearly
+- Human-environment interactions
+- Patterns and distributions
+- Location memory tricks

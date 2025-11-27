@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
+const { validateConceptsOutput, getValidationReport } = require('../validation/schema_validator');
 
 // Configure logger per MIGRATION.md requirements
 const logger = winston.createLogger({
@@ -62,7 +63,18 @@ class ConceptExtractor {
         grade: metadata.grade_band
       });
 
-      // Step 1: AI-powered concept extraction
+      // Step 0: Analyze chapter structure and pedagogical intent (NEW - SMART LAYER)
+      logger.info({ action: 'analyzing_chapter_structure', chapterId: metadata.chapter_id });
+      const chapterAnalysis = await this.analyzeChapterStructure(markdownContent, metadata);
+      
+      logger.info({
+        action: 'chapter_analysis_complete',
+        contentType: chapterAnalysis.content_type,
+        episodeStrategy: chapterAnalysis.episode_grouping_strategy,
+        reasoning: chapterAnalysis.reasoning
+      });
+      
+      // Step 1: AI-powered concept extraction (now guided by chapter analysis)
       const aiConcepts = await this.extractConceptsWithAI(markdownContent, metadata);
       
       // Step 2: Heuristic fallback and validation
@@ -82,6 +94,7 @@ class ConceptExtractor {
       const result = {
         concepts: validatedConcepts,
         graph: conceptGraph,
+        chapter_analysis: chapterAnalysis,  // NEW: Include chapter understanding for episode planner
         metadata: {
           extraction_method: aiConcepts.length > 0 ? 'ai_primary' : 'heuristic_only',
           total_concepts: validatedConcepts.length,
@@ -93,6 +106,19 @@ class ConceptExtractor {
           generation_version: 'content_pipeline_v1'
         }
       };
+
+      // Validate against schema before returning
+      const validationResult = validateConceptsOutput(result);
+      if (!validationResult.valid) {
+        const report = getValidationReport(validationResult, 'Concepts');
+        logger.warn({
+          action: 'schema_validation_warning',
+          chapterId: metadata.chapter_id,
+          report,
+          errors: validationResult.errors
+        });
+        // Don't throw - just warn for now since this is validation of OUR output
+      }
 
       logger.info({ 
         action: 'concept_extraction_complete', 
@@ -860,31 +886,22 @@ class ConceptExtractor {
   }
 
   /**
-   * Generate basic fallback concepts
+   * Generate basic fallback concepts - DISABLED
+   * This should NEVER be used - if AI extraction fails, we need to fix it
    */
   async generateFallbackConcepts(metadata) {
-    const subjectConcepts = {
-      'science': ['Matter', 'Energy', 'Force', 'Cell', 'Organism'],
-      'mathematics': ['Number', 'Equation', 'Formula', 'Geometry', 'Algebra'],
-      'social_science': ['Society', 'Government', 'Democracy', 'Geography', 'History']
-    };
+    logger.error({
+      action: 'fallback_concepts_triggered',
+      message: 'AI concept extraction failed completely. Generic fallback concepts are not useful.',
+      recommendation: 'Check HF backend logs, verify API keys, ensure LLM service is running'
+    });
 
-    const baseConcepts = subjectConcepts[metadata.subject?.toLowerCase()] || ['Concept1', 'Concept2', 'Concept3'];
-    
-    return baseConcepts.map((name, index) => ({
-      id: this.generateConceptId(name),
-      name: name,
-      type: 'definition',
-      difficulty: 'medium',
-      blooms: 'understand',
-      source_excerpt: 'fallback_generated',
-      related: [],
-      confidence: 0.3,
-      extraction_method: 'fallback',
-      definition: `${name} is a key concept in ${metadata.subject}`,
-      grade_appropriate: true,
-      curriculum_alignment: 'medium'
-    }));
+    // Return empty - force the issue to be fixed rather than generating garbage
+    throw new Error(
+      'Concept extraction failed. Cannot proceed with generic fallback concepts. ' +
+      'Please check: 1) HF backend is running (cd hf_backend && python main.py), ' +
+      '2) API keys are configured, 3) LLM service logs for errors'
+    );
   }
 
   /**
@@ -971,6 +988,132 @@ class ConceptExtractor {
       logger.warn({ action: 'cache_write_failed', error: error.message });
       // Don't fail on cache write errors - just continue without caching
     }
+  }
+
+  /**
+   * NEW: Analyze chapter pedagogical structure using LLM
+   * This layer understands the chapter BEFORE extracting concepts
+   * Guides both concept extraction AND episode planning
+   */
+  async analyzeChapterStructure(markdownContent, metadata) {
+    try {
+      // Generate cache key for chapter analysis
+      const cacheKey = this.generateCacheKey(markdownContent, { ...metadata, task: 'chapter_analysis', version: 'v2' });
+      
+      // Check cache first
+      if (this.cacheEnabled) {
+        const cached = await this.getCachedResponse(cacheKey, 'chapter_analysis');
+        if (cached) {
+          logger.info({ action: 'chapter_analysis_cache_hit', chapterId: metadata.chapter_id });
+          return cached;
+        }
+      }
+
+      // Load prompt template
+      const promptTemplate = fs.readFileSync(
+        path.join(__dirname, '../../templates/prompts/chapter_structure_analysis_prompt.txt'),
+        'utf8'
+      );
+      
+      // Replace placeholders
+      const prompt = promptTemplate
+        .replace(/{grade_band}/g, metadata.grade_band || '7')
+        .replace(/{subject}/g, metadata.subject || 'general')
+        .replace(/{content}/g, markdownContent);
+
+      const response = await fetch(`${this.llmServiceUrl}/analyze_chapter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          markdown_content: markdownContent,
+          grade_band: metadata.grade_band || '7',
+          subject: metadata.subject || 'general',
+          language: metadata.language || 'en-IN',
+          llm_provider: metadata.llm_provider || 'auto'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Chapter analysis failed: ${response.status}`);
+      }
+
+      const analysis = await response.json();
+
+      // Validate required fields (updated for open-ended analysis)
+      if (!analysis.content_type || !analysis.main_focus) {
+        throw new Error('Invalid chapter analysis format - missing required fields');
+      }
+
+      // Validate confidence range
+      if (typeof analysis.confidence !== 'number' || analysis.confidence < 0 || analysis.confidence > 1) {
+        logger.warn({ 
+          action: 'invalid_confidence', 
+          received: analysis.confidence,
+          defaulting: 0.5 
+        });
+        analysis.confidence = 0.5;
+      }
+
+      // Log warning if confidence is low
+      if (analysis.confidence < 0.6) {
+        logger.warn({
+          action: 'low_confidence_chapter_analysis',
+          chapterId: metadata.chapter_id,
+          content_type: analysis.content_type,
+          confidence: analysis.confidence,
+          note: 'LLM uncertain about content structure'
+        });
+      }
+
+      // Cache the analysis
+      if (this.cacheEnabled) {
+        await this.setCachedResponse(cacheKey, 'chapter_analysis', analysis);
+      }
+
+      logger.info({
+        action: 'chapter_analysis_llm_success',
+        content_type: analysis.content_type,
+        approach: analysis.recommended_episode_approach,
+        confidence: analysis.confidence
+      });
+
+      return analysis;
+
+    } catch (error) {
+      logger.error({ 
+        action: 'chapter_analysis_failed', 
+        error: error.message,
+        chapterId: metadata.chapter_id 
+      });
+
+      // Fallback to heuristic analysis
+      return this.fallbackChapterAnalysis(markdownContent, metadata);
+    }
+  }
+
+  /**
+   * Fallback chapter analysis using heuristics when LLM fails
+   */
+  fallbackChapterAnalysis(markdownContent, metadata) {
+    logger.warn({ action: 'using_fallback_chapter_analysis' });
+
+    // Simple heuristics
+    const titleMatch = markdownContent.match(/^#\s+(.+)$/m) || markdownContent.match(/Chapter\s+\d+[\s:—-]+(.+)/i);
+    const title = titleMatch ? titleMatch[1] : 'Unknown';
+    
+    return {
+      content_type: 'unknown - heuristic fallback',
+      main_focus: 'Content analysis failed, using fallback',
+      content_organization: 'sequential (assumed)',
+      has_dependencies: true,
+      natural_break_points: [],
+      recommended_episode_approach: 'Split by duration, preserve textbook order',
+      reasoning: 'Fallback heuristic analysis used (LLM analysis failed)',
+      confidence: 0.3,
+      chapter_title: title,
+      key_topics: [],
+      fallback: true
+    };
   }
 }
 

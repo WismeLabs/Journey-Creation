@@ -391,143 +391,7 @@
                 grid-template-columns: 1fr;
             }
         }
-
-        /* Live Progress Panel - Fixed at bottom */
-        #liveProgressPanel {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            border-top: 2px solid var(--primary);
-            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
-            display: none;
-            z-index: 1000;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        #liveProgressPanel.active {
-            display: block;
-        }
-
-        .progress-panel-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 24px;
-            border-bottom: 1px solid var(--gray-200);
-            background: var(--gray-50);
-        }
-
-        .progress-panel-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-weight: 600;
-            font-size: 16px;
-        }
-
-        .progress-panel-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: var(--gray-500);
-            cursor: pointer;
-            padding: 0;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-        }
-
-        .progress-panel-close:hover {
-            background: var(--gray-200);
-            color: var(--gray-900);
-        }
-
-        .progress-panel-body {
-            padding: 20px 24px;
-        }
-
-        .stage-indicator {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 20px;
-            overflow-x: auto;
-            padding-bottom: 8px;
-        }
-
-        .stage-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 20px;
-            background: var(--gray-100);
-            color: var(--gray-600);
-            font-size: 13px;
-            white-space: nowrap;
-            font-weight: 500;
-        }
-
-        .stage-item.active {
-            background: var(--primary);
-            color: white;
-        }
-
-        .stage-item.completed {
-            background: var(--success);
-            color: white;
-        }
-
-        .stage-arrow {
-            color: var(--gray-300);
-            font-size: 18px;
-        }
-
-        .progress-detail {
-            margin-top: 16px;
-        }
-
-        .progress-detail-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            background: var(--gray-50);
-            border-radius: 6px;
-            margin-bottom: 8px;
-        }
-
-        .progress-detail-item .label {
-            font-weight: 500;
-            color: var(--gray-700);
-        }
-
-        .progress-detail-item .value {
-            color: var(--gray-600);
-            font-size: 14px;
-        }
-
-        .mini-progress-bar {
-            height: 4px;
-            background: var(--gray-200);
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 12px;
-        }
-
-        .mini-progress-fill {
-            height: 100%;
-            background: var(--primary);
-            transition: width 0.3s;
-        }
     </style>
-    <script src="ui-state-manager.js"></script>
 </head>
 <body>
     <div id="globalStatus">
@@ -542,9 +406,10 @@
         <div class="nav-container">
             <div class="nav-brand">Journey Creation</div>
             <div class="nav-links">
-                <a href="dashboard.html" class="nav-link">Dashboard</a>
                 <a href="upload.html" class="nav-link active">Upload</a>
+                <a href="review.html" class="nav-link">Review</a>
                 <a href="logs.html" class="nav-link">Logs</a>
+                <a href="dev-stats.html" class="nav-link">Stats</a>
             </div>
         </div>
     </nav>
@@ -626,20 +491,6 @@
                     </select>
                     <div class="help-text">Auto tries GPT-5 first, falls back to GPT-4o, then Gemini</div>
                 </div>
-
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label for="speaker1Name">Student 1 Name</label>
-                        <input type="text" id="speaker1Name" value="Maya" placeholder="e.g., Maya, Alex, Priya">
-                        <div class="help-text">First character in the dialogue</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="speaker2Name">Student 2 Name</label>
-                        <input type="text" id="speaker2Name" value="Arjun" placeholder="e.g., Arjun, Sam, Ravi">
-                        <div class="help-text">Second character in the dialogue</div>
-                    </div>
-                </div>
             </div>
 
             <div class="card">
@@ -674,8 +525,51 @@
                 </div>
             </div>
 
+            <div class="card">
+                <h2>Voice Settings</h2>
+                <p style="font-size: 14px; color: var(--gray-600); margin-bottom: 16px;">
+                    Configure two student voices for peer-to-peer dialogue
+                </p>
+
+                <div class="grid grid-2">
+                    <div class="voice-card">
+                        <h3>Student 1</h3>
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="speaker1Name" value="Alex">
+                        </div>
+                        <div class="form-group">
+                            <label>Voice</label>
+                            <select id="speaker1Voice">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-full" onclick="testVoice(1)">
+                            Test Voice
+                        </button>
+                    </div>
+
+                    <div class="voice-card">
+                        <h3>Student 2</h3>
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="speaker2Name" value="Priya">
+                        </div>
+                        <div class="form-group">
+                            <label>Voice</label>
+                            <select id="speaker2Voice">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-full" onclick="testVoice(2)">
+                            Test Voice
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <button type="submit" class="btn btn-primary btn-full" id="submitBtn">
-                Start Processing
+                Generate Content
             </button>
 
             <div class="progress" id="progressContainer">
@@ -685,28 +579,6 @@
                 <div style="font-size: 14px; color: var(--gray-600);" id="progressText">Processing...</div>
             </div>
         </form>
-    </div>
-
-    <!-- Live Progress Panel -->
-    <div id="liveProgressPanel">
-        <div class="progress-panel-header">
-            <div class="progress-panel-title">
-                <div class="spinner" id="panelSpinner"></div>
-                <span id="panelTitle">Processing Chapter...</span>
-            </div>
-            <button class="progress-panel-close" onclick="toggleProgressPanel()" title="Minimize">−</button>
-        </div>
-        <div class="progress-panel-body">
-            <div class="stage-indicator" id="stageIndicator">
-                <!-- Dynamic stages will be inserted here -->
-            </div>
-            <div class="mini-progress-bar">
-                <div class="mini-progress-fill" id="miniProgressFill"></div>
-            </div>
-            <div class="progress-detail" id="progressDetail">
-                <!-- Dynamic progress details -->
-            </div>
-        </div>
     </div>
 
     <script>
@@ -904,13 +776,14 @@
                 fd.append('language', document.getElementById('language').value);
                 fd.append('llm_provider', document.getElementById('llmProvider').value);
                 
-                // Character names for script generation
-                fd.append('speaker1_name', document.getElementById('speaker1Name').value || 'Maya');
-                fd.append('speaker2_name', document.getElementById('speaker2Name').value || 'Arjun');
-                
-                // Default voices (will be customized later in review page)
-                fd.append('speaker1_voice', 'en-IN-Chirp3-HD-Aoede');
-                fd.append('speaker2_voice', 'en-IN-Chirp3-HD-Achird');
+                if (currentVoiceConfig?.speakers) {
+                    const s1 = currentVoiceConfig.speakers.speaker1 || currentVoiceConfig.speakers.StudentA;
+                    const s2 = currentVoiceConfig.speakers.speaker2 || currentVoiceConfig.speakers.StudentB;
+                    fd.append('speaker1_name', s1?.name || s1?.displayName || 'StudentA');
+                    fd.append('speaker2_name', s2?.name || s2?.displayName || 'StudentB');
+                    fd.append('speaker1_voice', s1?.voice || s1?.voiceId || 'en-US-Neural2-D');
+                    fd.append('speaker2_voice', s2?.voice || s2?.voiceId || 'en-US-Neural2-A');
+                }
                 
                 if (currentTab === 'pdf') {
                     const f = document.getElementById('pdfFile').files[0];
@@ -929,58 +802,22 @@
                 const r = await res.json();
                 if (!r.job_id) throw new Error('No job ID returned');
                 
-                // Use UI State Manager
-                uiState.setActiveJob(r.job_id, chapterId);
+                // Save active job to sessionStorage so we can resume if user navigates away
+                sessionStorage.setItem('activeJob', JSON.stringify({
+                    jobId: r.job_id,
+                    chapterId: chapterId,
+                    startTime: Date.now()
+                }));
                 
                 updateProgress(30, 'Processing...');
                 showGlobalStatus(`Generating content... (Chapter: ${chapterId})`);
-                showProgressPanel(); // Show live progress panel
-                
-                // Start polling with state manager
-                uiState.startJobPolling(
-                    r.job_id,
-                    chapterId,
-                    (status) => {
-                        // Update UI
-                        if (status.progress) {
-                            updateProgress(status.progress, status.status || 'Processing...');
-                            document.getElementById('miniProgressFill').style.width = status.progress + '%';
-                        }
-                        updateProgressDetails(status);
-                        document.getElementById('panelTitle').textContent = uiState.getStatusMessage(status.status);
-                    },
-                    (status, chapterId) => {
-                        // Complete
-                        updateProgress(100, 'Complete!');
-                        document.getElementById('panelTitle').textContent = '✅ Complete!';
-                        document.getElementById('panelSpinner').style.display = 'none';
-                        showGlobalStatus(`✅ Generation complete! Chapter: ${chapterId}`);
-                        setTimeout(() => {
-                            document.getElementById('progressContainer').classList.remove('active');
-                            hideProgressPanel();
-                            document.getElementById('successAlert').innerHTML = 
-                                `✅ Complete! <a href="review.html?chapter=${chapterId}" style="color: var(--primary); text-decoration: underline; margin-left: 8px;">Review →</a>`;
-                            document.getElementById('successAlert').classList.add('active');
-                            document.getElementById('submitBtn').disabled = false;
-                            clearFormData();
-                        }, 2000);
-                    },
-                    (error) => {
-                        // Error
-                        document.getElementById('progressContainer').classList.remove('active');
-                        document.getElementById('errorAlert').textContent = error;
-                        document.getElementById('errorAlert').classList.add('active');
-                        document.getElementById('submitBtn').disabled = false;
-                        document.getElementById('panelTitle').textContent = '❌ Failed';
-                        document.getElementById('panelSpinner').style.display = 'none';
-                    }
-                );
+                await pollJobStatus(r.job_id, chapterId);
             } catch (err) {
                 document.getElementById('progressContainer').classList.remove('active');
                 document.getElementById('errorAlert').textContent = err.message;
                 document.getElementById('errorAlert').classList.add('active');
                 document.getElementById('submitBtn').disabled = false;
-                uiState.clearActiveJob();
+                sessionStorage.removeItem('activeJob'); // Clear failed job
             }
         });
 
@@ -1145,119 +982,10 @@
             restoreFormData();
             setupAutoSave();
             checkActiveJob(); // Check for in-progress job
-            resumeProgressPanel(); // Resume progress panel if job active
             ['speaker1Name', 'speaker1Voice', 'speaker2Name', 'speaker2Voice'].forEach(id => {
                 document.getElementById(id)?.addEventListener('change', updateCurrentVoiceConfig);
             });
         });
-
-        // Live Progress Panel Functions
-        function showProgressPanel() {
-            document.getElementById('liveProgressPanel').classList.add('active');
-            uiState.saveState({ progressPanelVisible: true });
-        }
-
-        function hideProgressPanel() {
-            document.getElementById('liveProgressPanel').classList.remove('active');
-            uiState.saveState({ progressPanelVisible: false });
-        }
-
-        function toggleProgressPanel() {
-            const panel = document.getElementById('liveProgressPanel');
-            if (panel.classList.contains('active')) {
-                hideProgressPanel();
-            } else {
-                showProgressPanel();
-            }
-        }
-
-        function updateStageIndicator(currentStage) {
-            const stages = [
-                { id: 'uploaded', label: 'Uploaded' },
-                { id: 'extracting', label: 'Extracting' },
-                { id: 'extracted', label: 'Extracted' },
-                { id: 'planning', label: 'Planning' },
-                { id: 'plan_generated', label: 'Plan Ready' },
-                { id: 'content_generating', label: 'Generating' },
-                { id: 'content_generated', label: 'Content Ready' }
-            ];
-
-            const currentIndex = stages.findIndex(s => s.id === currentStage);
-            
-            const html = stages.map((stage, index) => {
-                let className = 'stage-item';
-                if (index < currentIndex) className += ' completed';
-                if (index === currentIndex) className += ' active';
-                
-                const arrow = index < stages.length - 1 ? '<span class="stage-arrow">→</span>' : '';
-                return `<div class="${className}">${stage.label}</div>${arrow}`;
-            }).join('');
-
-            document.getElementById('stageIndicator').innerHTML = html;
-        }
-
-        function updateProgressDetails(status) {
-            const details = [];
-            
-            if (status.metadata) {
-                if (status.metadata.chapter_id) {
-                    details.push({ label: 'Chapter', value: status.metadata.chapter_id });
-                }
-            }
-
-            if (status.status) {
-                details.push({ label: 'Status', value: uiState.getStatusMessage(status.status) });
-            }
-
-            if (status.progress !== undefined) {
-                details.push({ label: 'Progress', value: `${status.progress}%` });
-            }
-
-            const html = details.map(d => `
-                <div class="progress-detail-item">
-                    <span class="label">${d.label}</span>
-                    <span class="value">${d.value}</span>
-                </div>
-            `).join('');
-
-            document.getElementById('progressDetail').innerHTML = html;
-        }
-
-        async function resumeProgressPanel() {
-            const resumed = await uiState.resumeActiveJob(
-                (status) => {
-                    // Update callback
-                    showProgressPanel();
-                    updateProgressDetails(status);
-                    if (status.progress) {
-                        document.getElementById('miniProgressFill').style.width = status.progress + '%';
-                    }
-                    document.getElementById('panelTitle').textContent = uiState.getStatusMessage(status.status);
-                },
-                (status, chapterId) => {
-                    // Complete callback
-                    document.getElementById('panelTitle').textContent = '✅ Complete!';
-                    document.getElementById('panelSpinner').style.display = 'none';
-                    setTimeout(() => {
-                        hideProgressPanel();
-                        document.getElementById('successAlert').innerHTML = 
-                            `✅ Complete! <a href="review.html?chapter=${chapterId}" style="color: var(--primary); text-decoration: underline; margin-left: 8px;">Review →</a>`;
-                        document.getElementById('successAlert').classList.add('active');
-                    }, 2000);
-                },
-                (error) => {
-                    // Error callback
-                    document.getElementById('panelTitle').textContent = '❌ Failed';
-                    document.getElementById('panelSpinner').style.display = 'none';
-                    document.getElementById('errorAlert').textContent = error;
-                    document.getElementById('errorAlert').classList.add('active');
-                }
-            );
-
-            if (resumed) {
-                console.log('Resumed active job from previous session');
-            }
-        }
     </script>
 </body>
 </html>

@@ -1,0 +1,62 @@
+Extract Computer Science concepts for Grade {grade_band} audio revision.
+
+CRITICAL: Extract concepts IN THE EXACT ORDER they appear in the chapter.
+The textbook author organized concepts in the correct teaching sequence - preserve it.
+
+FOCUS: Algorithms, data structures, programming logic, computational thinking
+AUDIO APPROACH: Explain concepts, not code syntax. Students will code later.
+
+EXAMPLES:
+- "Binary search algorithm divides search space in half each time"
+- "Recursion is when a function calls itself - like Russian nesting dolls"
+- "Variables are like labeled boxes storing values"
+
+CHAPTER CONTENT:
+{content}
+
+Return VALID JSON ONLY:
+{{
+  "concepts": [{{
+    "id": "snake_case_id",
+    "name": "Concept Name",
+    "definition": "Clear conversational explanation WITHOUT code",
+    "type": "algorithm|data_structure|concept|logic|principle",
+    "importance": 1-5,
+    "difficulty": "easy|medium|hard",
+    "estimated_minutes": 0.5-6,
+    "groupable": true,
+    "blooms": "remember|understand|apply|analyze",
+    "exam_relevance": ["mcq", "trace_code", "write_code", "concept_question"],
+    "typical_marks": "1-2 marks" or "3-5 marks",
+    "real_world_analogy": "Daily life comparison to explain concept",
+    "memory_hooks": ["mnemonic if helpful"],
+    "humor_potential": "high|medium|low",
+    "relatable_examples": ["non-coding examples from daily life"],
+    "common_misconceptions": ["typical beginner errors"],
+    "debugging_tips": "What usually goes wrong",
+    "key_points": ["must remember 1", "must remember 2"],
+    "implementation_note": "Tell students: 'Now try coding this yourself'",
+    "quick_recap": "one-sentence summary"
+  }}],
+  "graph": [["prereq_id", "concept_id"]]
+}}
+
+IMPORTANCE RULES:
+- 5 = Core algorithm/concept: chapter centers on this
+- 4 = Important: key programming principle
+- 3 = Supporting: useful technique
+- 2 = Context: background info
+- 1 = Peripheral: brief mention
+
+DIFFICULTY for Grade {grade_band}:
+- easy = Simple logic, beginner-friendly
+- medium = Requires thinking, moderate complexity
+- hard = Abstract thinking, commonly misunderstood
+
+COMPUTER SCIENCE-SPECIFIC:
+- Focus on LOGIC and THINKING, not syntax
+- Use analogies: "Array is like a row of lockers", "Stack is like a pile of plates"
+- Explain WHY algorithms work, not just what they do
+- Common errors: off-by-one, infinite loops, null/undefined
+- Debugging mindset: "When this error happens, check..."
+- ALWAYS end with: "Now implement this in [language] to practice"

@@ -1,0 +1,70 @@
+Generate {{{{count}}}} MCQs for Grade {{{{grade_band}}}} EVS revision (grades 1-5).
+
+PURPOSE: Test whether young child UNDERSTOOD the concepts.
+
+ABSOLUTELY BANNED:
+❌ "According to the script..."
+❌ "What did [speaker] say..."
+❌ Any dialogue recall
+
+TEST UNDERSTANDING, NOT AUDIO MEMORY.
+
+EVS MCQ FOCUS (Grades 1-5):
+Question Types:
+- **Identification**: "Which one is a bird?" with pictures (40%)
+- **Simple Application**: "What should you do to stay healthy?" (30%)
+- **Observation**: "Which plant has big leaves?" (20%)
+- **Basic Recall**: "How many legs does a dog have?" (10%)
+
+Age-Appropriate:
+- **Grade 1-2**: Very simple, concrete, picture-based
+- **Grade 3-4**: Short scenarios, one-step reasoning
+- **Grade 5**: Slightly complex, two-step thinking
+
+AVOID:
+- Complex scientific terms
+- Abstract concepts
+- Multi-step reasoning for young grades
+- Long question text
+
+INPUTS:
+- Concepts: {{{{concepts}}}} (with common_misconceptions)
+- Grade: {{{{grade_band}}}}
+
+DISTRACTOR CREATION (Child-Friendly):
+Use common child misconceptions:
+- Animals vs Plants confusion
+- Living vs Non-living confusion
+- Body part function errors
+- Food group mix-ups
+- Safety rule misunderstandings
+
+Example:
+Q: "Which animal gives us milk?"
+A) Cow ✓
+B) Hen ← lays eggs, not milk
+C) Fish ← lives in water, confusion
+D) Lion ← wild animal, not domestic
+
+EVS BOARD PATTERN:
+- 1-mark MCQs or Very Short Answer (fill in blank, yes/no)
+- 2-marks: Short answer, drawing/labeling
+- Simple language, picture-based
+- Focus on observation and basic understanding
+
+RETURN VALID JSON ONLY:
+{{{{
+  "mcqs": [
+    {{{{
+      "qid": "q1",
+      "concept_id": "concept_id",
+      "difficulty": 1-3,
+      "type": "identification|simple_application|observation|recall",
+      "question_text": "Short, simple question",
+      "options": ["Correct answer", "Wrong (child misconception 1)", "Wrong (confusion 2)", "Wrong (similar item)"],
+      "correct_index": 0,
+      "explanation": "Simple explanation why correct (child-friendly language)",
+      "misconception_addressed": "Common child confusion"
+    }}}}
+  ]
+}}}}

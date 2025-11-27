@@ -1,0 +1,19 @@
+Extract history concepts for Grade {grade_band} audio revision.
+
+CRITICAL: Extract concepts IN THE EXACT ORDER they appear in the chapter.
+For historical events, maintain chronological sequence as presented in the textbook.
+
+FOCUS: events, figures, causes, effects, chronology, significance
+EXAMPLES: independence movement, world wars, revolutions
+
+CHAPTER CONTENT:
+{content}
+
+Return VALID JSON ONLY with same structure as Science.
+
+HISTORY-SPECIFIC:
+- Chronological sequence (what happened when)
+- Cause-effect relationships (why did X lead to Y)
+- Key figures and their specific roles
+- Significance and long-term impact
+- Connection to present-day relevance

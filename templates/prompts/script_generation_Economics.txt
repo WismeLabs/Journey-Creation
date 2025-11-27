@@ -1,0 +1,94 @@
+Generate engaging audio revision script for Grade {{grade_band}} Economics students.
+
+CONTEXT:
+Two students - {{speaker1_name}} and {{speaker2_name}} - are helping YOU (the listener) revise at home.
+You studied this already but want to REFRESH understanding, especially graph interpretations.
+
+INPUTS:
+- Concepts: {{concepts}} 
+  (Each concept has: graph_trend, current_events, relatable_examples, sketch_note)
+- Duration: {{duration_minutes}} minutes ({{duration_seconds}} seconds)
+- Target Words: {{min_words}}-{{target_words}} (~150 words/minute)
+- Source: {{chapter_content}}
+- Episode: #{{episode_number}} - {{episode_title}}
+
+ECONOMICS FOCUS:
+- Explain principles using CURRENT EVENTS and REAL prices
+- DESCRIBE GRAPHS VERBALLY: "Imagine a graph: X-axis is price, Y-axis is quantity..."
+- Use relatable examples: phone prices, food delivery apps, job hunting
+- Encourage sketching: "Grab your notebook and draw this as I describe it"
+- Connect theory to news: inflation, unemployment, policy changes
+
+GRAPH DESCRIPTIONS (Critical for Audio):
+Use concept's graph_trend to guide verbal descriptions:
+✓ "The demand curve slopes downward - high price at top left, low price at bottom right"
+✓ "As you move right on the graph, quantity increases but price decreases"
+✓ "The curves intersect at equilibrium - that's where supply equals demand"
+✓ "Sketch this: X-axis is quantity, Y-axis is price, draw a downward sloping line"
+
+❌ DON'T: "Look at the graph on page 45..." (they can't see it)
+✅ DO: "Picture this graph in your mind, or better - sketch it now"
+
+ENGAGEMENT FRAMEWORK:
+
+1. USE CURRENT EVENTS:
+   - Use concept's current_events
+   - "Remember when petrol prices jumped last month? That's supply shock"
+   - "Netflix raising prices - perfect example of market power"
+   - "Unemployment numbers you hear on news - that's measured like this"
+
+2. RELATABLE EXAMPLES:
+   - Phone pricing, food delivery fees, movie tickets
+   - Part-time job wages, pocket money decisions
+   - "You've noticed [product] got expensive - that's inflation"
+
+3. GRAPH VERBAL GUIDANCE:
+   - Use concept's sketch_note
+   - "Okay, if you have paper handy, sketch along with me..."
+   - "X-axis: price from 0 to 100, Y-axis: quantity..."
+   - "Draw a line going DOWN from top-left to bottom-right"
+
+4. POLICY CONNECTIONS:
+   - Government decisions students hear about
+   - Tax changes, subsidies, minimum wage
+   - "When government does [X], here's what happens economically..."
+
+DIALOGUE REQUIREMENTS:
+
+NATURAL CONVERSATION:
+- Talk like discussing news, not textbook
+- "So basically, when prices go up..."
+- "Think about when you shop online..."
+- Contractions: "it's", "don't", "you're"
+- Reactions: "Exactly!", "Wait that's interesting..."
+
+SPEAKER ROLES:
+- {{speaker1_name}}: Explains economic principles, connects to news
+- {{speaker2_name}}: Asks "why" questions, shares observations
+- Address listener: "You probably noticed prices changing, right?"
+
+PACING BY IMPORTANCE:
+- importance=5: Slow down, multiple real examples, describe graph carefully
+- importance=3-4: Clear explanation, one current event example
+- importance=1-2: Quick mention
+
+STRUCTURE:
+Opening (30-40s): Connect to real world
+  "{{speaker1_name}}: Let's revise [topic] - you've been seeing this in news lately"
+  "{{speaker2_name}}: Yeah, like when [current event]?"
+
+Main Content: Cover all concepts
+  - Real-world examples first
+  - Then explain principle
+  - Describe graphs verbally (encourage sketching)
+  - Connect to policy/news
+
+Ending (20-30s): Summarize with current context
+  "So next time you hear about [economic news], you'll understand what's really happening"
+  "Key takeaway: [principle] affects [daily life]"
+
+OUTPUT CONSTRAINTS:
+- Duration: {{duration_minutes}} minutes ({{duration_seconds}} seconds)
+- Word count: {{min_words}}-{{target_words}} words (~150 words/minute)
+- Format: Conversational dialogue alternating {{speaker1_name}} and {{speaker2_name}}
+- MUST verbally describe any graphs - assume listener can't see them

@@ -1,0 +1,62 @@
+Extract concepts for Grade {grade_band} EVS (Environmental Studies) revision.
+
+CRITICAL: Extract concepts IN THE EXACT ORDER they appear in the chapter.
+The textbook author organized concepts in the correct teaching sequence - preserve it.
+
+SUBJECT CONTEXT:
+EVS (Environmental Studies) for grades 1-5 integrates Science and Social Studies concepts.
+Covers plants, animals, human body, family, community, environment, and basic geography.
+Uses child-centered, activity-based approach with observation and exploration.
+
+FOCUS: living things, environment, family, community, health, safety, places, simple science
+EXAMPLES: parts of plants, animal homes, our body, family types, community helpers, cleanliness
+
+CHAPTER CONTENT:
+{content}
+
+Return VALID JSON ONLY:
+{{
+  "concepts": [{{
+    "id": "snake_case_id",
+    "name": "Concept Name",
+    "definition": "Simple, child-friendly explanation",
+    "type": "living_thing|environment|family_social|health_safety|place|basic_science",
+    "importance": 1-5,
+    "difficulty": "easy|medium|hard",
+    "estimated_minutes": 0.5-4,
+    "groupable": true,
+    "blooms": "remember|understand|apply",
+    "exam_relevance": ["mcq", "very_short_answer", "drawing", "observation"],
+    "typical_marks": "1 mark" or "2 marks",
+    "memory_hooks": ["rhymes", "stories", "visual descriptions"],
+    "humor_potential": "high|medium|low",
+    "relatable_examples": ["things they see at home", "school surroundings", "daily activities"],
+    "common_misconceptions": ["animals vs plants confusion", "body parts functions"],
+    "confusion_points": "simple scientific concepts",
+    "key_points": ["must remember basic facts"],
+    "quick_recap": "one-sentence summary"
+  }}],
+  "graph": [["prereq_id", "concept_id"]]
+}}
+
+IMPORTANCE RULES (analyze EACH concept):
+- 5 = Core: fundamental concept chapter is about
+- 4 = Important: key supporting concept
+- 3 = Supporting: additional information
+- 2 = Context: background
+- 1 = Peripheral: brief mention
+
+DIFFICULTY for Grade {grade_band} (Young Children):
+- easy = Observable, concrete, in daily experience
+- medium = Requires thinking, comparing, reasoning
+- hard = Abstract, needs adult explanation
+
+EVS-SPECIFIC (Grades 1-5):
+- **Child-Centered**: Use simple language, relate to their world (home, school, neighborhood)
+- **Observation-Based**: Emphasize things they can see, touch, experience
+- **Integrated Learning**: Mix science + social concepts naturally (e.g., plants in our garden AND plants in different places)
+- **Activity Connection**: Mention if concept involves drawing, coloring, collecting, observing
+- **Life Skills**: Health, hygiene, safety, good habits
+- **Social Awareness**: Family, community, helpers, festivals, different types of homes/food/clothes
+- **Board Exam Focus**: Simple recall, identification, very short answers, picture-based questions
+- **Audio Revision Tone**: Friendly, encouraging, like talking to a curious younger sibling

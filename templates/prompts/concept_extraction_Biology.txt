@@ -1,0 +1,19 @@
+Extract biology concepts for Grade {grade_band} audio revision.
+
+CRITICAL: Extract concepts IN THE EXACT ORDER they appear in the chapter.
+The textbook author organized concepts in the correct teaching sequence - preserve it.
+
+FOCUS: organisms, systems, processes, structures, functions
+EXAMPLES: cell structure, photosynthesis, human body systems
+
+CHAPTER CONTENT:
+{content}
+
+Return VALID JSON ONLY with same structure as Science.
+
+BIOLOGY-SPECIFIC:
+- Structure-function relationships
+- Body/health connections students can feel
+- Processes with clear sequential steps
+- Diagrams that need verbal description
+- Common confusions: mitosis vs meiosis, DNA vs RNA

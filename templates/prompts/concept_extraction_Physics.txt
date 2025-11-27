@@ -1,0 +1,53 @@
+Extract physics concepts for Grade {grade_band} audio revision.
+
+CRITICAL: Extract concepts IN THE EXACT ORDER they appear in the chapter.
+The textbook author organized concepts in the correct teaching sequence - preserve it.
+
+FOCUS: forces, motion, energy, laws, formulas, phenomena
+EXAMPLES: Newton's laws, energy conservation, circuits
+
+CHAPTER CONTENT:
+{content}
+
+Return VALID JSON ONLY:
+{{
+  "concepts": [{{
+    "id": "snake_case_id",
+    "name": "Concept Name",
+    "definition": "Clear conversational explanation with units",
+    "type": "law|formula|principle|phenomenon|application",
+    "importance": 1-5,
+    "difficulty": "easy|medium|hard",
+    "estimated_minutes": 0.5-6,
+    "groupable": true,
+    "blooms": "remember|understand|apply|analyze",
+    "exam_relevance": ["numerical", "mcq", "derivation"],
+    "typical_marks": "1-2 marks" or "3-5 marks",
+    "memory_hooks": ["formula tricks", "unit mnemonics"],
+    "humor_potential": "high|medium|low",
+    "relatable_examples": ["sports", "vehicles", "daily physics"],
+    "common_misconceptions": ["velocity vs speed", "mass vs weight"],
+    "confusion_points": "sign conventions, unit errors",
+    "key_points": ["formula with units", "when to apply"],
+    "quick_recap": "one-sentence summary"
+  }}],
+  "graph": [["prereq_id", "concept_id"]]
+}}
+
+IMPORTANCE RULES (analyze EACH concept):
+- 5 = Core: fundamental law/principle
+- 4 = Important: major application
+- 3 = Supporting: connecting concept
+- 2 = Context: background info
+- 1 = Peripheral: brief mention
+
+DIFFICULTY for Grade {grade_band}:
+- easy = Basic concept, simple formula
+- medium = Multiple steps, common in problems
+- hard = Complex derivation, counter-intuitive
+
+PHYSICS-SPECIFIC:
+- Always include units with formulas
+- Note sign conventions and common errors
+- Emphasize problem-solving approach
+- Connect to real-world applications

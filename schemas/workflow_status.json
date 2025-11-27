@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Workflow Status Schema",
+  "description": "Tracks the approval workflow state for chapter generation",
+  "type": "object",
+  "required": ["chapter_id", "current_stage", "created_at", "updated_at"],
+  "properties": {
+    "chapter_id": {
+      "type": "string",
+      "description": "Unique chapter identifier"
+    },
+    "current_stage": {
+      "type": "string",
+      "enum": [
+        "uploaded",
+        "extracting",
+        "extracted",
+        "planning",
+        "plan_generated",
+        "plan_approved",
+        "content_generating",
+        "content_generated",
+        "content_approved",
+        "audio_generating",
+        "audio_complete",
+        "failed"
+      ],
+      "description": "Current stage in the workflow pipeline"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the workflow started"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp"
+    },
+    "stages": {
+      "type": "object",
+      "description": "Detailed status of each pipeline stage",
+      "properties": {
+        "extraction": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed"] },
+            "started_at": { "type": "string", "format": "date-time" },
+            "completed_at": { "type": "string", "format": "date-time" },
+            "concept_count": { "type": "integer" },
+            "word_count": { "type": "integer" }
+          }
+        },
+        "planning": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "processing", "completed", "approved", "rejected", "failed"] },
+            "started_at": { "type": "string", "format": "date-time" },
+            "completed_at": { "type": "string", "format": "date-time" },
+            "approved_at": { "type": "string", "format": "date-time" },
+            "approved_by": { "type": "string" },
+            "episode_count": { "type": "integer" },
+            "total_duration_minutes": { "type": "number" },
+            "revision_notes": { "type": "string" }
+          }
+        },
+        "content_generation": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed"] },
+            "started_at": { "type": "string", "format": "date-time" },
+            "completed_at": { "type": "string", "format": "date-time" },
+            "success_count": { "type": "integer" },
+            "failed_count": { "type": "integer" }
+          }
+        },
+        "content_review": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "in_review", "approved", "revisions_requested"] },
+            "reviewed_at": { "type": "string", "format": "date-time" },
+            "approved_episode_count": { "type": "integer" },
+            "pending_episode_count": { "type": "integer" }
+          }
+        },
+        "audio_generation": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed"] },
+            "started_at": { "type": "string", "format": "date-time" },
+            "completed_at": { "type": "string", "format": "date-time" },
+            "audio_files_generated": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "episodes": {
+      "type": "array",
+      "description": "Per-episode workflow status",
+      "items": {
+        "type": "object",
+        "required": ["episode_number", "status"],
+        "properties": {
+          "episode_number": { "type": "integer" },
+          "title": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "generating",
+              "generated",
+              "pending_review",
+              "approved",
+              "revision_requested",
+              "regenerating",
+              "audio_generated",
+              "failed"
+            ]
+          },
+          "generated_at": { "type": "string", "format": "date-time" },
+          "approved_at": { "type": "string", "format": "date-time" },
+          "approved_by": { "type": "string" },
+          "revision_requested_at": { "type": "string", "format": "date-time" },
+          "revision_notes": { "type": "string" },
+          "validation_status": { "type": "string" },
+          "has_audio": { "type": "boolean", "default": false },
+          "error": { "type": "string" }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Chapter and generation metadata",
+      "properties": {
+        "subject": { "type": "string" },
+        "grade_band": { "type": "string" },
+        "curriculum": { "type": "string" },
+        "language": { "type": "string" },
+        "teacher_review_enabled": { "type": "boolean" }
+      }
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Current active job ID for this chapter"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if workflow failed"
+    }
+  }
+}

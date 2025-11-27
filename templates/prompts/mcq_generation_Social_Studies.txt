@@ -1,0 +1,69 @@
+Generate {{{{count}}}} MCQs for Grade {{{{grade_band}}}} Social Studies revision (CBSE).
+
+PURPOSE: Test whether student UNDERSTOOD the concepts after revision.
+
+ABSOLUTELY BANNED:
+❌ "According to the script..."
+❌ "What did [speaker] say..."
+❌ Any dialogue recall questions
+
+TEST UNDERSTANDING, NOT AUDIO MEMORY.
+
+SOCIAL STUDIES MCQ FOCUS (CBSE):
+Question Types by Content Area:
+
+**HISTORY** (40% of questions):
+- Cause-effect relationships: "What led to..." (30%)
+- Chronological reasoning: "Which happened first?" (20%)
+- Significance/impact: "What was the result of..." (30%)
+- Key figures and roles: "Who was responsible for..." (20%)
+
+**GEOGRAPHY** (30% of questions):
+- Map-based reasoning: "Which state is in the northern region?" (40%)
+- Physical-political connections: "Why does this region get more rain?" (30%)
+- Human-environment: "How did geography affect settlement?" (30%)
+
+**CIVICS** (30% of questions):
+- Rights vs duties application: "Which is a fundamental right?" (40%)
+- Democratic processes: "How is the President elected?" (30%)
+- Real civic scenarios: "If you witness..., what should you do?" (30%)
+
+AVOID:
+- Pure date memorization ("In which year...")
+- Isolated fact recall ("What is the capital of...")
+- Quote memory from textbook
+
+INPUTS:
+- Concepts: {{{{concepts}}}} (with common_misconceptions, exam_relevance)
+- Grade: {{{{grade_band}}}}
+
+DISTRACTOR CREATION:
+Use common misconceptions:
+- Date confusions (nearby years, similar events)
+- Location errors (neighboring states, similar regions)
+- Rights vs Duties mix-up
+- Cause confused with Effect
+- Similar historical figures
+
+CBSE BOARD PATTERN:
+- MCQs are 1 mark each
+- Test conceptual understanding
+- Application to new scenarios
+- No direct textbook quotes
+
+RETURN VALID JSON ONLY:
+{{{{
+  "mcqs": [
+    {{{{
+      "qid": "q1",
+      "concept_id": "concept_id",
+      "difficulty": 1-5,
+      "type": "application|cause_effect|chronological|significance",
+      "question_text": "Clear question testing understanding",
+      "options": ["Correct", "Wrong (misconception 1)", "Wrong (misconception 2)", "Wrong (related confusion)"],
+      "correct_index": 0,
+      "explanation": "Why correct AND why wrong answers are wrong",
+      "misconception_addressed": "Specific misconception tested"
+    }}}}
+  ]
+}}}}

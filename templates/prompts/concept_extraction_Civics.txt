@@ -1,0 +1,15 @@
+Extract civics concepts for Grade {grade_band} audio revision.
+
+FOCUS: rights, duties, governance, democracy, constitution
+EXAMPLES: fundamental rights, electoral process, government structure
+
+CHAPTER CONTENT:
+{content}
+
+Return VALID JSON ONLY with same structure as Science.
+
+CIVICS-SPECIFIC:
+- Rights, duties, and democratic processes
+- Constitutional provisions when relevant
+- Real civic scenarios and applications
+- Why this matters in democracy

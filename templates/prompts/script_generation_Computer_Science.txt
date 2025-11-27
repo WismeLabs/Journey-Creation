@@ -1,0 +1,89 @@
+Generate engaging audio revision script for Grade {{grade_band}} Computer Science students.
+
+CONTEXT:
+Two students - {{speaker1_name}} and {{speaker2_name}} - are helping YOU (the listener) revise at home.
+You studied this already but want to REFRESH understanding before coding practice.
+
+INPUTS:
+- Concepts: {{concepts}} 
+  (Each concept has: real_world_analogy, debugging_tips, common_misconceptions, implementation_note)
+- Duration: {{duration_minutes}} minutes ({{duration_seconds}} seconds)
+- Target Words: {{min_words}}-{{target_words}} (~150 words/minute)
+- Source: {{chapter_content}}
+- Episode: #{{episode_number}} - {{episode_title}}
+
+COMPUTER SCIENCE FOCUS:
+- Explain LOGIC and THINKING, not code syntax
+- Use real-world analogies: "It's like when you..."
+- Explain WHY algorithms work, not just memorize steps
+- Address debugging: "Common mistake: forgetting to..."
+- End each concept: "Now go code this yourself to practice"
+
+CRITICAL: NO CODE WALKTHROUGHS
+❌ DON'T: "Line 1: int x equals 5, line 2: if x greater than..."
+✅ DO: "The algorithm checks if value is greater than threshold, then takes action"
+✅ DO: "Think of it like searching for a name in a phonebook - you don't start at A if looking for Z"
+
+ENGAGEMENT FRAMEWORK:
+
+1. USE ANALOGIES from real life:
+   - Binary search → Dictionary lookup, phonebook search
+   - Recursion → Russian nesting dolls, mirrors reflecting mirrors
+   - Variables → Labeled boxes, storage containers
+   - Loops → Doing homework problems repeatedly
+   - Arrays → Row of lockers, egg carton
+
+2. EXPLAIN THE "WHY":
+   - "Binary search is fast BECAUSE it eliminates half the options each time"
+   - "We use functions to avoid repeating code - imagine copying same homework solution 50 times!"
+
+3. ADDRESS COMMON BUGS:
+   - Use concept's debugging_tips
+   - "Classic mistake: off-by-one error - loop goes one too far"
+   - "Watch out for: infinite loops when condition never becomes false"
+
+4. ENCOURAGE PRACTICE:
+   - Use concept's implementation_note
+   - "Okay, now pause this and try coding it yourself"
+   - "Write a simple version first, then make it complex"
+
+DIALOGUE REQUIREMENTS:
+
+NATURAL CONVERSATION:
+- NOT robotic code reading
+- Explain concepts like talking to a friend
+- "So basically, the idea is..."
+- "Think of it this way..."
+- Contractions: "it's", "don't", "you're"
+- Reactions: "Ohh that makes sense!", "Wait, so..."
+
+SPEAKER ROLES:
+- {{speaker1_name}}: Explains concepts, enthusiastic about logic
+- {{speaker2_name}}: Asks "why" questions, makes connections
+- Address listener: "When you code this later, remember..."
+
+PACING BY IMPORTANCE:
+- importance=5: Slow down, multiple analogies, explain thoroughly
+- importance=3-4: Clear explanation, one good analogy
+- importance=1-2: Quick mention
+
+STRUCTURE:
+Opening (30-40s): Set context
+  "{{speaker1_name}}: Let's revise [topic] before you start coding"
+  "{{speaker2_name}}: Yeah, I want to make sure I understand the logic first"
+
+Main Content: Cover all concepts
+  - Focus on WHY and HOW it works
+  - Real-world analogies
+  - Common pitfalls
+  - "Now go implement this"
+
+Ending (20-30s): Encourage practice
+  "Remember, programming is learned by DOING - go write code now!"
+  "Start simple, then add features"
+
+OUTPUT CONSTRAINTS:
+- Duration: {{duration_minutes}} minutes ({{duration_seconds}} seconds)
+- Word count: {{min_words}}-{{target_words}} words (~150 words/minute)
+- Format: Conversational dialogue alternating {{speaker1_name}} and {{speaker2_name}}
+- NO code syntax walkthroughs - concepts and logic only

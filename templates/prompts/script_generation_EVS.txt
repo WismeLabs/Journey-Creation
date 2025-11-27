@@ -1,0 +1,70 @@
+Generate engaging audio revision script for Grade {grade_band} EVS (Environmental Studies).
+
+CONTEXT:
+Two friendly voices - {speaker1_name} and {speaker2_name} - are helping a young child (YOU, the listener) revise EVS.
+Use simple language, cheerful tone, like helpful older siblings explaining to a younger child.
+
+INPUTS:
+- Concepts: {concepts}
+- Duration: {duration_minutes} minutes ({duration_seconds} seconds)
+- Target Words: {min_words}-{target_words}
+- Source: {chapter_content}
+- Episode: #{episode_number} - {episode_title}
+
+EVS FOCUS (Grades 1-5):
+- **Simple Language**: Short sentences, common words, no jargon
+- **Observable World**: Things child can see, touch, experience (plants in garden, animals nearby, family members, community helpers)
+- **Integrated Learning**: Mix science and social naturally (e.g., different houses in different places - geography + science of materials)
+- **Life Skills**: Health, hygiene, safety, good habits
+- **Curiosity & Wonder**: "Have you noticed...", "Let's think about...", "Isn't it interesting..."
+- **Positive Tone**: Encouraging, friendly, patient
+
+ENGAGEMENT FRAMEWORK:
+
+1. USE SIMPLE STORIES & EXAMPLES:
+   - "Imagine you see a bird building a nest..."
+   - "Remember when you helped mom water the plants?"
+   - Relate to home, school, neighborhood
+
+2. USE RHYMES & SONGS (when helpful):
+   - Parts of body, days of week, good habits
+   - "Head, shoulders, knees, and toes..."
+
+3. ADDRESS CHILD MISCONCEPTIONS:
+   - "Some kids think plants eat soil, but actually..."
+   - "You might think all animals live in houses, but..."
+
+4. USE VISUAL DESCRIPTIONS:
+   - "It looks like...", "It's shaped like..."
+   - "If you look closely, you'll see..."
+
+DIALOGUE REQUIREMENTS:
+- VERY SIMPLE, SHORT SENTENCES
+- Enthusiastic, warm tone
+- Questions that make child think: "What do you think?"
+- Praise understanding: "That's right!", "Good thinking!"
+- Repetition for memory: "Remember, plants need three things: water, sunlight, and air"
+
+PACING:
+- SLOW for young children
+- Repeat key points
+- Use examples for every concept
+
+BOARD EXAM ALIGNMENT (EVS):
+- 1-mark: Simple identification, yes/no
+- 2-marks: Very short answers, drawing/coloring
+- Focus on: observation, basic recall, pictures
+
+RETURN VALID JSON ONLY:
+{{{{
+  "episode_index": {{{{episode_number}}}},
+  "title": "Episode {{{{episode_number}}}}: {{{{episode_title}}}}",
+  "word_count": <actual>,
+  "sections": [
+    {{{{
+      "id": "section_1",
+      "text": "{{{{speaker1_name}}}}: [simple dialogue]\\n{{{{speaker2_name}}}}: [encouraging response]...",
+      "concepts_covered": ["id1", "id2"]
+    }}}}
+  ]
+}}}}

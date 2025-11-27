@@ -1,0 +1,63 @@
+Extract Economics concepts for Grade {grade_band} audio revision.
+
+CRITICAL: Extract concepts IN THE EXACT ORDER they appear in the chapter.
+The textbook author organized concepts in the correct teaching sequence - preserve it.
+
+FOCUS: Economic principles, policies, market dynamics, resource allocation
+AUDIO APPROACH: Explain concepts, describe graph trends verbally, use current events
+
+EXAMPLES:
+- "Law of demand: as price increases, quantity demanded decreases - like fewer people buying coffee when prices rise"
+- "GDP measures total economic output - everything produced in a country in one year"
+- "Opportunity cost is what you give up when making a choice"
+
+CHAPTER CONTENT:
+{content}
+
+Return VALID JSON ONLY:
+{{
+  "concepts": [{{
+    "id": "snake_case_id",
+    "name": "Concept Name",
+    "definition": "Clear conversational explanation with real examples",
+    "type": "principle|policy|indicator|market_concept|theory",
+    "importance": 1-5,
+    "difficulty": "easy|medium|hard",
+    "estimated_minutes": 0.5-6,
+    "groupable": true,
+    "blooms": "remember|understand|apply|analyze",
+    "exam_relevance": ["mcq", "short_answer", "long_answer", "case_study"],
+    "typical_marks": "1-2 marks" or "3-5 marks",
+    "graph_trend": "How to describe graph verbally (e.g., 'slopes downward')",
+    "current_events": "Recent news/examples students recognize",
+    "memory_hooks": ["mnemonic if helpful"],
+    "humor_potential": "high|medium|low",
+    "relatable_examples": ["daily life economic decisions"],
+    "common_misconceptions": ["typical confusions about economics"],
+    "confusion_points": "tricky aspects",
+    "key_points": ["must remember 1", "must remember 2"],
+    "sketch_note": "Tell students: 'Sketch this graph: X-axis is..., Y-axis is..., curve slopes...'",
+    "quick_recap": "one-sentence summary"
+  }}],
+  "graph": [["prereq_id", "concept_id"]]
+}}
+
+IMPORTANCE RULES:
+- 5 = Core economic principle: chapter centers on this
+- 4 = Important: key concept or policy
+- 3 = Supporting: useful application
+- 2 = Context: background info
+- 1 = Peripheral: brief mention
+
+DIFFICULTY for Grade {grade_band}:
+- easy = Intuitive, daily life connection
+- medium = Requires examples, moderate abstraction
+- hard = Complex interactions, counter-intuitive
+
+ECONOMICS-SPECIFIC:
+- Use CURRENT EVENTS: inflation, unemployment, recent policy changes
+- VERBAL GRAPH DESCRIPTIONS: "Demand curve slopes downward from left to right"
+- Real-world examples: pricing, shopping, job market
+- Common confusions: demand vs quantity demanded, nominal vs real
+- Encourage sketching: "Draw this graph in your notebook as I describe it"
+- Connect to student life: pocket money, part-time jobs, prices they notice

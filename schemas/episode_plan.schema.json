@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://wisme.ai/schemas/episode_plan.schema.json",
+  "title": "Episode Plan",
+  "description": "Schema for episode planning output",
+  "type": "object",
+  "required": ["total_episodes", "episodes", "planning_metadata"],
+  "properties": {
+    "total_episodes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20,
+      "description": "Total number of episodes in the plan"
+    },
+    "episodes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["ep", "title", "duration_minutes", "concepts"],
+        "properties": {
+          "ep": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Episode number"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200,
+            "description": "Episode title"
+          },
+          "duration_minutes": {
+            "type": "number",
+            "minimum": 4,
+            "maximum": 20,
+            "description": "Target duration in minutes"
+          },
+          "concepts": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Concepts covered in this episode",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Concept ID"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Concept name"
+                },
+                "importance": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5
+                },
+                "estimated_minutes": {
+                  "type": "number",
+                  "minimum": 0.5
+                }
+              }
+            }
+          },
+          "learning_objectives": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Learning objectives for this episode"
+          },
+          "prerequisite_episodes": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Episode numbers that should be listened to first"
+          },
+          "key_questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Key questions this episode answers"
+          }
+        }
+      }
+    },
+    "content_type": {
+      "type": "string",
+      "description": "Type of content in this chapter"
+    },
+    "planning_metadata": {
+      "type": "object",
+      "required": ["target_duration_minutes", "generated_at", "strategy_used"],
+      "properties": {
+        "target_duration_minutes": {
+          "type": "number",
+          "minimum": 4,
+          "maximum": 20,
+          "description": "Target duration for each episode"
+        },
+        "duration_range": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          },
+          "description": "[min_duration, max_duration]"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp of when plan was generated"
+        },
+        "strategy_used": {
+          "type": "string",
+          "description": "Planning strategy that was applied"
+        },
+        "content_type": {
+          "type": "string",
+          "description": "Content type from chapter analysis"
+        },
+        "chapter_analysis": {
+          "type": "object",
+          "description": "Full chapter analysis object"
+        }
+      }
+    }
+  }
+}

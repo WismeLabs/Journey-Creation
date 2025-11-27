@@ -173,8 +173,8 @@ router.post('/preview', async (req, res) => {
     const previewConfig = {
       voice: {
         name: voice,
-        languageCode: voice.startsWith('en-US') ? 'en-US' : 'en-IN',
-        ssmlGender: 'NEUTRAL'
+        languageCode: voice.startsWith('en-US') ? 'en-US' : 'en-IN'
+        // ssmlGender is inferred by Google from the voice name
       },
       audioConfig: {
         audioEncoding: 'MP3',

@@ -681,16 +681,12 @@ class PDFProcessor {
    * Save processed chapter data with proper structure per MIGRATION.md
    */
   async saveChapterData(chapterId, processedData, metadata = {}) {
-    const { grade_band = 'unknown', subject = 'unknown' } = metadata;
-    const curriculum = metadata.curriculum || 'CBSE';
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    // NEW structure: outputs/chapter_{id}/gen_{timestamp}/
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
     const generationId = metadata.generation_id || `gen_${timestamp}`;
     
     const chapterDir = path.join(
       this.outputDir,
-      curriculum.toUpperCase(),
-      `Grade_${grade_band}`,
-      subject.toLowerCase(),
       `chapter_${chapterId}`,
       generationId
     );
@@ -698,6 +694,9 @@ class PDFProcessor {
     if (!fs.existsSync(chapterDir)) {
       fs.mkdirSync(chapterDir, { recursive: true });
     }
+
+    // Store generation directory in metadata for subsequent operations
+    metadata.generationDir = chapterDir;
 
     // Save chapter.md (per MIGRATION.md output contract)
     const markdownPath = path.join(chapterDir, 'chapter.md');

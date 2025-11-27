@@ -1,203 +1,199 @@
 # Journey Creation
 
-AI-powered educational content pipeline that generates podcast-style learning episodes from curriculum materials.
+AI-powered audio revision content generator for K-12 students.
 
-## Features
+**Input**: Textbook chapter PDF  
+**Output**: 5-8 minute audio episodes where two students revise the chapter together
 
-- **Multi-LLM Support**: GPT-5, GPT-4o, Gemini 2.0 Flash with auto-fallback
-- **Parallel Processing**: 3 episodes generated concurrently
-- **LLM Response Caching**: Saves costs on repeated content
-- **Voice Synthesis**: Google Cloud TTS with 21 HD voices
-- **Modern UI**: Clean web interface for developers
+Students listen at home - after school, before tests, or anytime.
 
 ---
 
-## 🚀 Setup & Installation
+## Quick Start
 
-### Prerequisites
-
-Install these first:
-- **Node.js 22+** → [Download here](https://nodejs.org/)
-- **Python 3.13+** → [Download here](https://www.python.org/)
-- **API Keys**: OpenAI and/or Gemini, Google Cloud TTS
-
-### Step 1: Install Dependencies
-
+### 1. Install
 ```powershell
-# Install Node.js packages
 npm install
-
-# Install Python packages
 cd hf_backend
 python -m venv venv
 venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-cd ..
 ```
 
-### Step 2: Configure Environment
-
-Create `.env` file in project root:
-
+### 2. Configure
+Create `.env` file:
 ```env
-# LLM Provider (auto switches between available APIs)
-LLM_PROVIDER=auto
-OPENAI_API_KEY=your_openai_key_here
-GEMINI_API_KEY=your_gemini_key_here
-
-# Text-to-Speech
-GOOGLE_TTS_API_KEY=your_google_tts_key_here
-
-# Performance Settings (optional)
-LLM_CACHE_ENABLED=true
-LLM_CACHE_TTL=604800000
-MAX_CONCURRENT_EPISODES=3
+OPENAI_API_KEY=your_key_here
+GOOGLE_TTS_API_KEY=your_key_here
 ```
 
----
-
-## ▶️ Start the System
-
-Run these in **TWO separate terminals**:
-
-### Terminal 1: Python Backend
-
+### 3. Run
+**Terminal 1**:
 ```powershell
 cd hf_backend
 venv\Scripts\Activate.ps1
 python main.py
 ```
 
-✅ **Backend running at:** http://localhost:8000
-
-### Terminal 2: Node.js Server
-
+**Terminal 2**:
 ```powershell
 npm start
 ```
 
-✅ **Web interface at:** http://localhost:3000
-
-### Verify Everything Works
-
-Open these URLs in your browser:
-- **Upload Page**: http://localhost:3000/teacher/upload.html
-- **Backend Health**: http://localhost:8000/health
-
-If both load, you're ready to go! 🎉
+### 4. Open
+http://localhost:3000/teacher/dashboard.html
 
 ---
 
-## 🎯 How to Use
+## Documentation
 
-### 1. Upload Content
+📖 **Read these in order**:
 
-**Go to:** http://localhost:3000/teacher/upload.html
-
-1. Upload a PDF or paste text
-2. Select grade, subject, curriculum
-3. Choose AI model (auto/OpenAI/Gemini)
-4. Configure student voice settings
-5. Click "Generate Episodes"
-
-**Processing time:** 5-30 minutes depending on content size
-
-### 2. Review Generated Content
-
-**Go to:** http://localhost:3000/teacher/review.html
-
-- View all generated episodes
-- Read scripts and MCQ questions
-- Approve or regenerate episodes
-- Generate final audio files
-
-### 3. Monitor System Performance
-
-**Logs:** http://localhost:3000/teacher/logs.html
-- Real-time system logs
-- Filter by level (INFO/ERROR/WARN)
-- Dark mode developer interface
-
-**Stats:** http://localhost:3000/teacher/dev-stats.html
-- Cache performance metrics
-- Cost savings tracking
-- System health monitoring
+1. **[System Overview](docs/01_SYSTEM_OVERVIEW.md)** - What this does
+2. **[Setup Guide](docs/02_SETUP_GUIDE.md)** - Detailed installation
+3. **[Pipeline Flow](docs/03_PIPELINE_FLOW.md)** - How content is generated
+4. **[Workflow & Approvals](docs/WORKFLOW.md)** - Pause points, approval gates, continuation triggers
+5. **[Prompting Philosophy](docs/04_PROMPTING_PHILOSOPHY.md)** - Revision approach & tone
+6. **[Prompt Quality Audit](docs/PROMPT_QUALITY_AUDIT.md)** - All prompts reviewed for quality
+7. **[Prompt Migration Guide](docs/PROMPT_MIGRATION.md)** - How prompts are organized (txt files)
+8. **[API Endpoints](docs/05_API_ENDPOINTS.md)** - API reference
+9. **[File Structure](docs/06_FILE_STRUCTURE.md)** - Code organization
 
 ---
 
-## 📂 Web Interface Pages
+## Key Features
 
-| Page | URL | Purpose |
-|------|-----|---------|
-| Upload | `/teacher/upload.html` | Upload PDFs & configure generation |
-| Review | `/teacher/review.html` | Review and approve episodes |
-| Logs | `/teacher/logs.html` | System logs and debugging |
-| Stats | `/teacher/dev-stats.html` | Performance metrics and cache |
-
----
-
-## 📂 Project Structure
-
-```
-Journey-Creation/
-├── server.js                 # Main Node.js server
-├── hf_backend/
-│   ├── main.py              # Python FastAPI backend
-│   └── requirements.txt     # Python dependencies
-├── services/
-│   ├── ingest/              # PDF processing & OCR
-│   ├── semantic/            # Concept extraction (cached)
-│   ├── planner/             # Episode planning
-│   ├── tts/                 # Voice synthesis
-│   └── validation/          # Quality validation
-├── teacher_ui/              # Web interface (4 pages)
-├── templates/prompts/       # LLM prompt templates
-├── schemas/                 # JSON validation schemas
-├── cache/                   # LLM response cache
-└── outputs/                 # Generated episodes
-```
+✅ **Revision-Focused**: Not teaching - helps students refresh what they learned  
+✅ **Engaging Content**: Humor, relatable examples, memory tricks  
+✅ **Smart Planning**: AI analyzes chapter structure, preserves textbook order  
+✅ **Textbook Order Preservation**: Concepts NEVER reordered - teaching sequence maintained  
+✅ **Strategy-Based Episodes**: Sequential flow, thematic grouping, or time-balanced per chapter nature  
+✅ **Parallel Processing**: Generates 3 episodes simultaneously  
+✅ **Quality Control**: Review & approve plan → scripts → audio generation  
+✅ **Multi-LLM**: OpenAI (GPT-4o) / Gemini 2.0 Flash with auto-fallback  
+✅ **Progress Tracking**: Real-time status during LLM calls (calling_llm, parsing_response)
 
 ---
 
-## 🔧 API Reference
+## Tech Stack
 
-### Content Generation
-```http
-POST /api/v1/generate          # Submit PDF/text for processing
-GET  /api/v1/status/:jobId     # Check generation progress
-GET  /api/v1/chapters/:id      # Get generated content
-```
-
-### Performance & Monitoring
-```http
-GET    /api/v1/metrics         # System performance metrics
-GET    /api/v1/cache/stats     # Cache hit rate & savings
-DELETE /api/v1/cache/clear     # Clear LLM response cache
-```
-
-### Voice Configuration
-```http
-GET  /api/v1/tts/voices        # Available TTS voices
-GET  /api/v1/tts/config        # Current voice settings
-PUT  /api/v1/tts/config        # Update voice config
-POST /api/v1/tts/test          # Test voice synthesis
-```
+- **Node.js 22+** - Backend server
+- **Python 3.13+** - LLM & TTS orchestration
+- **OpenAI / Gemini** - Content generation
+- **Google Cloud TTS** - Voice synthesis
+- **Tesseract OCR** - PDF text extraction
 
 ---
 
-## 📁 Output Structure
+## Output Structure
 
 ```
-outputs/CBSE/Grade-8/math_grade8_abc123/
-├── concepts.json              # Extracted learning concepts
-├── episode_plan.json          # Episode structure & outline
-├── Episode-1/
-│   ├── script.json           # Dialogue script (teacher + student)
-│   ├── mcqs.json             # Quiz questions (3 per concept)
-│   └── audio/
-│       └── audio.mp3         # Generated episode audio
-├── Episode-2/
-└── Episode-N/
+outputs/chapter_{id}/
+├── workflow_status.json    # Current pipeline stage & approval status
+├── concepts.json           # Extracted concepts IN TEXTBOOK ORDER with metadata
+├── episode_plan.json       # Episode grouping with planning_metadata (strategy, analysis)
+└── Episode-{N}/
+    ├── script.json        # Dialogue between two students
+    ├── mcqs.json         # Quiz questions (2-3 per concept)
+    └── audio.mp3         # TTS generated audio
+```
+
+See `docs/WORKFLOW.md` for complete pipeline flow with approval gates.
+
+---
+
+## Episode Durations
+
+- Grade 1-2: **4 min**
+- Grade 3-4: **5 min**
+- Grade 5-6: **6 min**
+- Grade 7-8: **7 min**
+- Grade 9-10: **8 min**
+- Grade 11-12: **10 min**
+
+Flexible: 70%-130% for pedagogical coherence
+
+---
+
+## Core Philosophy
+
+### NOT Teaching - It's Revision
+Students already studied in class. They need to:
+- **REFRESH** memory
+- **CLARIFY** doubts
+- **SOLIDIFY** understanding
+
+### Engaging & Memorable
+- Uses humor when it helps
+- Relatable examples (phones, gaming, social situations)
+- Addresses common confusions
+- Memory tricks where useful
+- Natural conversation (not robotic)
+
+### Anytime Learning
+Not just exam prep:
+- After school (daily review)
+- Weekend revision
+- Before tests (exam prep)
+- Casual learning
+
+See `docs/04_PROMPTING_PHILOSOPHY.md` for details.
+
+---
+
+## For Your Teammate
+
+Start here:
+1. Read `docs/01_SYSTEM_OVERVIEW.md` - Understand what this does
+2. Follow `docs/02_SETUP_GUIDE.md` - Get it running
+3. Read `docs/04_PROMPTING_PHILOSOPHY.md` - Understand the revision approach
+4. Explore the code - inline comments explain everything
+
+**All prompts centralized in**: `templates/prompts/` (txt files for easy editing)
+- Concept extraction: `concept_extraction_{Subject}.txt`
+- Script generation: `script_generation_{Subject}.txt`
+- MCQ generation: `mcq_generation_{Subject}.txt`
+- Regeneration: `regeneration_prompts.txt` (13 types)
+- Chapter analysis: `chapter_structure_analysis_prompt.txt`
+
+**✅ Supported Subjects** (audio revision format):
+- **Science** (CBSE 6-10, ICSE 6-8) - theory + problem-solving strategies
+- **Physics, Chemistry, Biology** (ICSE 9-10) - concepts + numerical approaches
+- **Social Studies** (CBSE), **History, Geography, Civics** (ICSE) - perfect for audio
+- **Computer Science** - algorithms, logic, debugging (students code separately)
+- **Economics** - principles, policies, verbal graph descriptions
+- **EVS** (grades 1-5) - simple, descriptive
+
+**❌ Not Supported** (require seeing worked examples):
+- **Mathematics** - step-by-step problem solving must be seen
+- **English** - literature needs text, grammar needs written practice
+
+Prompts are loaded via `hf_backend/prompt_loader.py` → imported by `main.py`
+
+---
+
+## Common Issues
+
+**"Module not found"**: `npm install` or `pip install -r requirements.txt`  
+**"Tesseract not found"**: Add to PATH: `C:\Program Files\Tesseract-OCR`  
+**"API key invalid"**: Check `.env` file has valid keys  
+**Port in use**: Change `PORT=3001` in `.env`
+
+See `docs/02_SETUP_GUIDE.md` for detailed troubleshooting.
+
+---
+
+## Project Status
+
+✅ Core pipeline working  
+✅ Parallel episode generation  
+✅ Dashboard & review UI  
+✅ Voice configuration  
+✅ TTS audio generation  
+✅ Complete documentation
+
+**Last Updated**: November 26, 2025  
+**Version**: 4.0.0 (Revision-focused rewrite)
 ```
 
 ---

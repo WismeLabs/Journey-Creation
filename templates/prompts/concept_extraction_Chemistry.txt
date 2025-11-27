@@ -1,0 +1,19 @@
+Extract chemistry concepts for Grade {grade_band} audio revision.
+
+CRITICAL: Extract concepts IN THE EXACT ORDER they appear in the chapter.
+The textbook author organized concepts in the correct teaching sequence - preserve it.
+
+FOCUS: reactions, elements, compounds, bonding, equations, properties
+EXAMPLES: chemical bonding, acid-base reactions, periodic trends
+
+CHAPTER CONTENT:
+{content}
+
+Return VALID JSON ONLY with same structure as Science.
+
+CHEMISTRY-SPECIFIC:
+- Chemical equations and balancing
+- Reaction conditions and mechanisms
+- Household chemistry examples
+- Safety considerations where relevant
+- Common confusions: ionic vs covalent, atom vs molecule

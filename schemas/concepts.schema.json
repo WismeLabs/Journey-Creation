@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://wisme.ai/schemas/concepts.schema.json",
+  "title": "Concept Extraction Output",
+  "description": "Schema for concept extraction results including concepts, graph, and chapter analysis",
+  "type": "object",
+  "required": ["concepts", "graph", "chapter_analysis"],
+  "properties": {
+    "concepts": {
+      "type": "array",
+      "description": "Array of extracted concepts from the chapter",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "type", "importance", "estimated_minutes", "difficulty"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "Unique identifier for the concept"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200,
+            "description": "Concept name as it appears in the chapter"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["introduction", "theme", "concept", "definition", "process", "event", "principle", "technique", "example", "application", "analysis", "activity", "skill"],
+            "description": "Category of the concept"
+          },
+          "importance": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Importance rating for exams (1=low, 5=critical)"
+          },
+          "estimated_minutes": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 15,
+            "description": "Estimated time to explain this concept in audio"
+          },
+          "difficulty": {
+            "type": "string",
+            "enum": ["easy", "medium", "hard"],
+            "description": "Difficulty level for target grade"
+          },
+          "blooms": {
+            "type": "string",
+            "enum": ["remember", "understand", "apply", "analyze", "evaluate", "create"],
+            "description": "Bloom's taxonomy level"
+          },
+          "description": {
+            "type": "string",
+            "description": "What this concept is about in chapter context"
+          },
+          "related": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of prerequisite concept IDs"
+          },
+          "why_important": {
+            "type": "string",
+            "description": "Why students need to know this concept"
+          }
+        }
+      }
+    },
+    "graph": {
+      "oneOf": [
+        {
+          "type": "array",
+          "description": "Array of [prerequisite_id, dependent_id] tuples",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Graph object with nodes and edges",
+          "properties": {
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "chapter_analysis": {
+      "type": "object",
+      "required": ["content_type", "main_focus"],
+      "properties": {
+        "content_type": {
+          "type": "string",
+          "enum": ["overview_introduction", "topic_deepdive", "review_consolidation", "mixed", "introductory", "conceptual", "procedural", "narrative", "analytical"],
+          "description": "Type of chapter content"
+        },
+        "pedagogical_intent": {
+          "type": "string",
+          "description": "Primary educational goal of the chapter"
+        },
+        "main_focus": {
+          "type": "string",
+          "description": "Main focus of the chapter"
+        },
+        "content_organization": {
+          "type": "string",
+          "description": "How content is organized"
+        },
+        "recommended_episode_approach": {
+          "type": "string",
+          "description": "Recommended approach for episode structuring"
+        },
+        "episode_grouping_strategy": {
+          "type": "string",
+          "enum": ["single_overview_episode", "topic_clusters", "prerequisite_flow", "time_balanced"],
+          "description": "Strategy for grouping concepts into episodes"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "LLM confidence in classification (0-1)"
+        },
+        "has_dependencies": {
+          "type": "boolean",
+          "description": "Whether concepts have prerequisite dependencies"
+        }
+      }
+    }
+  }
+}

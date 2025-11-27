@@ -15,8 +15,9 @@ class TTSOrchestrator {
   constructor() {
     this.googleTTSClient = null;
     
-    // Initialize voice configurations BEFORE TTS client
+    // Initialize with static fallback voices (will be updated with real voices after TTS init)
     this.availableVoices = this.getAvailableVoices();
+    this.realVoicesCache = null; // Cache for voices fetched from Google API
     
     // Language-specific voice mappings for K-12 education
     this.educationalVoices = {
@@ -48,57 +49,62 @@ class TTSOrchestrator {
     
     // Initialize TTS client AFTER configurations are set
     this.initializeGoogleTTS();
+    
+    // Fetch real voices from Google API asynchronously and store promise
+    this.voicesFetchPromise = this.fetchRealVoices().catch(err => {
+      logger.warn(`Could not fetch real voices from Google: ${err.message}, using static fallback list`);
+      return null;
+    });
   }
 
   /**
-   * Get comprehensive available voices from Google TTS
-   * Updated list - only verified working voices
+   * Static fallback voices (used only if API fetch fails)
+   * Organized by language → gender. Gender is unknown for fallback, so grouped as MIXED.
    */
   getAvailableVoices() {
     return {
-      // Journey Voices (Latest Generation - Best for Education)
-      journey: {
-        'en-US': [
-          'en-US-Journey-D', 'en-US-Journey-F', 'en-US-Journey-O'
+      'en-US': {
+        'MIXED': [
+          // Journey
+          { name: 'en-US-Journey-D' }, { name: 'en-US-Journey-F' }, { name: 'en-US-Journey-O' },
+          // Studio
+          { name: 'en-US-Studio-O' }, { name: 'en-US-Studio-Q' },
+          // Neural2
+          { name: 'en-US-Neural2-A' }, { name: 'en-US-Neural2-C' }, { name: 'en-US-Neural2-D' },
+          { name: 'en-US-Neural2-E' }, { name: 'en-US-Neural2-F' }, { name: 'en-US-Neural2-G' },
+          { name: 'en-US-Neural2-H' }, { name: 'en-US-Neural2-I' }, { name: 'en-US-Neural2-J' },
+          // WaveNet
+          { name: 'en-US-Wavenet-A' }, { name: 'en-US-Wavenet-B' }, { name: 'en-US-Wavenet-C' },
+          { name: 'en-US-Wavenet-D' }, { name: 'en-US-Wavenet-E' }, { name: 'en-US-Wavenet-F' },
+          { name: 'en-US-Wavenet-G' }, { name: 'en-US-Wavenet-H' }, { name: 'en-US-Wavenet-I' },
+          { name: 'en-US-Wavenet-J' },
+          // Standard
+          { name: 'en-US-Standard-A' }, { name: 'en-US-Standard-B' }, { name: 'en-US-Standard-C' },
+          { name: 'en-US-Standard-D' }, { name: 'en-US-Standard-E' }, { name: 'en-US-Standard-F' },
+          { name: 'en-US-Standard-G' }, { name: 'en-US-Standard-H' }, { name: 'en-US-Standard-I' },
+          { name: 'en-US-Standard-J' }
         ]
       },
-      // Studio Voices (High Quality Natural)
-      studio: {
-        'en-US': [
-          'en-US-Studio-O', 'en-US-Studio-Q'
+      'en-IN': {
+        'MIXED': [
+          { name: 'en-IN-Neural2-A' }, { name: 'en-IN-Neural2-B' }, { name: 'en-IN-Neural2-C' }, { name: 'en-IN-Neural2-D' },
+          { name: 'en-IN-Wavenet-A' }, { name: 'en-IN-Wavenet-B' }, { name: 'en-IN-Wavenet-C' }, { name: 'en-IN-Wavenet-D' },
+          { name: 'en-IN-Standard-A' }, { name: 'en-IN-Standard-B' }, { name: 'en-IN-Standard-C' }, { name: 'en-IN-Standard-D' }
         ]
       },
-      // Neural2 Voices (High Quality - Expressive)
-      neural2: {
-        'en-US': [
-          'en-US-Neural2-A', 'en-US-Neural2-C', 'en-US-Neural2-D', 'en-US-Neural2-E',
-          'en-US-Neural2-F', 'en-US-Neural2-G', 'en-US-Neural2-H', 'en-US-Neural2-I', 'en-US-Neural2-J'
-        ],
-        'en-IN': ['en-IN-Neural2-A', 'en-IN-Neural2-B', 'en-IN-Neural2-C', 'en-IN-Neural2-D'],
-        'en-GB': ['en-GB-Neural2-A', 'en-GB-Neural2-B', 'en-GB-Neural2-C', 'en-GB-Neural2-D', 'en-GB-Neural2-F'],
-        'hi-IN': ['hi-IN-Neural2-A', 'hi-IN-Neural2-B', 'hi-IN-Neural2-C', 'hi-IN-Neural2-D']
+      'en-GB': {
+        'MIXED': [
+          { name: 'en-GB-Neural2-A' }, { name: 'en-GB-Neural2-B' }, { name: 'en-GB-Neural2-C' }, { name: 'en-GB-Neural2-D' }, { name: 'en-GB-Neural2-F' },
+          { name: 'en-GB-Wavenet-A' }, { name: 'en-GB-Wavenet-B' }, { name: 'en-GB-Wavenet-C' }, { name: 'en-GB-Wavenet-D' }, { name: 'en-GB-Wavenet-F' },
+          { name: 'en-GB-Standard-A' }, { name: 'en-GB-Standard-B' }, { name: 'en-GB-Standard-C' }, { name: 'en-GB-Standard-D' }, { name: 'en-GB-Standard-F' }
+        ]
       },
-      // WaveNet Voices (Good Quality - Natural Sounding)
-      wavenet: {
-        'en-US': [
-          'en-US-Wavenet-A', 'en-US-Wavenet-B', 'en-US-Wavenet-C', 'en-US-Wavenet-D',
-          'en-US-Wavenet-E', 'en-US-Wavenet-F', 'en-US-Wavenet-G', 'en-US-Wavenet-H',
-          'en-US-Wavenet-I', 'en-US-Wavenet-J'
-        ],
-        'en-IN': ['en-IN-Wavenet-A', 'en-IN-Wavenet-B', 'en-IN-Wavenet-C', 'en-IN-Wavenet-D'],
-        'en-GB': ['en-GB-Wavenet-A', 'en-GB-Wavenet-B', 'en-GB-Wavenet-C', 'en-GB-Wavenet-D', 'en-GB-Wavenet-F'],
-        'hi-IN': ['hi-IN-Wavenet-A', 'hi-IN-Wavenet-B', 'hi-IN-Wavenet-C', 'hi-IN-Wavenet-D']
-      },
-      // Standard Voices (Cost Effective - Basic Quality)
-      standard: {
-        'en-US': [
-          'en-US-Standard-A', 'en-US-Standard-B', 'en-US-Standard-C', 'en-US-Standard-D',
-          'en-US-Standard-E', 'en-US-Standard-F', 'en-US-Standard-G', 'en-US-Standard-H',
-          'en-US-Standard-I', 'en-US-Standard-J'
-        ],
-        'en-IN': ['en-IN-Standard-A', 'en-IN-Standard-B', 'en-IN-Standard-C', 'en-IN-Standard-D'],
-        'en-GB': ['en-GB-Standard-A', 'en-GB-Standard-B', 'en-GB-Standard-C', 'en-GB-Standard-D', 'en-GB-Standard-F'],
-        'hi-IN': ['hi-IN-Standard-A', 'hi-IN-Standard-B', 'hi-IN-Standard-C', 'hi-IN-Standard-D']
+      'hi-IN': {
+        'MIXED': [
+          { name: 'hi-IN-Neural2-A' }, { name: 'hi-IN-Neural2-B' }, { name: 'hi-IN-Neural2-C' }, { name: 'hi-IN-Neural2-D' },
+          { name: 'hi-IN-Wavenet-A' }, { name: 'hi-IN-Wavenet-B' }, { name: 'hi-IN-Wavenet-C' }, { name: 'hi-IN-Wavenet-D' },
+          { name: 'hi-IN-Standard-A' }, { name: 'hi-IN-Standard-B' }, { name: 'hi-IN-Standard-C' }, { name: 'hi-IN-Standard-D' }
+        ]
       }
     };
   }
@@ -193,7 +199,7 @@ class TTSOrchestrator {
     return {
       name: availableVoices[0],
       languageCode: language,
-      ssmlGender: preferredGender || 'NEUTRAL'
+      ssmlGender: preferredGender || 'MALE'
     };
   }
 
@@ -267,15 +273,15 @@ class TTSOrchestrator {
       
       // Ensure languageCode is set with fallback
       const languageCode = testConfig.languageCode || this.voiceConfig.language || 'en-IN';
-      const voiceName = testConfig.name || 'en-IN-Chirp3-HD-Achird';
+      const voiceName = testConfig.name || 'en-IN-Neural2-B';
       const ssmlGender = testConfig.ssmlGender || 'MALE';
       
       const [response] = await this.googleTTSClient.synthesizeSpeech({
         input: { text: 'Test synthesis for K-12 educational content pipeline.' },
         voice: {
           languageCode: languageCode,
-          name: voiceName,
-          ssmlGender: ssmlGender
+          name: voiceName
+          // ssmlGender is inferred by Google from the voice name
         },
         audioConfig: {
           audioEncoding: this.audioConfig.audioEncoding,
@@ -349,8 +355,8 @@ class TTSOrchestrator {
           
           voiceConfig = {
             name: voiceName,
-            languageCode: languageCode,
-            ssmlGender: customSpeaker.ssmlGender || 'NEUTRAL'
+            languageCode: languageCode
+            // ssmlGender not needed - Google infers it from voice name
           };
         } else {
           const mappedSpeaker = segment.speaker === 'speaker1' ? 'StudentA' : 
@@ -365,8 +371,8 @@ class TTSOrchestrator {
           input: { text: segment.text },
           voice: {
             languageCode: voiceConfig.languageCode || 'en-IN',
-            name: voiceConfig.name || 'en-IN-Neural2-A',
-            ssmlGender: voiceConfig.ssmlGender || 'NEUTRAL'
+            name: voiceConfig.name || 'en-IN-Neural2-A'
+            // ssmlGender is inferred by Google from the voice name
           },
           audioConfig: {
             audioEncoding: this.audioConfig.audioEncoding,
@@ -423,7 +429,7 @@ class TTSOrchestrator {
   /**
    * Generate audio for complete episode
    */
-  async generateEpisodeAudio(episodeData, chapterId, episodeIndex, metadata = {}) {
+  async generateEpisodeAudio(episodeData, chapterId, episodeIndex, metadata = {}, progressCallback = null) {
     try {
       logger.info(`Generating audio for chapter ${chapterId}, episode ${episodeIndex}`);
 
@@ -459,6 +465,17 @@ class TTSOrchestrator {
       // Parse script into segments
       const segments = this.parseScriptIntoSegments(episodeData.script, episodeData.pronunciation_hints);
       
+      // Report initial progress
+      if (progressCallback) {
+        progressCallback({
+          episode: episodeIndex,
+          stage: 'preparing',
+          totalSegments: segments.length,
+          currentSegment: 0,
+          progress: 0
+        });
+      }
+      
       // Create speaker directories
       const speakerDirs = {
         StudentA: path.join(audioDir, 'a_segments'),
@@ -471,32 +488,86 @@ class TTSOrchestrator {
         }
       }
 
-      // Generate audio for each segment
+      // Generate audio for each segment with progress tracking
       const audioSegments = [];
+      const failedSegments = [];
+      
       for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
-        const audioPath = await this.generateSegmentAudio(segment, speakerDirs[segment.speaker], i);
         
-        audioSegments.push({
-          ...segment,
-          audioPath: audioPath,
-          segmentIndex: i
-        });
+        // Report progress
+        if (progressCallback) {
+          progressCallback({
+            episode: episodeIndex,
+            stage: 'generating',
+            totalSegments: segments.length,
+            currentSegment: i + 1,
+            progress: Math.round(((i + 1) / segments.length) * 100),
+            currentText: segment.text.substring(0, 50) + '...'
+          });
+        }
+        
+        try {
+          const audioPath = await this.generateSegmentAudio(segment, speakerDirs[segment.speaker], i);
+          
+          audioSegments.push({
+            ...segment,
+            audioPath: audioPath,
+            segmentIndex: i
+          });
+        } catch (segmentError) {
+          logger.error(`Segment ${i} failed:`, segmentError.message);
+          failedSegments.push({
+            index: i,
+            text: segment.text,
+            speaker: segment.speaker,
+            error: segmentError.message
+          });
+          // Continue with other segments instead of failing entire episode
+        }
+      }
+      
+      // Check if we have enough segments to continue
+      if (audioSegments.length === 0) {
+        throw new Error('All audio segments failed to generate');
+      }
+      
+      if (failedSegments.length > 0) {
+        logger.warn(`⚠️ ${failedSegments.length}/${segments.length} segments failed. Continuing with ${audioSegments.length} successful segments.`);
       }
 
       // Merge all segments into final audio
+      if (progressCallback) {
+        progressCallback({
+          episode: episodeIndex,
+          stage: 'merging',
+          progress: 95
+        });
+      }
+      
       const finalAudioPath = await this.mergeAudioSegments(audioSegments, audioDir);
       
       // Generate cues.json with timing information
       const cues = await this.generateCueFile(audioSegments, finalAudioPath);
       fs.writeFileSync(path.join(episodeDir, 'cues.json'), JSON.stringify(cues, null, 2));
 
+      // Report completion
+      if (progressCallback) {
+        progressCallback({
+          episode: episodeIndex,
+          stage: 'completed',
+          progress: 100,
+          failedSegments: failedSegments.length
+        });
+      }
+
       logger.info(`Episode audio generation completed: ${finalAudioPath}`);
       return {
         finalAudioPath: finalAudioPath,
         segmentCount: audioSegments.length,
         totalDuration: cues.total_duration_seconds,
-        cues: cues
+        cues: cues,
+        failedSegments: failedSegments.length > 0 ? failedSegments : undefined
       };
 
     } catch (error) {
@@ -754,54 +825,68 @@ class TTSOrchestrator {
   /**
    * Generate audio for individual segment
    */
-  async generateSegmentAudio(segment, outputDir, index) {
-    try {
-      const voiceConfig = this.voiceConfig[segment.speaker];
-      const filename = `segment_${index.toString().padStart(3, '0')}_${crypto.createHash('md5').update(segment.text).digest('hex').substring(0, 8)}.mp3`;
-      const outputPath = path.join(outputDir, filename);
+  async generateSegmentAudio(segment, outputDir, index, maxRetries = 3) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const voiceConfig = this.voiceConfig[segment.speaker];
+        const filename = `segment_${index.toString().padStart(3, '0')}_${crypto.createHash('md5').update(segment.text).digest('hex').substring(0, 8)}.mp3`;
+        const outputPath = path.join(outputDir, filename);
 
-      // Skip if file already exists (for caching)
-      if (fs.existsSync(outputPath)) {
-        logger.info(`Using cached audio: ${filename}`);
+        // Skip if file already exists (for caching)
+        if (fs.existsSync(outputPath)) {
+          logger.info(`Using cached audio: ${filename}`);
+          return outputPath;
+        }
+
+        // Prepare comprehensive TTS request with all Google TTS options
+        const request = {
+          input: { ssml: segment.ssmlText },
+          voice: {
+            languageCode: voiceConfig.languageCode,
+            name: voiceConfig.name
+            // ssmlGender is inferred by Google from the voice name
+          },
+          audioConfig: {
+            audioEncoding: this.audioConfig.audioEncoding,
+            sampleRateHertz: this.audioConfig.sampleRateHertz,
+            speakingRate: this.audioConfig.speakingRate,
+            pitch: this.audioConfig.pitch,
+            volumeGainDb: this.audioConfig.volumeGainDb,
+            effectsProfileId: [this.audioConfig.effectsProfileId]
+          },
+          ...(this.audioConfig.advancedVoiceOptions && {
+            advancedVoiceOptions: this.audioConfig.advancedVoiceOptions
+          })
+        };
+
+        logger.info(`Generating TTS for ${segment.speaker}: "${segment.text.substring(0, 50)}..." (attempt ${attempt}/${maxRetries})`);
+
+        // Call Google TTS with timeout
+        const [response] = await this.googleTTSClient.synthesizeSpeech(request);
+        
+        // Save audio file
+        fs.writeFileSync(outputPath, response.audioContent, 'binary');
+        
+        logger.info(`✅ Audio segment saved: ${filename}`);
         return outputPath;
+
+      } catch (error) {
+        lastError = error;
+        logger.error(`Failed to generate segment audio (attempt ${attempt}/${maxRetries}): ${error.message}`);
+        
+        if (attempt < maxRetries) {
+          // Exponential backoff: 1s, 2s, 4s
+          const delayMs = Math.pow(2, attempt - 1) * 1000;
+          logger.info(`Retrying in ${delayMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
       }
-
-      // Prepare comprehensive TTS request with all Google TTS options
-      const request = {
-        input: { ssml: segment.ssmlText },
-        voice: {
-          languageCode: voiceConfig.languageCode,
-          name: voiceConfig.name,
-          ssmlGender: voiceConfig.ssmlGender
-        },
-        audioConfig: {
-          audioEncoding: this.audioConfig.audioEncoding,
-          sampleRateHertz: this.audioConfig.sampleRateHertz,
-          speakingRate: this.audioConfig.speakingRate,
-          pitch: this.audioConfig.pitch,
-          volumeGainDb: this.audioConfig.volumeGainDb,
-          effectsProfileId: [this.audioConfig.effectsProfileId]
-        },
-        ...(this.audioConfig.advancedVoiceOptions && {
-          advancedVoiceOptions: this.audioConfig.advancedVoiceOptions
-        })
-      };
-
-      logger.info(`Generating TTS for ${segment.speaker}: "${segment.text.substring(0, 50)}..."`);
-
-      // Call Google TTS
-      const [response] = await this.googleTTSClient.synthesizeSpeech(request);
-      
-      // Save audio file
-      fs.writeFileSync(outputPath, response.audioContent, 'binary');
-      
-      logger.info(`✅ Audio segment saved: ${filename}`);
-      return outputPath;
-
-    } catch (error) {
-      logger.error(`Failed to generate segment audio: ${error.message}`);
-      throw error;
     }
+    
+    // All retries failed
+    throw new Error(`Failed to generate segment after ${maxRetries} attempts: ${lastError.message}`);
   }
 
   /**
@@ -1048,6 +1133,121 @@ class TTSOrchestrator {
     }
 
     return validation;
+  }
+
+  /**
+   * Fetch real voices from Google API and organize them by language and gender
+   * Filters to only show high-quality voices suitable for educational dialogues
+   */
+  async fetchRealVoices() {
+    try {
+      if (!this.googleTTSClient) {
+        logger.warn('Cannot fetch real voices: TTS client not initialized');
+        return;
+      }
+
+      const [result] = await this.googleTTSClient.listVoices({});
+      
+      // Organize by language, then by gender (using Google's ssmlGender field)
+      const organized = {};
+      
+      // Helper to detect voice type from voice name
+      const getVoiceType = (voiceName) => {
+        // Chirp3-HD voices (includes Chirp-HD): Best for conversational dialogues
+        if (voiceName.includes('Chirp3-HD') || voiceName.includes('Chirp-HD') || voiceName.includes('Chirp')) {
+          return 'Chirp3-HD';
+        }
+        // Studio voices: Best for narration/broadcast
+        if (voiceName.includes('Studio')) {
+          return 'Studio';
+        }
+        // Neural2 voices: High quality expressive
+        if (voiceName.includes('Neural2')) {
+          return 'Neural2';
+        }
+        // Short-form en-US voices (Achernar, Aoede, etc.) - these are Chirp3-HD
+        if (!voiceName.includes('-')) {
+          return 'Chirp3-HD';
+        }
+        return null; // Reject all others
+      };
+      
+      // Only top 3 voice types for educational dialogues:
+      // 1. Chirp3-HD: Best conversational, human-like (includes old Chirp-HD)
+      // 2. Studio: Professional narration quality
+      // 3. Neural2: High quality, expressive
+      const topVoiceTypes = ['Chirp3-HD', 'Studio', 'Neural2'];
+
+      // Only English languages: US and Indian accents
+      const allowedLanguages = ['en-US', 'en-IN', 'en-GB', 'en-AU'];
+
+      result.voices.forEach(voice => {
+        const voiceType = getVoiceType(voice.name);
+        
+        // Only include top 3 voice types
+        if (!voiceType || !topVoiceTypes.includes(voiceType)) {
+          return;
+        }
+
+        // Each voice can support multiple languages
+        voice.languageCodes.forEach(lang => {
+          // Only include English variants
+          if (!allowedLanguages.includes(lang)) {
+            return;
+          }
+          
+          // Organize by: language -> voiceType -> gender
+          if (!organized[lang]) {
+            organized[lang] = {};
+          }
+          
+          if (!organized[lang][voiceType]) {
+            organized[lang][voiceType] = {};
+          }
+          
+          const gender = voice.ssmlGender || 'UNKNOWN';
+          if (!organized[lang][voiceType][gender]) {
+            organized[lang][voiceType][gender] = [];
+          }
+          
+          organized[lang][voiceType][gender].push({
+            name: voice.name,
+            type: voiceType,
+            sampleRate: voice.naturalSampleRateHertz
+          });
+        });
+      });
+
+      // Update cache
+      this.realVoicesCache = organized;
+      logger.info(`✅ Fetched ${result.voices.length} voices from Google`);
+      logger.info(`Filtered to TOP 3 types: Chirp3-HD (conversational), Studio (narration), Neural2 (expressive)`);
+      logger.info(`Languages available: ${Object.keys(organized).sort().join(', ')}`);
+      
+      return organized;
+      
+    } catch (error) {
+      logger.error(`Failed to fetch real voices: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get available voices - waits for real voices to be fetched if still loading
+   */
+  async getVoicesAsync() {
+    // Wait for the fetch to complete if it's still ongoing
+    if (this.voicesFetchPromise) {
+      await this.voicesFetchPromise;
+    }
+    return this.realVoicesCache || this.availableVoices;
+  }
+
+  /**
+   * Get available voices - uses real voices if fetched, otherwise static fallback
+   */
+  getRealOrFallbackVoices() {
+    return this.realVoicesCache || this.availableVoices;
   }
 
   /**

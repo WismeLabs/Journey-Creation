@@ -1,0 +1,143 @@
+Generate engaging audio revision script for Grade {{grade_band}} students.
+
+CONTEXT:
+Two students - {{speaker1_name}} and {{speaker2_name}} - are helping YOU (the listener) revise at home.
+You studied this already but want to REFRESH memory, CLARIFY doubts, and REMEMBER well.
+
+INPUTS:
+- Concepts: {{concepts}} 
+  (Each concept has: importance, difficulty, memory_hooks, common_misconceptions, key_points)
+- Duration: {{duration_minutes}} minutes ({{duration_seconds}} seconds)
+- Target Words: {{min_words}}-{{target_words}} (~150 words/minute)
+- Source: {{chapter_content}}
+- Episode: #{{episode_number}} - {{episode_title}}
+
+AUDIO-FIRST APPROACH (CRITICAL):
+🎯 PURPOSE: Revise EVENTS, CHRONOLOGY, CAUSE-EFFECT through storytelling. Maps/timelines sketched separately.
+
+✅ DO:
+- Tell the story: what happened, who was involved, why it matters
+- Chronological flow: "First X happened, then Y, which led to Z"
+- Cause-effect: "This event caused... because..."
+- Character/leader roles: "Gandhi's role was... while Nehru..."
+- Connect to present: "This is why today we have..."
+- End with: "Now create a timeline in your notebook with these key dates"
+
+❌ DON'T:
+- Describe map positions in detail ("The battle was 50km north of..." - meaningless without seeing map)
+- List every single date/name (boring information dump)
+- Try to teach map-reading through audio
+
+💡 INSTEAD SAY:
+- "You should mark these locations on a map in your textbook"
+- "Draw a timeline showing the sequence of these events"
+- "Practice identifying these regions on a blank map"
+
+HISTORY FOCUS:
+- Chronological sequence (what happened when)
+- Cause-effect relationships (why did X lead to Y)
+- Key figures and their specific roles
+- Significance and long-term impact
+- Connection to present-day relevance
+- Multiple perspectives on events
+
+ENGAGEMENT FRAMEWORK:
+
+1. USE HUMOR intelligently:
+   - When concept has humor_potential="high"
+   - Funny analogies that AID MEMORY
+   - Examples: "Mitochondria - basically the cell's battery", "Atoms are drama queens wanting 8 electrons"
+   - NOT forced jokes, only when genuinely helpful
+
+2. USE MEMORY HOOKS from concepts:
+   - Share mnemonics naturally: "Here's a trick to remember..."
+   - Explain WHY it works
+   - Make it seem helpful, not cheesy
+
+3. ADDRESS MISCONCEPTIONS explicitly:
+   - Have one student voice the common misconception
+   - Other clarifies the confusion clearly
+   - Emphasize DIFFERENCE between wrong and right
+   - Pattern: "Wait, I used to think [wrong]..." "Actually, here's what's really happening..."
+
+4. USE RELATABLE EXAMPLES:
+   - From student's actual daily life (phones, social media, sports, food)
+   - Make abstract → concrete
+   - Age-appropriate references
+
+DIALOGUE REQUIREMENTS:
+
+NATURAL CONVERSATION:
+- NOT robotic ping-pong (A-B-A-B)
+- Let speakers explain in multiple sentences
+- Natural interruptions: "Oh wait!", "Hold on..."
+- Reactions: "Ohh!", "That makes sense!", "Wait what?"
+- Contractions: "it's", "don't", "you're", "can't"
+- Thinking sounds: "Hmm...", "Um...", "Like..."
+- Enthusiasm: "This is cool!", "Check this out!"
+
+SPEAKER ROLES:
+- {{speaker1_name}}: Often explains, enthusiastic, confident
+- {{speaker2_name}}: Asks questions, makes connections, curious
+- Address listener: "Make sure you remember...", "You probably learned this but..."
+
+PACING BY IMPORTANCE:
+- importance=5: Slow down, multiple examples, check understanding
+- importance=3-4: Clear explanation, one good example
+- importance=1-2: Quick mention, efficient coverage
+
+STRUCTURE:
+Opening (30-40s): Start with energy
+  "{{speaker1_name}}: Hey! Ready to revise [topic]?"
+  "{{speaker2_name}}: Yeah, let's make sure I remember this..."
+
+Main Content: Cover all concepts
+  - Follow importance-based pacing
+  - Use concept metadata (hooks, misconceptions, examples)
+  - Natural conversation flow
+
+Ending (20-30s): Quick recap
+  "So basically, remember: [2-3 key points]"
+  "You got this!"
+
+SOURCE ACCURACY (CRITICAL):
+- Every fact MUST reference source: "pX:lines Y-Z"
+- If inferring/simplifying, mark "inferred": true
+- NEVER state unsourced facts confidently
+
+VALIDATION CHECKLIST:
+✓ ALL concepts covered thoroughly
+✓ Word count: {{min_words}}-{{target_words}}
+✓ Duration: ~{{duration_minutes}} minutes
+✓ All facts sourced or marked inferred
+✓ Natural Grade {{grade_band}} language
+✓ Engaging (humor, examples, misconceptions addressed)
+✓ No dialogue memory questions setup
+
+RETURN VALID JSON ONLY (no markdown, no extra text):
+{{{{
+  "episode_index": {{{{episode_number}}}},
+  "title": "Episode {{{{episode_number}}}}: {{{{episode_title}}}}",
+  "estimated_duration_seconds": {{{{duration_seconds}}}},
+  "word_count": <actual_number>,
+  "grade_level": {{{{grade_band}}}},
+  "engagement_score": 7-10,
+  "humor_used": ["list of humorous moments/analogies"],
+  "memory_hooks_used": ["mnemonics shared"],
+  "misconceptions_addressed": ["confusions clarified"],
+  "sections": [
+    {{{{
+      "id": "section_1",
+      "start": 0,
+      "end": 120,
+      "type": "dialogue",
+      "text": "{{{{speaker1_name}}}}: [natural conversation]\\n{{{{speaker2_name}}}}: [response]\\n...",
+      "source_reference": "p1:lines 5-20",
+      "concepts_covered": ["concept_id1", "concept_id2"],
+      "engagement_notes": "Used phone analogy for energy transfer"
+    }}}}
+  ],
+  "concept_ids": {{{{concept_ids}}}},
+  "concepts_coverage_check": {{{{"concept_id": "fully_covered"}}}},
+  "pronunciation_hints": {{{{"difficult_word": "pronunciation"}}}}
+}}}}

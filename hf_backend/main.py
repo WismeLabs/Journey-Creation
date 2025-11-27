@@ -9,6 +9,32 @@ from pathlib import Path
 import time
 import hashlib
 
+# Load prompts from templates directory (centralized in txt files)
+# Fallback to prompts.py for prompts not yet migrated
+try:
+    from prompt_loader import (
+        CONCEPT_EXTRACTION_BY_SUBJECT,
+        SCRIPT_PROMPTS_BY_SUBJECT,
+        MCQ_PROMPTS_BY_SUBJECT,
+        REGENERATION_PROMPTS,
+        PROMPT_VERSION as LOADED_PROMPT_VERSION
+    )
+    PROMPTS_SOURCE = "txt_files"
+except (ImportError, FileNotFoundError) as e:
+    # Fallback to old prompts.py if txt files not ready
+    from prompts import (
+        CONCEPT_EXTRACTION_BY_SUBJECT,
+        SCRIPT_PROMPTS_BY_SUBJECT,
+        MCQ_PROMPTS_BY_SUBJECT,
+        REGENERATION_PROMPTS
+    )
+    LOADED_PROMPT_VERSION = "v2.0_legacy"
+    PROMPTS_SOURCE = "prompts_py"
+    print(f"WARNING: Using legacy prompts.py: {e}")
+
+# Prompt version for cache keys
+PROMPT_VERSION = LOADED_PROMPT_VERSION
+
 # Ensure we load environment variables from the repository root (.env)
 ROOT_DIR = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT_DIR / '.env')
@@ -44,6 +70,110 @@ if sys.platform == 'win32':
 # In-memory log storage for web UI (last 500 logs)
 from collections import deque
 from datetime import datetime
+
+# LLM Response Cache with versioning
+CACHE_DIR = Path(__file__).resolve().parent.parent / 'cache' / 'llm_responses'
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+CACHE_ENABLED = os.getenv('LLM_CACHE_ENABLED', 'true').lower() == 'true'
+CACHE_TTL_DAYS = int(os.getenv('LLM_CACHE_TTL_DAYS', '7'))
+PROMPT_VERSION = "v2.1"  # Increment when prompts change significantly
+
+cache_stats = {
+    'hits': 0,
+    'misses': 0,
+    'saves': 0
+}
+
+def get_cache_key(task_type: str, content: str, metadata: Dict, version: str = PROMPT_VERSION) -> str:
+    """Generate cache key with prompt version"""
+    # Include prompt version in hash to invalidate cache when prompts change
+    cache_data = {
+        'task': task_type,
+        'content_hash': hashlib.sha256(content.encode('utf-8')).hexdigest(),
+        'metadata': {k: v for k, v in metadata.items() if k in ['grade_band', 'subject', 'language']},
+        'version': version
+    }
+    cache_string = json.dumps(cache_data, sort_keys=True)
+    return hashlib.sha256(cache_string.encode('utf-8')).hexdigest()
+
+def get_cached_response(cache_key: str) -> Optional[Dict]:
+    """Retrieve cached LLM response if valid"""
+    if not CACHE_ENABLED:
+        return None
+    
+    cache_file = CACHE_DIR / f"{cache_key}.json"
+    if not cache_file.exists():
+        cache_stats['misses'] += 1
+        return None
+    
+    try:
+        with open(cache_file, 'r', encoding='utf-8') as f:
+            cached = json.load(f)
+        
+        # Check TTL
+        cached_time = datetime.fromisoformat(cached['timestamp'])
+        age_days = (datetime.now() - cached_time).days
+        
+        if age_days > CACHE_TTL_DAYS:
+            cache_file.unlink()  # Delete expired cache
+            cache_stats['misses'] += 1
+            logger.info(f"Cache expired: {cache_key} (age: {age_days} days)")
+            return None
+        
+        cache_stats['hits'] += 1
+        logger.info(f"Cache hit: {cache_key} (age: {age_days} days)")
+        return cached['response']
+    
+    except Exception as e:
+        logger.warning(f"Cache read error: {e}")
+        cache_stats['misses'] += 1
+        return None
+
+def save_to_cache(cache_key: str, response: Dict):
+    """Save LLM response to cache"""
+    if not CACHE_ENABLED:
+        return
+    
+    try:
+        cache_file = CACHE_DIR / f"{cache_key}.json"
+        cache_data = {
+            'timestamp': datetime.now().isoformat(),
+            'version': PROMPT_VERSION,
+            'response': response
+        }
+        
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            json.dump(cache_data, f, ensure_ascii=False, indent=2)
+        
+        cache_stats['saves'] += 1
+        logger.info(f"Cached response: {cache_key}")
+    
+    except Exception as e:
+        logger.warning(f"Cache save error: {e}")
+
+def clear_cache(version: Optional[str] = None):
+    """Clear cache files. If version specified, only clear that version."""
+    cleared = 0
+    try:
+        for cache_file in CACHE_DIR.glob("*.json"):
+            if version:
+                try:
+                    with open(cache_file, 'r', encoding='utf-8') as f:
+                        cached = json.load(f)
+                    if cached.get('version') == version:
+                        cache_file.unlink()
+                        cleared += 1
+                except:
+                    pass
+            else:
+                cache_file.unlink()
+                cleared += 1
+        
+        logger.info(f"Cleared {cleared} cache files")
+        return cleared
+    except Exception as e:
+        logger.error(f"Cache clear error: {e}")
+        return 0
 
 class LogHandler(logging.Handler):
     """Custom handler to capture logs for web UI"""
@@ -418,6 +548,7 @@ class ConceptExtractionRequest(BaseModel):
 class ScriptGenerationRequest(BaseModel):
     concepts: List[Dict[str, Any]]
     episode_title: str
+    episode_number: int  # Episode index (1-based)
     grade: str
     subject: str
     duration_minutes: int
@@ -454,548 +585,9 @@ class ChapterAnalysisRequest(BaseModel):
     subject: str
     language: str = "en-IN"
 
-# Educational prompt templates per MIGRATION.md requirements
-EDUCATIONAL_PROMPTS = {
-    "concept_extraction": """
-SYSTEM: You are an educational content analyzer for K-12 textbooks with hierarchical concept mapping.
-INPUT: chapter_markdown, grade_band, subject
-TASK: Extract ALL concepts with importance ranking and grouping.
-OUTPUT: Return JSON with hierarchical concepts array and prerequisite graph.
-
-CONCEPT HIERARCHY - Extract and classify:
-
-1. CORE CONCEPTS (importance: 5) - Major chapter topics
-   - Main learning objectives
-   - Key processes and theories
-   - Must-know definitions
-   - Can standalone as episode (8-12 min dialogue)
-
-2. SUPPORTING CONCEPTS (importance: 3-4) - Important details
-   - Secondary definitions and terms
-   - Examples and applications
-   - Related processes
-   - Can be combined with core concepts
-
-3. VOCABULARY & FACTS (importance: 1-2) - Foundational knowledge
-   - Technical terms
-   - Quick facts and data points
-   - Simple definitions
-   - Should be grouped together or embedded in other concepts
-
-For each concept include:
-- id: snake_case identifier
-- name: human readable name
-- importance: 1-5 (5=core, 3-4=supporting, 1-2=vocabulary/facts)
-- groupable: true|false (can this be combined with other concepts?)
-- type: definition|process|formula|example|application|vocabulary|fact
-- difficulty: easy|medium|hard (grade-appropriate)
-- blooms: remember|understand|apply|analyze|evaluate|create
-- source_excerpt: reference like "p3:lines 1-7"
-- related: array of prerequisite concept ids
-- parent_concept: id of parent concept (if this is a supporting detail)
-- definition: clear explanation
-- estimated_minutes: 2-12 (dialogue time needed)
-- common_misconceptions: array of typical student confusions about this concept (e.g., ["Students think plants eat soil for food", "Confuse weight with mass"])
-- confusion_points: specific aspects that are tricky (e.g., "Difference between heat and temperature")
-- prerequisite_gaps: what students need to know first (e.g., "Understanding of atoms needed before molecules")
-
-Create a concept graph showing prerequisite relationships.
-Ensure comprehensive coverage but smart grouping for episode planning.
-Grade {grade_band} appropriate for {subject}.
-
-Chapter content:
-{content}
-
-Return valid JSON only:
-{{
-  "concepts": [
-    {{
-      "id": "photosynthesis",
-      "name": "Photosynthesis Process", 
-      "importance": 5,
-      "groupable": false,
-      "type": "process",
-      "difficulty": "medium",
-      "blooms": "understand",
-      "source_excerpt": "line_15",
-      "related": ["chlorophyll"],
-      "parent_concept": null,
-      "definition": "Process by which plants make food using sunlight",
-      "estimated_minutes": 10,
-      "common_misconceptions": [
-        "Plants eat soil for food",
-        "Plants only need water to grow",
-        "Photosynthesis happens at night",
-        "Only leaves perform photosynthesis"
-      ],
-      "confusion_points": "Difference between making food (photosynthesis) vs getting water/nutrients from soil",
-      "prerequisite_gaps": "Students may not understand chemical reactions or energy transformation"
-    }},
-    {{
-      "id": "chlorophyll",
-      "name": "Chlorophyll",
-      "importance": 2,
-      "groupable": true,
-      "type": "vocabulary",
-      "difficulty": "easy",
-      "blooms": "remember",
-      "source_excerpt": "line_8",
-      "related": [],
-      "parent_concept": "photosynthesis",
-      "definition": "Green pigment in plants",
-      "estimated_minutes": 2,
-      "common_misconceptions": [
-        "Chlorophyll is plant food",
-        "All plants have the same amount of chlorophyll"
-      ],
-      "confusion_points": "Role of chlorophyll in capturing light vs being the food itself",
-      "prerequisite_gaps": "Understanding of pigments and light absorption"
-    }}
-  ],
-  "graph": [["chlorophyll", "photosynthesis"]]
-}}
-""",
-
-    "episode_script": """
-SYSTEM: You are an expert K-12 educational dialogue writer creating authentic peer-to-peer conversations between two students learning together.
-
-CORE MISSION: Write a natural, flowing conversation where two curious students explore concepts together through genuine discussion. This should sound like real students talking, not actors reading a script.
-
-SPEAKERS:
-- {speaker1_name}: Student who often explains concepts clearly
-- {speaker2_name}: Student who asks insightful questions and makes connections
-- CRITICAL: Use ONLY these exact names. Never use "StudentA" or "StudentB"
-
-CONVERSATIONAL PRINCIPLES (NO RIGID STRUCTURE):
-
-1. **Authentic Dialogue Flow**:
-   - Write how real Grade {grade_band} students naturally talk and think aloud
-   - Let conversations develop organically - ideas should build, circle back, and connect naturally
-   - Allow students to interrupt with questions, make connections mid-thought, go "oh wait!" when they realize something
-   - Use natural speech patterns: contractions, verbal thinking ("hmm", "oh!", "wait", "interesting!"), sentence fragments
-   - Let enthusiasm show naturally - students get excited when they understand something
-   
-2. **Natural Progression** (NOT a template to follow):
-   - Start wherever feels natural - a question, an observation, something surprising, a connection to their lives
-   - Explore concepts through genuine curiosity, not forced "sections"
-   - Let understanding build gradually through back-and-forth discussion
-   - Allow tangents if they help understanding, but return to core concepts
-   - End when the conversation naturally concludes, not when a timer says to
-   
-3. **Genuine Student Thinking**:
-   - {speaker2_name} asks real questions students would wonder about ("but why...", "what if...", "how does...")
-   - Both students make connections to things they know ("oh, like when...", "that's kind of like...")
-   - Include moments of confusion and clarification ("wait, I'm confused about...", "oh, so you mean...")
-   - Use analogies that students would naturally think of from their own experiences
-   - Let "aha moments" emerge naturally from the dialogue
-
-4. **Age-Appropriate Expression**:
-   - Grade 1-3: Short sentences, simple words, lots of enthusiasm, concrete examples from daily life (pets, family, playground)
-   - Grade 4-6: More complex sentences, some technical terms explained simply, relatable examples (school, hobbies, friendships)
-   - Grade 7-9: Deeper reasoning, thoughtful questions, real-world connections, technical terms with context
-   - Grade 10-12: Analytical thinking, academic vocabulary used naturally, abstract concepts explored thoroughly
-
-TARGET GUIDELINES (STRICT REQUIREMENTS):
-- Duration: {duration_minutes} minutes of natural conversation
-- Word count: MINIMUM {min_words} words, TARGET {target_words} words (based on 150 words/minute speaking pace)
-- Speaking pace varies naturally - students slow down for complex ideas, speed up when excited
-- MUST thoroughly cover ALL assigned concepts - this is not optional
-- Use concrete examples to ensure deep understanding
-
-CONCEPT COVERAGE: MUST thoroughly explain all these concepts: {concepts}
-- Don't just mention - actually explain through natural dialogue
-- Build understanding gradually through questions and discussion
-- Connect concepts to each other and to real-world experience
-- Use examples, analogies, and applications that students would actually think of
-
-SOURCE ALIGNMENT (CRITICAL):
-- Every factual claim MUST have source_reference: "p[page]:lines [start]-[end]" or "block_[id]"
-- If making logical inferences or simplifying for grade level, mark "inferred": true and use tentative language ("scientists think", "it seems like", "probably")
-- NEVER state uncertain facts with high confidence - always hedge appropriately
-
-WHAT MAKES DIALOGUE SOUND ROBOTIC (AVOID):
-- Alternating speakers mechanically every sentence
-- Following a rigid pattern (introduce → define → example → recap)
-- Using formal transitions ("Now let's move on to...", "In conclusion...")
-- Asking setup questions that only exist to prompt the next speaker ("So what is photosynthesis?")
-- Teaching voice or narrator mode
-- Textbook language read aloud
-- Forced "aha moments" that feel scripted
-
-WHAT MAKES DIALOGUE SOUND NATURAL (DO THIS):
-- Let one student talk for several sentences when explaining something complex
-- Interrupt naturally with quick questions or reactions
-- Circle back to earlier points when making connections
-- Use filler words and thinking sounds appropriately ("um", "like", "you know")
-- Make mistakes and correct them in conversation
-- Show genuine reactions to learning something new
-- Build ideas collaboratively across multiple exchanges
-
-Episode: {episode_title}
-Duration: {duration_minutes} minutes
-Grade: {grade_band}
-Concepts to fully cover: {concepts}
-Source: {chapter_content}
-
-Return ONLY valid JSON with organic sections (NOT rigid types):
-{{
-  "episode_index": 1,
-  "title": "{episode_title}",
-  "estimated_duration_seconds": {duration_seconds},
-  "word_count": 720,
-  "grade_level": {grade_band},
-  "style_lock": "style_v1.json",
-  "sections": [
-    {{
-      "id": "section_1",
-      "start": 0,
-      "end": 180,
-      "type": "dialogue",
-      "text": "{speaker1_name}: [Natural conversation line]\\n{speaker2_name}: [Natural response]\\n{speaker1_name}: [Continues thought...]",
-      "source_reference": "p1:lines 1-15",
-      "concepts_covered": ["concept_id1", "concept_id2"],
-      "dialogue_quality_notes": "Natural flow, authentic student voice, builds understanding gradually"
-    }},
-    {{
-      "id": "section_2",
-      "start": 180,
-      "end": 420,
-      "type": "dialogue",
-      "text": "[Continue natural conversation exploring concepts]",
-      "source_reference": "p2:lines 10-30",
-      "concepts_covered": ["concept_id3"],
-      "dialogue_quality_notes": "Includes student questions, connections, aha moments"
-    }}
-  ],
-  "concept_ids": {concept_ids},
-  "concepts_coverage_check": {{"concept_id": "fully_explained"}},
-  "pronunciation_hints": {{"difficult_word": "pronunciation"}},
-  "age_appropriate_check": true,
-  "dialogue_naturalness_score": 9,
-  "vocabulary_level_appropriate": true
-}}
-""",
-
-    "mcq_generation": """
-SYSTEM: You are an expert MCQ generator for K-12 education. Create questions that test genuine understanding and thinking, never trivial recall.
-
-CRITICAL RULES:
-1. ABSOLUTELY BANNED phrases in questions:
-   - "According to the script..."
-   - "What did [speaker name] say..."
-   - "In the conversation..."
-   - "The students mentioned..."
-   - Any phrasing that asks students to recall literal dialogue
-
-2. QUESTION REQUIREMENTS:
-   - Test conceptual understanding (why/how something works)
-   - Require thinking and reasoning, not memory
-   - Apply concepts to NEW scenarios not in the script
-   - Make students demonstrate they understand, not that they remember
-   - Use grade-appropriate language and context
-
-3. DISTRACTOR REQUIREMENTS:
-   - Based on COMMON STUDENT MISCONCEPTIONS about the concept
-   - Plausible enough that students who don't understand would pick them
-   - Wrong for a specific conceptual reason (not just random)
-   - Show understanding of how students typically get confused
-
-4. QUESTION TYPES DISTRIBUTION:
-   - 0% trivial recall (BANNED)
-   - 30% conceptual understanding (why/how concepts work)
-   - 40% application (applying concepts to new situations)
-   - 30% analysis (comparing, evaluating, predicting)
-
-GOOD EXAMPLES:
-- "Why would a plant in a dark closet eventually die?" (tests photosynthesis understanding)
-- "If you wanted to make ice cream freeze faster, what should you add to the ice?" (tests heat transfer application)
-- "What would happen to Earth's seasons if the axis wasn't tilted?" (tests analysis)
-
-BAD EXAMPLES (NEVER DO THIS):
-- "According to the script, what is photosynthesis?" ❌
-- "What did Alex say about the three states of matter?" ❌
-- "The students mentioned that plants need sunlight. Why is this?" ❌
-
-REQUIREMENTS:
-- Generate EXACTLY {count} MCQs testing concepts from the script (~3 MCQs per concept)
-- Cover ALL concepts provided - create multiple questions per concept for comprehensive assessment
-- 4 options each, exactly 1 correct
-- Include timestamp_ref pointing to when concept was discussed
-- Use concept_misconceptions from concept_list to create realistic distractors
-- Grade-appropriate language for {grade_band}
-- Each question must require understanding, not memory
-
-Script: {script}
-Concepts with misconceptions: {concepts}
-Grade: {grade_band}
-Speakers: {speaker1_name}, {speaker2_name}
-
-Return valid JSON only:
-{{
-  "mcqs": [
-    {{
-      "qid": "q1",
-      "timestamp_ref": 45,
-      "concept_id": "photosynthesis",
-      "difficulty": 3,
-      "type": "application",
-      "question_text": "A student put a healthy plant in a dark closet for two weeks. What would most likely happen and why?",
-      "options": [
-        "The plant would die because it can't produce food without light energy",
-        "The plant would grow taller trying to reach sunlight",
-        "The plant would turn brown but survive by eating nutrients from soil",
-        "The plant would be fine because it stores enough energy in its roots"
-      ],
-      "correct_index": 0,
-      "explanation": "Plants need sunlight to perform photosynthesis and create their own food (glucose). Without light, they cannot produce energy and will eventually die. This is different from animals which get energy by eating food.",
-      "misconception_addressed": "Plants eat soil for food"
-    }}
-  ]
-}}
-"""
-}
-
-# All 13 Regeneration prompts from MIGRATION.md (VERBATIM)
-REGENERATION_PROMPTS = {
-    "regen_short_script": """
-SYSTEM: You are a script editor for a K-12 educational audio episode. 
-INPUT: episode_plan, style_lock, chapter_concepts, current_script. 
-CONSTRAINTS: two speakers only ({speaker1_name}, {speaker2_name}). TARGET_WORD_MIN: 450. TARGET_WORD_MAX: 1100. 
-TONE: peer-to-peer, {speaker1_name} {speaker1_personality}, {speaker2_name} {speaker2_personality}. NO teacher voice. 
-STORY allowed only if memory-aiding, <=30s. 
-OUTPUT: produce a revised script that expands content organically to hit at least 450 words while preserving existing correct statements and all source references. 
-Do not invent new high-confidence facts; any added factual claims must be traced to chapter_concepts or marked as "inferred" with low-certainty phrasing. 
-Keep micro-story length <=30 seconds. Include section markers and estimated start/end seconds. 
-Return only JSON with keys: {script_text, word_count, sections:[{id,start,end,text}], change_log}.
-""",
-
-    "regen_long_script": """
-SYSTEM: You are a script compressor for a K-12 educational episode. 
-INPUT: current_script, style_lock. 
-CONSTRAINTS: reduce word_count to <=1100 and preserve conceptual coverage and core facts. 
-Keep two speakers only. Remove redundant sentences, shorten analogies, compress examples. 
-Do NOT remove any core concepts listed in episode_plan. 
-Avoid altering MCQs references; if timestamps move, output new timestamp map. 
-OUTPUT only JSON {script_text, word_count, sections:[...], change_log}.
-""",
-
-    "regen_tone_fix": """
-SYSTEM: You are a tone-correction engine. 
-INPUT: current_script, style_lock (defines forbidden words and allowed phrasing). 
-TASK: Rewrite the script to eliminate teacher-tone and narration. 
-Replace phrases that sound like "lecture", "as we discussed" or "today we'll learn" with peer phrasing. 
-Keep content meaning identical, keep sources. Keep word_count within +/-10% of original. 
-OUTPUT JSON {script_text, change_log}.
-""",
-
-    "regen_mcq_sync": """
-SYSTEM: You are an MCQ generator and synchronizer. 
-INPUT: final_script (authoritative), desired_mcq_count (3-6), concept_list. 
-RULES: generate MCQs strictly from sentences/phrases present in final_script. 
-For each question include timestamp_ref (map to section start). 
-Ensure each concept in concept_list has at least one MCQ across episode set if possible. 
-Provide plausible distractors derived from nearby phrases or common confusions. 
-OUTPUT JSON {mcqs:[...], change_log}.
-""",
-
-    "regen_remove_hallucination": """
-SYSTEM: You are a factual aligner. 
-INPUT: script, flagged_sentences (list), chapter_sources. 
-TASK: For each flagged sentence that lacks a source reference, either (A) rephrase to a hypothetical/soft phrasing ("Scientists think..." / "It is believed that...") or (B) remove it. 
-Prefer (A) only if a reasonable low-confidence paraphrase can be created; otherwise remove. 
-Mark any remaining sentences as "inferred":true. 
-Return JSON {script_text, removed_sentences:[...], modified_sentences:[...], inferred_sentences:[...]}.
-""",
-
-    "regen_pronunciation_map": """
-SYSTEM: You are a pronunciation mapper. 
-INPUT: script_text, detected_terms[], language. 
-OUTPUT: JSON mapping of term -> phonetic_hint. 
-Use common-sense phonetics for en-IN. Also add SSML-compatible substitutions for GoogleTTS/ElevenLabs where possible. 
-{pronunciation_hints:{term:"KLAWR-uh-fill", ...}}
-""",
-
-    "regen_structure_fix": """
-SYSTEM: You are a structure-corrector. 
-INPUT: raw_text, extracted_headings, detected_ocr_errors. 
-RULES: reconstruct logical headings using numbering patterns, bold/uppercase heuristics, and nearby sentence starts. 
-Fix obvious OCR artefacts (l|1, O|0). If uncertainty > threshold for a heading (confidence <0.7), mark as "uncertain_heading" and add to error_report. 
-OUTPUT: cleaned_markdown and list{fixed_spans, uncertain_spans}.
-""",
-
-    "regen_dedup": """
-SYSTEM: You are a deduplication editor. 
-INPUT: script_text. 
-TASK: Remove or compress repeated ideas appearing >2 times. 
-Merge duplicate examples. Keep at least one clear explanation per concept. 
-OUTPUT JSON {script_text, removed_passages:[...], change_log}.
-""",
-
-    "regen_split_episode": """
-SYSTEM: You are an episode splitter. 
-INPUT: original_episode_plan, script_text (>1100 words), chapter_concepts. 
-RULES: Identify a logical split point between concept clusters, produce two coherent episodes each satisfying 450–1100 word rules. 
-Keep voice/style consistent and update timestamps. 
-Output JSON {episodes:[{script_text,concepts,metadata},{...}], change_log}.
-""",
-
-    "regen_merge_episode": """
-SYSTEM: You are an episode merger. 
-INPUT: episode_A_script (short<450), episode_B_script, episode_plan. 
-RULES: Merge A+B into a single coherent episode, reflow sections, ensure total <=1100 words. 
-Prefer merging concepts that are direct prerequisites. 
-Output merged script JSON and mark ep indexes changed.
-""",
-
-    "regen_time_sync": """
-SYSTEM: You are an audio-to-script syncer. 
-INPUT: script sections with estimated seconds, generated audio final_audio.mp3, cues.json. 
-TASK: Recompute actual section start/end times from audio, update cues.json, and update all MCQ timestamp_refs to new times. 
-If section durations differ >25% from estimates, add note to change_log. 
-OUTPUT updated cues.json and mcqs.json.
-""",
-
-    "regen_style_lock": """
-SYSTEM: You enforce chapter-level style. 
-INPUT: style_lock.json, all_episode_scripts[]. 
-TASK: For each episode that violates style rules (vocab level, speaker personality), regenerate only the offending episodes reusing prior prompts but with explicit style directives. 
-OUTPUT change_log with re-gen attempts.
-""",
-
-    "regen_natural_dialogue": """
-SYSTEM: You are a dialogue naturalness editor for K-12 educational content.
-INPUT: current_script, robotic_patterns_detected (list of specific issues), grade_band
-TASK: Rewrite dialogue to sound like real Grade {grade_band} students talking naturally.
-
-FIX THESE ROBOTIC PATTERNS:
-- Mechanical speaker alternation (A says one line, B says one line, repeat)
-- Formal transitions ("Now let's discuss...", "Moving on to...", "In conclusion...")
-- Setup questions that only exist to prompt next speaker ("So what is X?", "Can you explain Y?")
-- Textbook language read aloud
-- Forced structure (intro-body-conclusion)
-- Unnatural formality for student age
-
-MAKE IT NATURAL:
-- Let one speaker talk for multiple sentences when explaining something
-- Use natural interruptions and reactions ("Oh!", "Wait, so...", "That makes sense!")
-- Include thinking sounds ("Hmm", "Um", "Like")
-- Let students make connections to their own experiences organically
-- Show genuine curiosity and confusion followed by understanding
-- Build ideas collaboratively across multiple exchanges
-- Use contractions and informal language appropriate for age
-
-PRESERVE:
-- All factual content and source references
-- Concept coverage completeness
-- Word count within +/-15% of original
-- Section timing estimates
-
-OUTPUT: JSON {{script_text, sections:[...], naturalness_improvements:[list of specific changes], word_count}}
-""",
-
-    "regen_simplify_vocabulary": """
-SYSTEM: You are a vocabulary simplification specialist for K-12 content.
-INPUT: current_script, overly_complex_words_detected, target_grade_band, flesch_kincaid_target
-TASK: Simplify vocabulary to match Grade {grade_band} reading level while preserving meaning.
-
-GUIDELINES BY GRADE:
-- Grade 1-3: 3-6 word sentences, concrete nouns, basic verbs, everyday vocabulary
-- Grade 4-6: Varied sentence length, introduce some technical terms WITH simple explanations
-- Grade 7-9: More complex sentences, academic vocabulary explained in context
-- Grade 10-12: Advanced vocabulary appropriate for college prep
-
-SIMPLIFICATION STRATEGIES:
-- Replace complex words with simpler synonyms students know
-- Break long sentences into shorter ones
-- Explain technical terms using analogies and examples
-- Use "like" comparisons and "for example" to clarify
-- Keep explanations conversational, not dictionary definitions
-
-PRESERVE:
-- Technical terms that are learning objectives (but explain them better)
-- All source references
-- Conceptual accuracy
-- Natural dialogue flow
-- Student voice and personality
-
-TARGET: Flesch-Kincaid Grade Level = {grade_band} +/- 1 grade
-
-OUTPUT: JSON {{script_text, sections:[...], vocabulary_changes:[{{original_word, simplified_version, reason}}], flesch_kincaid_score, word_count}}
-""",
-
-    "regen_add_examples": """
-SYSTEM: You are a concrete example generator for K-12 educational content.
-INPUT: current_script, abstract_concepts_flagged (concepts lacking examples), grade_band
-TASK: Add concrete, relatable examples to make abstract concepts tangible for Grade {grade_band} students.
-
-EXAMPLE REQUIREMENTS:
-- Draw from students' actual daily lives (school, home, hobbies, friends, technology they use)
-- Age-appropriate and culturally relevant
-- Short (20-40 seconds in dialogue)
-- Integrated naturally into conversation, not forced asides
-- Actually illuminate the concept, not just name-drop an example
-
-EXAMPLE SOURCES BY GRADE:
-- Grade 1-3: Toys, pets, family, playground, food, cartoons
-- Grade 4-6: School activities, sports, video games, social media, cooking
-- Grade 7-9: Real-world technology, current events, social situations, future careers
-- Grade 10-12: Complex systems, societal issues, academic applications, career paths
-
-INTEGRATION STYLE:
-- Student naturally connects concept to their experience ("Oh, that's like when...")
-- Use analogy format ("It's kind of like how...")
-- Build on example to deepen understanding, don't just mention and move on
-- Other student can react, extend, or relate their own example
-
-PRESERVE:
-- All existing factual content and source references
-- Natural dialogue flow
-- Target word count +/- 10%
-- Timing estimates for sections
-
-OUTPUT: JSON {{script_text, sections:[...], examples_added:[{{concept_id, example_description, timestamp}}], word_count}}
-""",
-
-    "regen_fix_misconceptions": """
-SYSTEM: You are a misconception-addressing specialist for educational dialogue.
-INPUT: current_script, misconceptions_not_addressed (from concept analysis), grade_band
-TASK: Ensure common student misconceptions are explicitly addressed and corrected in the dialogue.
-
-MISCONCEPTION ADDRESSING STRATEGIES:
-- Have student voice the misconception as a genuine confusion ("Wait, I thought plants eat dirt for food?")
-- Other student gently corrects with clear explanation
-- Explicitly contrast correct understanding with misconception
-- Use examples that highlight why the misconception is wrong
-- Make the correction memorable through analogy or "aha moment"
-
-EFFECTIVE PATTERNS:
-Speaker A: "But doesn't [misconception]?"
-Speaker B: "Actually, that's a common mix-up! The real thing is [correct concept]. Here's why: [explanation]"
-Speaker A: "Oh! So it's not [misconception], it's [correct understanding]. That makes sense because [connection]."
-
-WHAT NOT TO DO:
-- Just state correct fact without acknowledging misconception
-- Make student sound dumb for having misconception
-- Rush past misconception without full explanation
-- Use teacher voice to lecture about it
-
-PRESERVE:
-- Natural student dialogue style
-- All source references
-- Word count within +/-15%
-- Other concept coverage
-
-OUTPUT: JSON {{script_text, sections:[...], misconceptions_addressed:[{{misconception, how_addressed, timestamp}}], word_count}}
-""",
-
-    "human_review_summary": """
-SYSTEM: You produce a tightly formatted human review summary. 
-INPUT: failed_checks[], error_report, sample_script_snippets. 
-OUTPUT: Markdown with bullet points: problem, location (file/line), suggested fix, high-priority flag. 
-Keep it actionable with exact sentences that need edit. Do NOT include raw logs.
-"""
-}
-
+# All prompts are now in prompts.py - imported at top of file
+# CONCEPT_EXTRACTION_BY_SUBJECT, SCRIPT_PROMPTS_BY_SUBJECT, 
+# MCQ_PROMPTS_BY_SUBJECT, REGENERATION_PROMPTS
 @app.post("/extract_concepts")
 async def extract_concepts(request: ConceptExtractionRequest):
     """Extract educational concepts from chapter content"""
@@ -1011,18 +603,94 @@ async def extract_concepts(request: ConceptExtractionRequest):
         provider_pref = (request.metadata or {}).get('llm_provider', None)
         provider_override = provider_pref if provider_pref in ("openai", "gemini") else None
         provider_name = (provider_override or (CURRENT_PROVIDER or LLM_PROVIDER)).upper()
-        logger.info(f"[{job_id}] Extracting concepts for {request.metadata.get('subject', 'unknown')} content using {provider_name}")
         
-        prompt = EDUCATIONAL_PROMPTS["concept_extraction"].format(
-            content=request.markdown_content[:5000],  # Limit content size
-            grade_band=request.metadata.get("grade_band", "7"),
-            subject=request.metadata.get("subject", "general")
+        subject = request.metadata.get('subject', 'general')
+        logger.info(f"[{job_id}] Extracting concepts for {subject} content using {provider_name}")
+        
+        # Normalize subject to category (match to supported audio-compatible subjects)
+        subject_norm = subject.strip()
+        subject_category = 'default'
+        
+        # Direct match first
+        if subject_norm in CONCEPT_EXTRACTION_BY_SUBJECT:
+            subject_category = subject_norm
+        else:
+            # Fuzzy match to supported subjects
+            subject_lower = subject_norm.lower()
+            if 'physic' in subject_lower:
+                subject_category = 'Physics'
+            elif 'chemis' in subject_lower or 'chem' in subject_lower:
+                subject_category = 'Chemistry'
+            elif 'bio' in subject_lower:
+                subject_category = 'Biology'
+            elif 'science' in subject_lower:
+                subject_category = 'Science'
+            elif 'social' in subject_lower:
+                subject_category = 'Social Studies'
+            elif 'history' in subject_lower or 'hist' in subject_lower:
+                subject_category = 'History'
+            elif 'geography' in subject_lower or 'geo' in subject_lower:
+                subject_category = 'Geography'
+            elif 'civic' in subject_lower or 'politic' in subject_lower:
+                subject_category = 'Civics'
+            elif 'econom' in subject_lower:
+                subject_category = 'Economics'
+            elif 'comput' in subject_lower or 'coding' in subject_lower or 'programming' in subject_lower or 'cs' == subject_lower:
+                subject_category = 'Computer Science'
+            elif 'evs' in subject_lower or 'environmental' in subject_lower:
+                subject_category = 'EVS'
+            # Unsupported subjects - reject explicitly
+            elif 'math' in subject_lower or 'algebra' in subject_lower or 'geometry' in subject_lower:
+                raise HTTPException(status_code=400, detail=f"Subject '{subject}' is not supported in audio-only format. Mathematics requires visual problem-solving.")
+            elif 'english' in subject_lower or 'literature' in subject_lower or 'grammar' in subject_lower:
+                raise HTTPException(status_code=400, detail=f"Subject '{subject}' is not supported in audio-only format. English/Literature requires text visibility.")
+        
+        # Get subject-specific prompt
+        prompt_template = CONCEPT_EXTRACTION_BY_SUBJECT[subject_category]
+        
+        grade_band = request.metadata.get('grade_band', '7')
+        
+        prompt = prompt_template.format(
+            content=request.markdown_content[:5000],
+            subject=subject,
+            grade_band=grade_band
         )
+        
+        logger.info(f"[{job_id}] Using '{subject_category}' extraction strategy for Grade {grade_band}")
 
-        response_text = await generate_with_llm(prompt, temperature=0.3, max_tokens=4000, json_mode=True, provider_override=provider_override)
+        # Track BEFORE calling LLM
+        track_job(job_id, "processing", {
+            "task": "Calling LLM for concept extraction",
+            "stage": "calling_llm",
+            "estimated_time": "15-30 seconds"
+        })
+        
+        response_text = await generate_with_llm(prompt, temperature=0.3, max_tokens=6000, json_mode=True, provider_override=provider_override)
+        
+        # Track AFTER LLM responds
+        track_job(job_id, "processing", {
+            "task": "Parsing LLM response",
+            "stage": "parsing_response"
+        })
 
+        # Extract JSON from response (handle cases where LLM adds text before/after JSON)
+        response_text = response_text.strip()
+        
+        # Try to find JSON object in response
+        json_start = response_text.find('{')
+        json_end = response_text.rfind('}') + 1
+        
+        if json_start >= 0 and json_end > json_start:
+            json_text = response_text[json_start:json_end]
+        else:
+            json_text = response_text
+        
         # Parse and validate response
-        result = json.loads(response_text)
+        try:
+            result = json.loads(json_text)
+        except json.JSONDecodeError as je:
+            logger.error(f"[{job_id}] JSON parse error. Response text: {response_text[:500]}")
+            raise ValueError(f"Invalid JSON response from LLM: {str(je)}")
         
         if not result.get("concepts"):
             raise ValueError("No concepts extracted from content")
@@ -1155,21 +823,66 @@ async def generate_script(request: ScriptGenerationRequest):
         if hasattr(request, 'episode_rationale') and request.episode_rationale:
             episode_context = f"\n\nPLANNING CONTEXT:\nThese concepts were grouped together because: {request.episode_rationale}\nEnsure your dialogue flows naturally given this pedagogical reasoning.\n"
         
-        prompt = EDUCATIONAL_PROMPTS["episode_script"].format(
+        # Get subject and route to appropriate prompt
+        subject = getattr(request, 'subject', 'general')
+        subject_norm = subject.strip()
+        subject_category = 'default'
+        
+        # Match subject to category (same logic as concept extraction)
+        if subject_norm in SCRIPT_PROMPTS_BY_SUBJECT:
+            subject_category = subject_norm
+        else:
+            subject_lower = subject_norm.lower()
+            if 'physic' in subject_lower:
+                subject_category = 'Physics'
+            elif 'chemis' in subject_lower or 'chem' in subject_lower:
+                subject_category = 'Chemistry'
+            elif 'bio' in subject_lower:
+                subject_category = 'Biology'
+            elif 'science' in subject_lower:
+                subject_category = 'Science'
+            elif 'algebra' in subject_lower:
+                subject_category = 'Algebra'
+            elif 'geometry' in subject_lower or 'geom' in subject_lower:
+                subject_category = 'Geometry'
+            elif 'math' in subject_lower:
+                subject_category = 'Mathematics'
+            elif 'literature' in subject_lower or 'lit' in subject_lower:
+                subject_category = 'Literature'
+            elif 'english' in subject_lower:
+                subject_category = 'English'
+            elif 'grammar' in subject_lower or 'language' in subject_lower:
+                subject_category = 'Grammar'
+            elif 'history' in subject_lower or 'hist' in subject_lower:
+                subject_category = 'History'
+            elif 'geography' in subject_lower or 'geo' in subject_lower:
+                subject_category = 'Geography'
+            elif 'civic' in subject_lower or 'politic' in subject_lower:
+                subject_category = 'Civics'
+            elif 'econom' in subject_lower:
+                subject_category = 'Economics'
+            elif 'comput' in subject_lower or 'coding' in subject_lower or 'programming' in subject_lower:
+                subject_category = 'Computer Science'
+        
+        logger.info(f"[{job_id}] Using '{subject_category}' script generation strategy")
+        
+        # Get subject-specific prompt
+        prompt_template = SCRIPT_PROMPTS_BY_SUBJECT[subject_category]
+        
+        prompt = prompt_template.format(
             concepts=concept_names,
+            episode_number=request.episode_number,
             episode_title=request.episode_title,
             grade_band=request.grade,
             duration_minutes=request.duration_minutes,
             duration_seconds=duration_seconds,
             target_words=target_words,
             min_words=min_words,
-            max_words=max_words,
             concept_ids=concept_ids,
             chapter_content=request.source_content[:3000],
             speaker1_name=speaker1_name,
             speaker2_name=speaker2_name,
-            speaker1_personality=speaker1_personality,
-            speaker2_personality=speaker2_personality
+            subject=subject
         ) + episode_context
 
         # Generate script with validation retry loop (max 2 attempts)
@@ -1186,7 +899,21 @@ async def generate_script(request: ScriptGenerationRequest):
                 feedback += "\\n\\nPLEASE FIX THESE ISSUES IN THIS ATTEMPT."
                 attempt_prompt = prompt + feedback
             
+            # Track BEFORE calling LLM
+            track_job(job_id, "processing", {
+                "task": f"Calling LLM for script generation (attempt {attempt}/{max_attempts})",
+                "stage": "calling_llm",
+                "estimated_time": "20-40 seconds"
+            })
+            
             response_text = await generate_with_llm(attempt_prompt, temperature=0.4, max_tokens=3000, json_mode=True, provider_override=provider_override)
+            
+            # Track AFTER LLM responds
+            track_job(job_id, "processing", {
+                "task": "Parsing and validating script",
+                "stage": "parsing_response"
+            })
+            
             result = json.loads(response_text)
             
             # Validate script
@@ -1278,17 +1005,74 @@ async def generate_mcqs(request: MCQGenerationRequest):
         
         # Get grade band for age-appropriate questions
         grade_band = getattr(request, 'grade_band', '7')
-
-        prompt = EDUCATIONAL_PROMPTS["mcq_generation"].format(
+        
+        # Get subject and route to appropriate MCQ prompt
+        subject = getattr(request, 'subject', 'general')
+        subject_norm = subject.strip()
+        subject_category = 'default'
+        
+        # Match subject to category
+        if subject_norm in MCQ_PROMPTS_BY_SUBJECT:
+            subject_category = subject_norm
+        else:
+            subject_lower = subject_norm.lower()
+            if 'physic' in subject_lower:
+                subject_category = 'Physics'
+            elif 'chemis' in subject_lower or 'chem' in subject_lower:
+                subject_category = 'Chemistry'
+            elif 'bio' in subject_lower:
+                subject_category = 'Biology'
+            elif 'science' in subject_lower:
+                subject_category = 'Science'
+            elif 'algebra' in subject_lower:
+                subject_category = 'Algebra'
+            elif 'geometry' in subject_lower or 'geom' in subject_lower:
+                subject_category = 'Geometry'
+            elif 'math' in subject_lower:
+                subject_category = 'Mathematics'
+            elif 'literature' in subject_lower or 'lit' in subject_lower:
+                subject_category = 'Literature'
+            elif 'english' in subject_lower:
+                subject_category = 'English'
+            elif 'grammar' in subject_lower or 'language' in subject_lower:
+                subject_category = 'Grammar'
+            elif 'history' in subject_lower or 'hist' in subject_lower:
+                subject_category = 'History'
+            elif 'geography' in subject_lower or 'geo' in subject_lower:
+                subject_category = 'Geography'
+            elif 'civic' in subject_lower or 'politic' in subject_lower:
+                subject_category = 'Civics'
+            elif 'econom' in subject_lower:
+                subject_category = 'Economics'
+            elif 'comput' in subject_lower or 'coding' in subject_lower or 'programming' in subject_lower:
+                subject_category = 'Computer Science'
+        
+        logger.info(f"[{job_id}] Using '{subject_category}' MCQ generation strategy")
+        
+        # Get subject-specific MCQ prompt
+        prompt_template = MCQ_PROMPTS_BY_SUBJECT[subject_category]
+        
+        prompt = prompt_template.format(
             count=request.count,
-            script=script_text[:2000],  # Limit script size
             concepts=concepts_json,
             grade_band=grade_band,
-            speaker1_name=speaker1_name,
-            speaker2_name=speaker2_name
+            subject=subject
         )
 
+        # Track BEFORE calling LLM
+        track_job(job_id, "processing", {
+            "task": f"Calling LLM for MCQ generation ({request.count} questions)",
+            "stage": "calling_llm",
+            "estimated_time": "10-20 seconds"
+        })
+
         response_text = await generate_with_llm(prompt, temperature=0.3, max_tokens=2000, json_mode=True, provider_override=provider_override)
+
+        # Track AFTER LLM responds
+        track_job(job_id, "processing", {
+            "task": "Parsing and validating MCQs",
+            "stage": "parsing_response"
+        })
 
         result = json.loads(response_text)
         
@@ -1364,72 +1148,102 @@ async def regenerate_content(request: RegenerationRequest):
 
 @app.post("/analyze_chapter")
 async def analyze_chapter(request: ChapterAnalysisRequest):
-    """Complete chapter analysis per MIGRATION.md requirements"""
+    """
+    Complete chapter analysis using comprehensive educational prompt
+    Returns pedagogical classification and episode planning strategy
+    """
     job_id = None
     try:
         # Create job tracking
         job_id = create_job_id("chapter_analysis", {
-            "chapter_id": request.metadata.get("chapter_id", "unknown")
+            "chapter_id": "unknown",
+            "subject": request.subject
         })
-        track_job(job_id, "processing", {"task": "Analyzing chapter", "chapter": request.metadata.get("chapter_id")})
+        track_job(job_id, "processing", {"task": "Analyzing chapter", "subject": request.subject})
         
-        logger.info(f"[{job_id}] Starting chapter analysis")
+        logger.info(f"[{job_id}] Starting chapter analysis for {request.subject} grade {request.grade_band}")
         
-        model, api_key = get_gemini_model()
-        if not model:
-            raise HTTPException(status_code=500, detail="Gemini API not configured")
-
-        logger.info(f"Analyzing chapter for {request.subject} grade {request.grade_band}")
-        
-        analysis_prompt = f"""
-SYSTEM: You are a comprehensive educational content analyzer.
-INPUT: chapter_markdown, grade_band, subject, language
-TASK: Perform complete chapter analysis including:
-1. Content structure assessment
-2. Key learning objectives identification  
-3. Concept difficulty mapping
-4. Curriculum alignment check
-5. Episode planning recommendations
-
-Chapter: {request.markdown_content[:4000]}
-Grade: {request.grade_band}
-Subject: {request.subject}
-Language: {request.language}
-
-Return comprehensive JSON analysis:
-{{
-  "structure_analysis": {{
-    "heading_count": 0,
-    "paragraph_count": 0,
-    "estimated_reading_time": 0,
-    "content_quality_score": 0.0
-  }},
-  "learning_objectives": [],
-  "concept_map": [],
-  "difficulty_assessment": "medium",
-  "curriculum_alignment": "high",
-  "episode_recommendations": {{
-    "suggested_episode_count": 5,
-    "concept_clustering": [],
-    "estimated_total_duration": 30
-  }},
-  "quality_flags": []
-}}
-"""
-
-        response = model.generate_content(
-            analysis_prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.2,
-                max_output_tokens=3000,
-                response_mime_type="application/json"
-            )
+        # Check cache first
+        cache_key = get_cache_key(
+            "analyze_chapter",
+            request.markdown_content,
+            {"grade_band": request.grade_band, "subject": request.subject, "language": request.language}
         )
-
-        result = json.loads(response.text)
         
-        logger.info(f"[{job_id}] Chapter analysis completed successfully")
-        track_job(job_id, "completed", {"concepts_found": len(result.get("concepts", []))})
+        cached_response = get_cached_response(cache_key)
+        if cached_response:
+            logger.info(f"[{job_id}] Returning cached chapter analysis")
+            track_job(job_id, "completed", {"source": "cache"})
+            return cached_response
+        
+        # Load chapter analysis prompt from template
+        prompt_template = Path(__file__).resolve().parents[1] / 'templates' / 'prompts' / 'chapter_structure_analysis_prompt.txt'
+        with open(prompt_template, 'r', encoding='utf-8') as f:
+            prompt = f.read()
+        
+        # Replace placeholders
+        prompt = prompt.replace('{grade_band}', str(request.grade_band))
+        prompt = prompt.replace('{subject}', request.subject)
+        prompt = prompt.replace('{content}', request.markdown_content[:6000])
+
+        # Track BEFORE calling LLM
+        track_job(job_id, "processing", {
+            "task": "Calling LLM for chapter analysis",
+            "stage": "calling_llm",
+            "estimated_time": "15-30 seconds"
+        })
+
+        # Use LLM to analyze chapter
+        response_text = await generate_with_llm(
+            prompt, 
+            temperature=0.4,  # Slightly higher for nuanced classification
+            max_tokens=1500,  # More room for detailed reasoning
+            json_mode=True,
+            provider_override=getattr(request, 'llm_provider', None)
+        )
+        
+        # Track AFTER LLM responds
+        track_job(job_id, "processing", {
+            "task": "Parsing chapter analysis",
+            "stage": "parsing_response"
+        })
+        
+        # Parse JSON response
+        response_text = response_text.strip()
+        json_start = response_text.find('{')
+        json_end = response_text.rfind('}') + 1
+        
+        if json_start >= 0 and json_end > json_start:
+            json_text = response_text[json_start:json_end]
+        else:
+            json_text = response_text
+        
+        try:
+            result = json.loads(json_text)
+        except json.JSONDecodeError as je:
+            logger.error(f"[{job_id}] JSON parse error in chapter analysis. Response: {response_text[:500]}")
+            raise ValueError(f"Invalid JSON response from LLM: {str(je)}")
+        
+        # Validate required fields - UPDATED for open-ended analysis
+        required_fields = ['content_type', 'main_focus', 'confidence']
+        for field in required_fields:
+            if field not in result:
+                raise ValueError(f"Missing required field in analysis: {field}")
+        
+        # Validate confidence range
+        if not (0.0 <= result['confidence'] <= 1.0):
+            logger.warn(f"[{job_id}] Invalid confidence: {result['confidence']}, defaulting to 0.5")
+            result['confidence'] = 0.5
+        
+        # Save to cache
+        save_to_cache(cache_key, result)
+        
+        logger.info(f"[{job_id}] Chapter analysis completed: {result.get('content_type', 'unknown')} (confidence: {result['confidence']})")
+        track_job(job_id, "completed", {
+            "content_type": result.get('content_type'),
+            "confidence": result['confidence']
+        })
+        
         return result
 
     except Exception as e:
@@ -1454,7 +1268,13 @@ async def health_check():
             "gemini_configured": gemini_configured,
             "timestamp": time.time(),
             "version": "content_pipeline_v2_multi_llm",
-            "regeneration_prompts_count": len(REGENERATION_PROMPTS)
+            "regeneration_prompts_count": len(REGENERATION_PROMPTS),
+            "cache": {
+                "enabled": CACHE_ENABLED,
+                "ttl_days": CACHE_TTL_DAYS,
+                "prompt_version": PROMPT_VERSION,
+                "stats": cache_stats
+            }
         }
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
@@ -1463,6 +1283,34 @@ async def health_check():
             "error": str(e),
             "timestamp": time.time()
         }
+
+@app.post("/cache/clear")
+async def clear_cache_endpoint(version: Optional[str] = None):
+    """Clear LLM response cache. Optionally specify version to clear only that version."""
+    cleared = clear_cache(version)
+    return {
+        "success": True,
+        "cleared_count": cleared,
+        "version": version or "all"
+    }
+
+@app.get("/cache/stats")
+async def get_cache_stats():
+    """Get cache statistics"""
+    total_requests = cache_stats['hits'] + cache_stats['misses']
+    hit_rate = (cache_stats['hits'] / total_requests * 100) if total_requests > 0 else 0
+    
+    return {
+        "enabled": CACHE_ENABLED,
+        "ttl_days": CACHE_TTL_DAYS,
+        "prompt_version": PROMPT_VERSION,
+        "stats": {
+            **cache_stats,
+            "total_requests": total_requests,
+            "hit_rate_percent": round(hit_rate, 2)
+        },
+        "cache_dir": str(CACHE_DIR)
+    }
 
 @app.get("/regeneration_prompts")
 async def list_regeneration_prompts():

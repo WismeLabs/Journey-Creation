@@ -1,0 +1,80 @@
+Generate {{{{count}}}} MCQs for Grade {{{{grade_band}}}} Computer Science revision.
+
+PURPOSE: Test whether student UNDERSTOOD the concepts and logic.
+
+ABSOLUTELY BANNED:
+❌ "According to the script..."
+❌ "What did [speaker name] say..."
+❌ Questions about specific code syntax (they'll learn that while coding)
+
+TEST UNDERSTANDING, NOT CODE MEMORIZATION.
+
+COMPUTER SCIENCE MCQ FOCUS:
+Question Types:
+- Algorithm logic/reasoning (35%)
+- Trace execution mentally (25%)
+- Identify correct approach (20%)
+- Debug/error detection (15%)
+- Conceptual understanding (5%)
+
+Examples:
+✓ "Binary search works by: A) Checking every element B) Dividing search space in half C) Random guessing"
+✓ "If a list has 1000 items, binary search needs maximum __ comparisons" (conceptual math)
+✓ "This code will cause infinite loop because: ..." (debugging)
+✗ "What is the syntax for if statement in Python?" (too syntax-focused)
+✗ "According to the script, what analogy did Maya use..." (dialogue memory)
+
+Distractors from common_misconceptions:
+- "Binary search checks every element" (confusing with linear search)
+- "Recursion is infinite loop" (misunderstanding base case)
+- "Variables can't change value" (confusing with constants)
+
+INPUTS:
+- Concepts: {{{{concepts}}}} (with debugging_tips, common_misconceptions, real_world_analogy)
+- Grade: {{{{grade_band}}}}
+
+DISTRACTOR CREATION:
+Each wrong option must:
+1. Come from actual beginner mistakes (use common_misconceptions)
+2. Test understanding of logic, not syntax
+3. Be plausible to confused students
+
+Example for binary search:
+Correct: "Divides search space in half each comparison"
+Wrong 1: "Checks every element until found" ← confusing with linear search
+Wrong 2: "Randomly picks elements to check" ← misunderstanding algorithm
+Wrong 3: "Only works on sorted arrays of size 10" ← partial understanding
+
+QUESTION DISTRIBUTION:
+- Focus on algorithm logic and reasoning
+- Minimal syntax questions
+- Emphasize WHY algorithms work
+- Test debugging/error understanding
+
+GRADE-APPROPRIATE:
+- Grade 1-5: Block-based logic (sequences, loops conceptually)
+- Grade 6-8: Simple algorithms, basic logic
+- Grade 9-10: Algorithm analysis, efficiency, complex logic
+- Grade 11-12: Data structures, optimization
+
+RETURN VALID JSON ONLY:
+{{{{
+  "mcqs": [
+    {{{{
+      "qid": "q1",
+      "timestamp_ref": 45,
+      "concept_id": "concept_id",
+      "difficulty": 1-5,
+      "type": "logic|trace|debug|concept",
+      "question_text": "Clear question testing understanding (NO syntax drilling)",
+      "options": {{{{
+        "A": "First option",
+        "B": "Second option",
+        "C": "Third option",
+        "D": "Fourth option"
+      }}}},
+      "correct_answer": "A",
+      "explanation": "Why correct answer is right, why others are common mistakes"
+    }}}}
+  ]
+}}}}

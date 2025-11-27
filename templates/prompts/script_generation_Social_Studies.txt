@@ -1,0 +1,93 @@
+Generate engaging audio revision script for Grade {grade_band} Social Studies (CBSE).
+
+CONTEXT:
+Two students - {speaker1_name} and {speaker2_name} - are helping YOU (the listener) revise Social Studies at home.
+Social Studies combines History, Geography, and Civics - the chapter may cover any or all of these.
+
+INPUTS:
+- Concepts: {concepts}
+- Duration: {duration_minutes} minutes ({duration_seconds} seconds)
+- Target Words: {min_words}-{target_words}
+- Source: {chapter_content}
+- Episode: #{episode_number} - {episode_title}
+
+AUDIO-FIRST APPROACH (CRITICAL):
+🎯 PURPOSE: Revise integrated HISTORY+GEOGRAPHY+CIVICS through stories and concepts. Maps/timelines sketched separately.
+
+✅ DO:
+- Historical storytelling: events, chronology, cause-effect
+- Spatial descriptions: "The Ganges flows from Himalayas through plains to Bay of Bengal"
+- Civic concepts: rights, governance, democratic processes
+- Integration: "This geographical feature affected historical events because..."
+- Guide sketching: "Sketch this as I explain: timeline on left, map on right"
+- End with: "Now create a combined timeline-map showing these events and locations"
+
+❌ DON'T:
+- Detailed map coordinates or measurements
+- Try to replace actual map labeling practice
+- Treat as three separate subjects (integrate!)
+
+💡 INSTEAD SAY:
+- "Mark these historical battle locations on your map"
+- "Draw a timeline and add geographical context to each event"
+- "Practice: which regions had which governments at this time?"
+
+SOCIAL STUDIES FOCUS (CBSE):
+- **Historical Content**: Chronological flow, cause-effect relationships, key figures and their roles, significance and impact, connections to present day
+- **Geographical Content**: Spatial descriptions (audio-friendly: "in the north near mountains"), physical features, climate patterns, map visualization through words, human-environment interaction
+- **Civics Content**: Rights and duties, democratic processes, government structure, real-life civic applications, why it matters in democracy
+- **Integrated Approach**: Show connections (e.g., how geography influenced historical events, how history shaped current civic structure)
+- **Board Exam Style**: CBSE emphasizes understanding and application, not rote memorization
+
+ENGAGEMENT FRAMEWORK:
+
+1. USE HUMOR when helpful:
+   - Historical anecdotes that are memorable
+   - Geography: funny regional differences, surprising facts
+   - Civics: relatable democratic scenarios
+
+2. USE MEMORY HOOKS:
+   - Chronology: "Remember the order: First this, then that..."
+   - Geography: "Think of the map: If you're facing north..."
+   - Civics: "Three branches like three legs of a stool"
+
+3. ADDRESS MISCONCEPTIONS:
+   - Date confusions, location errors
+   - Rights vs Duties mix-ups
+   - Cause vs Effect confusion
+
+4. USE RELATABLE EXAMPLES:
+   - Current events, local geography
+   - School elections for democracy
+   - News headlines connecting to history
+
+DIALOGUE REQUIREMENTS:
+- NATURAL CONVERSATION (not robotic)
+- Mix historical storytelling, map descriptions, civic discussions
+- "Wait, so FIRST this happened, THEN that?"
+- "If you look at a map..." (describe spatially)
+- "This is why we have this right today..."
+
+PACING:
+- importance=5: Major events, key features, fundamental rights - slow down
+- importance=3-4: Supporting facts - clear explanation
+- importance=1-2: Quick context
+
+CBSE BOARD ALIGNMENT:
+- 3-mark questions: Cause-effect, significance
+- 5-mark questions: Detailed explanations, comparisons
+- Map work: Locations described clearly
+
+RETURN VALID JSON ONLY:
+{{{{
+  "episode_index": {{{{episode_number}}}},
+  "title": "Episode {{{{episode_number}}}}: {{{{episode_title}}}}",
+  "word_count": <actual>,
+  "sections": [
+    {{{{
+      "id": "section_1",
+      "text": "{{{{speaker1_name}}}}: [dialogue]\\n{{{{speaker2_name}}}}: [response]...",
+      "concepts_covered": ["id1", "id2"]
+    }}}}
+  ]
+}}}}

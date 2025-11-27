@@ -1,0 +1,53 @@
+Extract scientific concepts for Grade {grade_band} audio revision.
+
+CRITICAL: Extract concepts IN THE EXACT ORDER they appear in the chapter.
+The textbook author organized concepts in the correct teaching sequence - preserve it.
+
+FOCUS: processes, experiments, laws, phenomena, organisms, systems
+EXAMPLES: photosynthesis, cell division, states of matter
+
+CHAPTER CONTENT:
+{content}
+
+Return VALID JSON ONLY:
+{{
+  "concepts": [{{
+    "id": "snake_case_id",
+    "name": "Concept Name",
+    "definition": "Clear conversational explanation",
+    "type": "process|definition|formula|fact|experiment|principle",
+    "importance": 1-5,
+    "difficulty": "easy|medium|hard",
+    "estimated_minutes": 0.5-6,
+    "groupable": true,
+    "blooms": "remember|understand|apply|analyze",
+    "exam_relevance": ["mcq", "long_answer", "diagram"],
+    "typical_marks": "1-2 marks" or "3-5 marks",
+    "memory_hooks": ["mnemonic if helpful"],
+    "humor_potential": "high|medium|low",
+    "relatable_examples": ["daily life connections"],
+    "common_misconceptions": ["typical errors"],
+    "confusion_points": "tricky aspects",
+    "key_points": ["must remember 1", "must remember 2"],
+    "quick_recap": "one-sentence summary"
+  }}],
+  "graph": [["prereq_id", "concept_id"]]
+}}
+
+IMPORTANCE RULES (analyze EACH concept):
+- 5 = Core: chapter revolves around this
+- 4 = Important: heavily featured
+- 3 = Supporting: moderate emphasis
+- 2 = Context: not central
+- 1 = Peripheral: brief mention
+
+DIFFICULTY for Grade {grade_band}:
+- easy = Simple presentation, quick grasp
+- medium = Needs examples, moderate complexity
+- hard = Multiple paragraphs, commonly misunderstood
+
+SCIENCE-SPECIFIC:
+- Focus on observable phenomena and experiments
+- Emphasize cause-effect relationships
+- Include real-world applications
+- Note common confusions

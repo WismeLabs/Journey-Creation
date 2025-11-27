@@ -1,0 +1,85 @@
+Generate {{{{count}}}} MCQs for Grade {{{{grade_band}}}} Economics revision.
+
+PURPOSE: Test whether student UNDERSTOOD economic principles and can apply them.
+
+ABSOLUTELY BANNED:
+❌ "According to the script..."
+❌ "What did [speaker name] say..."
+❌ "Looking at the graph..." (they can't see it during audio)
+
+TEST UNDERSTANDING AND APPLICATION.
+
+ECONOMICS MCQ FOCUS:
+Question Types:
+- Application to current events (35%)
+- Graph interpretation (verbal description) (25%)
+- Conceptual understanding (20%)
+- Policy analysis (15%)
+- Definitions (5%)
+
+Examples:
+✓ "If oil prices suddenly double, what happens to transportation costs? A) Decrease B) Increase C) Stay same"
+✓ "When demand curve shifts right, at same price: A) More quantity demanded B) Less quantity C) Same quantity"
+✓ "Government increases minimum wage. Likely short-term effect: A) Lower unemployment B) Higher unemployment C) No change"
+✗ "Define GDP in exact textbook words" (rote memorization)
+✗ "According to the script, what example did the students use..." (dialogue memory)
+
+Distractors from common_misconceptions:
+- "Higher minimum wage always reduces unemployment" (ignoring supply-demand)
+- "Inflation is always bad" (not understanding moderate inflation)
+- "Demand and quantity demanded are the same" (common confusion)
+
+INPUTS:
+- Concepts: {{{{concepts}}}} (with current_events, common_misconceptions, graph_trend)
+- Grade: {{{{grade_band}}}}
+
+GRAPH-BASED QUESTIONS (Verbal Only):
+Since students can't see graphs during audio, describe them:
+✓ "A demand curve slopes downward. If price increases from $10 to $15, quantity demanded will: ..."
+✓ "Supply and demand curves intersect at price=$50, quantity=100. This is called: A) Equilibrium ..."
+❌ "In the graph on page 45..." (can't reference visual)
+
+DISTRACTOR CREATION:
+Each wrong option must:
+1. Come from common economic misconceptions
+2. Be plausible to confused students
+3. Test actual understanding of principles
+
+Example for opportunity cost:
+Correct: "What you give up when making a choice"
+Wrong 1: "The monetary cost of a purchase" ← confusing with financial cost
+Wrong 2: "The benefit you gain from a choice" ← opposite of correct answer
+Wrong 3: "The time spent making a decision" ← partial/narrow understanding
+
+QUESTION DISTRIBUTION:
+- Heavy on real-world application
+- Current events scenarios
+- Graph trends (described verbally)
+- Policy impacts
+
+GRADE-APPROPRIATE:
+- Grade 6-8: Basic concepts, simple examples
+- Grade 9-10: Supply-demand, markets, basic policy
+- Grade 11-12: Complex models, macroeconomics, analysis
+
+RETURN VALID JSON ONLY:
+{{{{
+  "mcqs": [
+    {{{{
+      "qid": "q1",
+      "timestamp_ref": 45,
+      "concept_id": "concept_id",
+      "difficulty": 1-5,
+      "type": "application|graph_interpretation|policy|concept",
+      "question_text": "Clear question with real-world scenario or verbal graph description",
+      "options": {{{{
+        "A": "First option",
+        "B": "Second option",
+        "C": "Third option",
+        "D": "Fourth option"
+      }}}},
+      "correct_answer": "A",
+      "explanation": "Why correct answer is right, economic reasoning, why others are misconceptions"
+    }}}}
+  ]
+}}}}

@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const fileUpload = require('express-fileupload');
 const path = require('path');
+const os = require('os');
 const winston = require('winston');
 const { v4: uuidv4 } = require('uuid');
 const fetch = require('node-fetch'); // For LLM service calls
@@ -68,7 +69,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(fileUpload({
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
   useTempFiles: true,
-  tempFileDir: '/tmp/'
+  tempFileDir: os.tmpdir() // Cross-platform temp directory
 }));
 
 // Serve static files for outputs and teacher UI
@@ -78,8 +79,41 @@ app.use('/teacher', express.static(path.join(__dirname, 'teacher_ui')));
 // API Routes
 // Voice configuration endpoints will be added inline
 
-// Job tracking in memory (in production, use Redis or DB)
-const jobs = new Map();
+// Job tracking - persistent storage
+const JOBS_FILE = path.join(__dirname, 'outputs', 'jobs.json');
+let jobs = new Map();
+
+// Load jobs from disk on startup
+async function loadJobs() {
+  const fs = require('fs').promises;
+  try {
+    const data = await fs.readFile(JOBS_FILE, 'utf8');
+    const jobsArray = JSON.parse(data);
+    jobs = new Map(jobsArray.map(j => [j.jobId, j]));
+    logger.info(`Loaded ${jobs.size} jobs from disk`);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      logger.warn('Failed to load jobs:', error.message);
+    }
+    // File doesn't exist yet - start fresh
+    jobs = new Map();
+  }
+}
+
+// Save jobs to disk
+async function saveJobs() {
+  const fs = require('fs').promises;
+  try {
+    const jobsArray = Array.from(jobs.values());
+    await fs.writeFile(JOBS_FILE, JSON.stringify(jobsArray, null, 2));
+  } catch (error) {
+    logger.error('Failed to save jobs:', error);
+  }
+}
+
+// Initialize jobs on startup
+loadJobs().catch(err => logger.error('Failed to initialize jobs:', err));
+
 const jobQueue = [];
 let isProcessing = false;
 
@@ -265,6 +299,9 @@ function updateJobStatus(jobId, status, progress = null, error = null, result = 
     job.lastUpdated = new Date();
     if (error) job.error = error;
     if (result) job.result = result;
+    
+    // Persist to disk
+    saveJobs().catch(err => logger.error('Failed to persist job update:', err));
     
     // Developer-friendly logging with cost estimates
     const logData = { 
@@ -1000,22 +1037,51 @@ app.post('/api/v1/generate-audio', async (req, res) => {
           
           const script = JSON.parse(fs.readFileSync(scriptPath, 'utf8'));
           
-          // Generate audio with full metadata and voice config
+          // Update status before starting this episode
+          updateJobStatus(jobId, 'generating_audio', Math.round((i / episodesToProcess.length) * 100), null, {
+            currentEpisode: i + 1,
+            totalEpisodes: episodesToProcess.length,
+            episodeIndex: episodeIndex,
+            stage: 'starting'
+          });
+          
+          // Generate audio with progress callback
           await ttsService.generateEpisodeAudio(
             { script, voice_config: voiceConfig },
             chapter_id,
             episodeIndex,
-            chapterMetadata
+            chapterMetadata,
+            (progressData) => {
+              // Update job status with TTS progress
+              updateJobStatus(jobId, 'generating_audio', 
+                Math.round(((i + progressData.progress / 100) / episodesToProcess.length) * 100), 
+                null, {
+                  currentEpisode: i + 1,
+                  totalEpisodes: episodesToProcess.length,
+                  episodeIndex: episodeIndex,
+                  ttsProgress: progressData.progress,
+                  ttsStage: progressData.stage,
+                  currentSegment: progressData.currentSegment,
+                  totalSegments: progressData.totalSegments
+                });
+            }
           );
           
           const progress = Math.round((i + 1) / episodesToProcess.length * 100);
-          updateJobStatus(jobId, 'generating_audio', progress);
+          updateJobStatus(jobId, 'generating_audio', progress, null, {
+            currentEpisode: i + 1,
+            totalEpisodes: episodesToProcess.length,
+            episodeIndex: episodeIndex,
+            stage: 'completed'
+          });
         }
         
         updateJobStatus(jobId, 'completed', 100, null, {
-          message: 'Audio generation complete',
-          episodes_processed: episodesToProcess.length,
-          output_path: chapterPath
+          stage: 'audio_generation_complete',
+          episodesProcessed: episodesToProcess.length,
+          outputPath: chapterPath,
+          successCount: audioResults.filter(r => r.success).length,
+          failedCount: audioResults.filter(r => !r.success).length
         });
         
       } catch (error) {
@@ -1534,6 +1600,408 @@ app.post('/api/v1/retry-failed-episodes', async (req, res) => {
 });
 
 /**
+ * POST /api/v1/chapter/:chapter_id/approve-plan
+ * Approve episode plan and trigger script generation
+ */
+app.post('/api/v1/chapter/:chapter_id/approve-plan', async (req, res) => {
+  try {
+    const { chapter_id } = req.params;
+    const { approved_by } = req.body;
+    
+    const chapterInfo = findChapterDirectory(chapter_id);
+    
+    if (!chapterInfo) {
+      return res.status(404).json({ error: `Chapter ${chapter_id} not found` });
+    }
+    
+    // Update workflow status to approved
+    await updateWorkflowStatus(chapter_id, {
+      current_stage: 'plan_approved',
+      'stages.planning.status': 'approved',
+      'stages.planning.approved_at': new Date().toISOString(),
+      'stages.planning.approved_by': approved_by || 'teacher',
+      'metrics.teacherReviews': { $inc: 1 }  // Increment review counter
+    }, chapterInfo.metadata);
+    
+    // Create job for script generation
+    const jobId = `scripts_${chapter_id}_${Date.now()}`;
+    updateJobStatus(jobId, 'starting_script_generation', 0);
+    
+    // Trigger script generation in background
+    generateScriptsAfterApproval(jobId, chapter_id, chapterInfo.metadata).catch(err => {
+      logger.error('Script generation failed after plan approval:', err);
+      updateJobStatus(jobId, 'failed', null, err.message);
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Plan approved. Script generation started.',
+      job_id: jobId
+    });
+    
+  } catch (error) {
+    logger.error('Failed to approve plan:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/chapter/:chapter_id/approve-scripts
+ * Approve all scripts and prepare for audio generation
+ */
+app.post('/api/v1/chapter/:chapter_id/approve-scripts', async (req, res) => {
+  try {
+    const { chapter_id } = req.params;
+    const { approved_by } = req.body;
+    
+    const chapterInfo = findChapterDirectory(chapter_id);
+    
+    if (!chapterInfo) {
+      return res.status(404).json({ error: `Chapter ${chapter_id} not found` });
+    }
+    
+    // Update workflow status
+    await updateWorkflowStatus(chapter_id, {
+      current_stage: 'content_approved',
+      'stages.content_review.status': 'approved',
+      'stages.content_review.approved_at': new Date().toISOString(),
+      'stages.content_review.approved_by': approved_by || 'teacher',
+      'metrics.teacherReviews': { $inc: 1 }  // Increment review counter
+    }, chapterInfo.metadata);
+    
+    res.json({ 
+      success: true,
+      message: 'All scripts approved. Ready for voice configuration and audio generation.',
+      next_stage: 'voice_configuration'
+    });
+    
+  } catch (error) {
+    logger.error('Failed to approve scripts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/chapter/:chapter_id/approve-episode/:episode_number
+ * Approve a single episode
+ */
+app.post('/api/v1/chapter/:chapter_id/approve-episode/:episode_number', async (req, res) => {
+  try {
+    const { chapter_id, episode_number } = req.params;
+    const { approved_by } = req.body;
+    
+    const chapterInfo = findChapterDirectory(chapter_id);
+    
+    if (!chapterInfo) {
+      return res.status(404).json({ error: `Chapter ${chapter_id} not found` });
+    }
+    
+    const fs = require('fs');
+    const statusPath = path.join(chapterInfo.path, 'workflow_status.json');
+    
+    if (!fs.existsSync(statusPath)) {
+      return res.status(404).json({ error: 'Workflow status not found' });
+    }
+    
+    const workflowStatus = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+    
+    // Update episode status
+    if (workflowStatus.episodes && workflowStatus.episodes[episode_number - 1]) {
+      workflowStatus.episodes[episode_number - 1].validation_status = 'approved';
+      workflowStatus.episodes[episode_number - 1].approved_by = approved_by || 'teacher';
+      workflowStatus.episodes[episode_number - 1].approved_at = new Date().toISOString();
+      
+      fs.writeFileSync(statusPath, JSON.stringify(workflowStatus, null, 2), 'utf8');
+    }
+    
+    res.json({ 
+      success: true,
+      message: `Episode ${episode_number} approved`
+    });
+    
+  } catch (error) {
+    logger.error('Failed to approve episode:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/chapter/:chapter_id/request-revision
+ * Request revision for plan or specific episode
+ */
+app.post('/api/v1/chapter/:chapter_id/request-revision', async (req, res) => {
+  try {
+    const { chapter_id } = req.params;
+    const { episode_number, regeneration_type, feedback, revision_type, revision_notes } = req.body;
+    
+    const chapterInfo = findChapterDirectory(chapter_id);
+    
+    if (!chapterInfo) {
+      return res.status(404).json({ error: `Chapter ${chapter_id} not found` });
+    }
+    
+    // Create job for regeneration
+    const jobId = `regen_${chapter_id}_ep${episode_number || 'plan'}_${Date.now()}`;
+    
+    // Increment regeneration counter in metadata
+    await updateWorkflowStatus(chapter_id, {
+      'metrics.regenerationCount': { $inc: 1 },
+      'metrics.lastRegenerationAt': new Date().toISOString()
+    }, chapterInfo.metadata);
+    
+    if (episode_number) {
+      // Episode-level regeneration
+      logger.info(`Regeneration requested for chapter ${chapter_id}, episode ${episode_number}, type: ${regeneration_type}`);
+      
+      jobs.set(jobId, {
+        jobId,
+        chapter_id,
+        episode_number,
+        type: 'regeneration',
+        regeneration_type: regeneration_type || 'general',
+        feedback,
+        status: 'queued',
+        created_at: new Date(),
+        progress: 0
+      });
+      
+      // Trigger regeneration (using existing regeneration functions)
+      regenerateSingleEpisode(jobId, chapter_id, episode_number, regeneration_type, feedback, chapterInfo.metadata).catch(err => {
+        logger.error('Regeneration failed:', err);
+        updateJobStatus(jobId, 'failed', null, err.message);
+      });
+      
+    } else {
+      // Plan-level revision
+      logger.info(`Plan revision requested for chapter ${chapter_id}: ${revision_notes}`);
+      
+      jobs.set(jobId, {
+        jobId,
+        chapter_id,
+        type: 'plan_revision',
+        revision_notes,
+        status: 'queued',
+        created_at: new Date(),
+        progress: 0
+      });
+      
+      // TODO: Implement plan revision logic
+      updateJobStatus(jobId, 'pending', 0);
+    }
+    
+    res.json({ 
+      success: true,
+      job_id: jobId,
+      message: episode_number 
+        ? `Episode ${episode_number} regeneration started`
+        : 'Plan revision request recorded'
+    });
+    
+  } catch (error) {
+    logger.error('Failed to request revision:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Generate scripts after plan approval
+ */
+async function generateScriptsAfterApproval(jobId, chapterId, metadata) {
+  try {
+    const chapterInfo = findChapterDirectory(chapterId);
+    if (!chapterInfo) throw new Error('Chapter not found');
+    
+    const fs = require('fs');
+    
+    // Load necessary data
+    const episodePlanPath = path.join(chapterInfo.path, 'episode_plan.json');
+    const conceptsPath = path.join(chapterInfo.path, 'concepts.json');
+    const markdownPath = path.join(chapterInfo.path, 'chapter.md');
+    
+    if (!fs.existsSync(episodePlanPath) || !fs.existsSync(conceptsPath) || !fs.existsSync(markdownPath)) {
+      throw new Error('Required chapter data files not found');
+    }
+    
+    const episodePlan = JSON.parse(fs.readFileSync(episodePlanPath, 'utf8'));
+    const conceptsData = JSON.parse(fs.readFileSync(conceptsPath, 'utf8'));
+    const concepts = conceptsData.concepts || [];
+    const cleanedMarkdown = fs.readFileSync(markdownPath, 'utf8');
+    
+    // Update workflow to content_generating
+    await updateWorkflowStatus(chapterId, {
+      current_stage: 'content_generating',
+      'stages.content_generation.status': 'processing',
+      'stages.content_generation.started_at': new Date().toISOString()
+    }, metadata);
+    
+    updateJobStatus(jobId, 'generating_scripts', 50, null, {
+      stage: 'script_generation',
+      totalEpisodes: episodePlan.episodes.length,
+      parallelLimit: 3
+    });
+    logger.info(`Generating scripts for ${episodePlan.episodes.length} episodes in parallel`);
+    
+    const episodes = [];
+    const failedEpisodes = [];
+    
+    // Limit to 3 concurrent LLM calls
+    const limit = pLimit(3);
+    
+    const episodeGenerationPromises = episodePlan.episodes.map((episodeConfig, i) => 
+      limit(async () => {
+        const episodeNumber = i + 1;
+        const progress = 50 + (i / episodePlan.episodes.length) * 30;
+        
+        // Update with parallel progress info
+        updateJobStatus(jobId, 'generating_scripts', Math.round(progress), null, {
+          stage: 'script_generation',
+          currentEpisode: episodeNumber,
+          totalEpisodes: episodePlan.episodes.length,
+          episodeTitle: episodeConfig.title,
+          parallelProgress: {
+            inProgress: episodeNumber,
+            completed: i,
+            total: episodePlan.episodes.length
+          }
+        });
+        
+        try {
+          const episodeContent = await generateEpisodeContent(episodeConfig, concepts, cleanedMarkdown, metadata);
+          const validationResult = await validationService.validateEpisode(episodeContent, episodeConfig);
+          let finalContent = episodeContent;
+          
+          if (!validationResult.isValid) {
+            finalContent = await validationService.repairEpisode(episodeContent, validationResult.errors);
+          }
+          
+          return { success: true, episode: episodeConfig.ep, content: finalContent };
+          
+        } catch (episodeError) {
+          logger.error({
+            message: `Episode ${episodeConfig.ep} generation failed`,
+            error: episodeError.message,
+            episode: episodeConfig.ep,
+            concepts: episodeConfig.concepts.map(c => c.name)
+          });
+          
+          return {
+            success: false,
+            episode: episodeConfig.ep,
+            error: episodeError.message,
+            timestamp: new Date().toISOString(),
+            concepts: episodeConfig.concepts.map(c => c.name)
+          };
+        }
+      })
+    );
+    
+    const episodeResults = await Promise.allSettled(episodeGenerationPromises);
+    
+    episodeResults.forEach((result, i) => {
+      if (result.status === 'fulfilled' && result.value.success) {
+        episodes.push(result.value.content);
+      } else if (result.status === 'fulfilled' && !result.value.success) {
+        failedEpisodes.push(result.value);
+      } else if (result.status === 'rejected') {
+        failedEpisodes.push({
+          episode: episodePlan.episodes[i].ep,
+          error: result.reason.message,
+          timestamp: new Date().toISOString(),
+          concepts: episodePlan.episodes[i].concepts.map(c => c.name)
+        });
+      }
+    });
+    
+    logger.info(`Generated ${episodes.length}/${episodePlan.episodes.length} episodes successfully`);
+    
+    // Check if critical episodes failed
+    if (failedEpisodes.length > 0) {
+      logger.warn(`⚠️ ${failedEpisodes.length} episodes failed generation:`, 
+        failedEpisodes.map(f => `Episode ${f.episode}: ${f.error}`));
+    }
+    
+    // Update episode statuses in workflow
+    const episodeStatusesUpdated = episodePlan.episodes.map((ep, i) => {
+      const generated = episodes.find(e => e.episode_index === (i + 1));
+      const failed = failedEpisodes.find(f => f.episode === (i + 1));
+      
+      return {
+        episode_number: i + 1,
+        title: ep.title,
+        status: failed ? 'failed' : (generated ? 'generated' : 'planned'),
+        generated_at: generated ? new Date().toISOString() : null,
+        validation_status: generated?.metadata?.validation_status || 'pending',
+        has_audio: false,
+        error: failed?.error || null
+      };
+    });
+    
+    // Determine overall status
+    const overallStatus = failedEpisodes.length === 0 ? 'completed' : 
+                         episodes.length === 0 ? 'failed' : 
+                         'partial_success';
+    
+    await updateWorkflowStatus(chapterId, {
+      current_stage: failedEpisodes.length === 0 ? 'content_generated' : 'content_generated_partial',
+      'stages.content_generation.status': overallStatus,
+      'stages.content_generation.completed_at': new Date().toISOString(),
+      'stages.content_generation.success_count': episodes.length,
+      'stages.content_generation.failed_count': failedEpisodes.length,
+      episodes: episodeStatusesUpdated
+    }, metadata);
+    
+    // Package results
+    await packageResults(chapterId, {
+      markdown: cleanedMarkdown,
+      concepts,
+      episodePlan,
+      episodes,
+      failedEpisodes: failedEpisodes.length > 0 ? failedEpisodes : undefined
+    }, metadata);
+    
+    // Update job status with warning if episodes failed
+    if (failedEpisodes.length > 0 && episodes.length > 0) {
+      updateJobStatus(jobId, 'partial_success', 100, 
+        `${failedEpisodes.length} episodes failed. ${episodes.length} succeeded.`,
+        { 
+          stage: 'script_generation_partial',
+          success_count: episodes.length, 
+          failed_count: failedEpisodes.length,
+          failed_episodes: failedEpisodes.map(f => f.episode),
+          requiresAction: true,
+          actionType: 'script_approval'
+        });
+    } else if (failedEpisodes.length > 0) {
+      updateJobStatus(jobId, 'failed', 100, 'All episodes failed generation', {
+        stage: 'script_generation_failed',
+        failed_count: failedEpisodes.length
+      });
+    } else {
+      updateJobStatus(jobId, 'completed', 100, null, {
+        stage: 'script_generation_complete',
+        scriptCount: episodes.length,
+        requiresAction: true,
+        actionType: 'script_approval'
+      });
+    }
+    
+    logger.info(`Script generation completed for ${chapterId}. Success: ${episodes.length}, Failed: ${failedEpisodes.length}`);
+    
+  } catch (error) {
+    logger.error(`Script generation failed for ${chapterId}:`, error);
+    updateJobStatus(jobId, 'failed', null, error.message);
+    
+    await updateWorkflowStatus(chapterId, {
+      current_stage: 'plan_approved',
+      'stages.content_generation.status': 'failed',
+      'stages.content_generation.error': error.message
+    }, metadata);
+    
+    throw error;
+  }
+}
+
+/**
  * Helper function to find chapter directory in new structure
  * Returns object with {path, metadata} or null
  */
@@ -1647,6 +2115,93 @@ async function syncMCQTimestamps(mcqs, cues) {
 }
 
 /**
+ * Update workflow status for a chapter
+ */
+async function updateWorkflowStatus(chapterId, updates, metadata = {}) {
+  const fs = require('fs').promises;
+  const chapterInfo = findChapterDirectory(chapterId);
+  
+  if (!chapterInfo) {
+    logger.warn(`Cannot update workflow status - chapter ${chapterId} not found`);
+    return;
+  }
+  
+  const statusPath = path.join(chapterInfo.path, 'workflow_status.json');
+  
+  let workflowStatus = {
+    chapter_id: chapterId,
+    current_stage: 'created',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    stages: {
+      extraction: { status: 'pending' },
+      planning: { status: 'pending' },
+      content_generation: { status: 'pending' },
+      content_review: { status: 'pending' },
+      audio_generation: { status: 'pending' }
+    },
+    episodes: [],
+    metrics: {
+      teacherReviews: 0,
+      regenerationCount: 0,
+      hallucinations: 0
+    },
+    metadata: metadata
+  };
+  
+  // Load existing if present
+  try {
+    const existing = await fs.readFile(statusPath, 'utf8');
+    workflowStatus = JSON.parse(existing);
+    // Ensure metrics object exists in legacy workflows
+    if (!workflowStatus.metrics) {
+      workflowStatus.metrics = {
+        teacherReviews: 0,
+        regenerationCount: 0,
+        hallucinations: 0
+      };
+    }
+  } catch (err) {
+    // File doesn't exist yet, use defaults
+  }
+  
+  // Apply updates (support nested paths like 'stages.planning.status')
+  for (const [key, value] of Object.entries(updates)) {
+    if (key.includes('.')) {
+      const parts = key.split('.');
+      let target = workflowStatus;
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!target[parts[i]]) target[parts[i]] = {};
+        target = target[parts[i]];
+      }
+      
+      // Handle $inc operator for counters
+      if (typeof value === 'object' && value.$inc) {
+        const currentValue = target[parts[parts.length - 1]] || 0;
+        target[parts[parts.length - 1]] = currentValue + value.$inc;
+      } else {
+        target[parts[parts.length - 1]] = value;
+      }
+    } else {
+      // Handle $inc operator for top-level keys
+      if (typeof value === 'object' && value.$inc) {
+        const currentValue = workflowStatus[key] || 0;
+        workflowStatus[key] = currentValue + value.$inc;
+      } else {
+        workflowStatus[key] = value;
+      }
+    }
+  }
+  
+  workflowStatus.updated_at = new Date().toISOString();
+  
+  await fs.writeFile(statusPath, JSON.stringify(workflowStatus, null, 2), 'utf8');
+  logger.info(`Updated workflow status for ${chapterId}: stage=${workflowStatus.current_stage}`);
+  
+  return workflowStatus;
+}
+
+/**
  * Main chapter processing pipeline
  */
 async function processChapter(jobId, pdfFile, markdownContent, metadata) {
@@ -1660,7 +2215,11 @@ async function processChapter(jobId, pdfFile, markdownContent, metadata) {
     if (markdownContent) {
       // Direct markdown input (text paste)
       logger.info(`Step 1: Using provided markdown content for ${chapter_id}`);
-      updateJobStatus(jobId, 'processing_text', 20);
+      updateJobStatus(jobId, 'processing_text', 20, null, {
+        stage: 'text_extraction',
+        method: 'markdown_input',
+        wordCount: markdownContent.split(/\s+/).length
+      });
       cleanedMarkdown = markdownContent;
       rawText = markdownContent;
       pdfProcessingResult = {
@@ -1672,7 +2231,11 @@ async function processChapter(jobId, pdfFile, markdownContent, metadata) {
     } else if (pdfFile) {
       // PDF file processing
       logger.info(`Step 1: Processing PDF for ${chapter_id}`);
-      updateJobStatus(jobId, 'extracting_text', 20);
+      updateJobStatus(jobId, 'extracting_text', 20, null, {
+        stage: 'pdf_extraction',
+        fileName: pdfFile.name,
+        fileSize: pdfFile.size
+      });
       
       pdfProcessingResult = await ingestService.processChapter(pdfFile, chapter_id, metadata);
       
@@ -1686,32 +2249,66 @@ async function processChapter(jobId, pdfFile, markdownContent, metadata) {
       throw new Error('No PDF file or markdown content provided');
     }
     
-    // Save chapter data per MIGRATION.md output structure
+    // Save chapter data per MIGRATION.MD output structure
     await ingestService.saveChapterData(chapter_id, pdfProcessingResult, metadata);
     
-    updateJobStatus(jobId, 'analyzing_content', 30);
+    // Update workflow status: extraction complete
+    await updateWorkflowStatus(chapter_id, {
+      current_stage: 'extracted',
+      'stages.extraction.status': 'completed',
+      'stages.extraction.completed_at': new Date().toISOString()
+    }, metadata);
+    
+    updateJobStatus(jobId, 'analyzing_content', 30, null, {
+      stage: 'concept_extraction',
+      chapterId: chapter_id,
+      wordCount: pdfProcessingResult.metadata.word_count
+    });
 
     // Step 2: Concept extraction and semantic analysis
     logger.info(`Step 2: Extracting concepts for ${chapter_id}`);
     const conceptExtractionResult = await semanticService.extractConcepts(cleanedMarkdown, metadata);
     const concepts = conceptExtractionResult.concepts; // Extract concepts array
     const conceptGraph = conceptExtractionResult.graph;
+    const chapterAnalysis = conceptExtractionResult.chapter_analysis; // NEW: Get chapter understanding
+    
+    logger.info(`✅ Extracted ${concepts.length} concepts`);
+    
+    updateJobStatus(jobId, 'analyzing_content', 35, null, {
+      stage: 'concept_extraction_complete',
+      conceptCount: concepts.length,
+      graphNodeCount: conceptGraph?.nodes?.length || 0,
+      contentType: chapterAnalysis?.content_type || 'unknown'
+    });
     
     // Save concepts.json per MIGRATION.md output structure with optimized folders
     const conceptsOutput = {
       concepts: concepts,
-      graph: conceptGraph
+      graph: conceptGraph,
+      chapter_analysis: chapterAnalysis  // Store analysis for reference
     };
     await saveToOutputStructure(chapter_id, 'concepts.json', conceptsOutput, metadata);
     
-    updateJobStatus(jobId, 'planning_episodes', 40);
+    // Update workflow status: concepts extracted
+    await updateWorkflowStatus(chapter_id, {
+      current_stage: 'extracting',
+      'stages.extraction.status': 'completed',
+      'stages.extraction.concept_count': concepts.length
+    }, metadata);
+    
+    updateJobStatus(jobId, 'planning_episodes', 40, null, {
+      stage: 'episode_planning',
+      conceptCount: concepts.length,
+      chapterAnalysis: chapterAnalysis ? chapterAnalysis.content_type : 'none'
+    });
 
     // Step 3: Episode planning
     logger.info(`Step 3: Planning episodes for ${chapter_id}`);
     
-    // Prepare chapter metadata for planner
+    // Prepare chapter metadata for planner (including LLM's chapter analysis)
     const chapterMetadata = {
       ...metadata,
+      chapter_analysis: chapterAnalysis,  // Pass LLM's understanding to planner
       word_count: pdfProcessingResult.metadata.word_count,
       concept_count: concepts.length
     };
@@ -1721,8 +2318,36 @@ async function processChapter(jobId, pdfFile, markdownContent, metadata) {
     // Save episode_plan.json per MIGRATION.md output structure with optimized folders
     await saveToOutputStructure(chapter_id, 'episode_plan.json', episodePlan, metadata);
     
-    updateJobStatus(jobId, 'generating_scripts', 50);
+    // Update workflow status: plan generated, awaiting approval
+    const episodeStatuses = episodePlan.episodes.map((ep, i) => ({
+      episode_number: i + 1,
+      title: ep.title,
+      status: 'planned',
+      validation_status: 'pending',
+      has_audio: false
+    }));
+    
+    await updateWorkflowStatus(chapter_id, {
+      current_stage: 'plan_generated',
+      'stages.planning.status': 'completed',
+      'stages.planning.completed_at': new Date().toISOString(),
+      'stages.planning.episode_count': episodePlan.episodes.length,
+      'stages.planning.total_duration_minutes': episodePlan.episodes.reduce((sum, ep) => sum + (ep.duration_minutes || 0), 0),
+      episodes: episodeStatuses
+    }, metadata);
+    
+    // STOP HERE - Wait for teacher approval
+    updateJobStatus(jobId, 'plan_ready', 50, null, {
+      stage: 'waiting_plan_approval',
+      episodeCount: episodePlan.episodes.length,
+      totalDuration: episodePlan.episodes.reduce((sum, ep) => sum + (ep.duration_minutes || 0), 0),
+      requiresAction: true,
+      actionType: 'plan_approval'
+    });
+    logger.info(`✅ Episode plan generated. Awaiting teacher approval. Plan: ${episodePlan.episodes.length} episodes`);
+    return; // Exit processChapter - script generation triggered by /approve-plan endpoint
 
+    // NOTE: Code below this point moved to generateScriptsAfterApproval()
     // Step 4: Generate scripts and MCQs for each episode (PARALLEL with concurrency limit)
     logger.info(`Step 4: Generating content for ${episodePlan.episodes.length} episodes in parallel`);
     const episodes = [];
@@ -2013,7 +2638,16 @@ async function generateEpisodeContent(episodeConfig, concepts, markdown, metadat
     // Generate audio if validation passed or has warnings (don't skip if only warnings)
     if (episodeData.metadata.validation_status !== 'failed') {
       try {
-        const audioResult = await ttsService.generateEpisodeAudio(episodeData, metadata.chapter_id, episodeIndex);
+        const audioResult = await ttsService.generateEpisodeAudio(
+          episodeData, 
+          metadata.chapter_id, 
+          episodeIndex,
+          metadata,
+          (progressData) => {
+            // TTS progress callback - could be wired to job status if needed
+            logger.info(`Episode ${episodeIndex} TTS progress: ${progressData.stage} ${progressData.progress}%`);
+          }
+        );
         episodeData.audio = audioResult;
         logs.push({ step: 'audio_generation', status: 'completed', audioFile: audioResult.finalAudioPath });
         
@@ -2422,13 +3056,105 @@ async function updateFailedEpisodesFile(chapterId, remainingFailed) {
 }
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
+app.get('/health', async (req, res) => {
+  const health = {
+    status: 'healthy',
     service: 'journey-creation-school-pipeline',
     version: '2.0.0',
-    timestamp: new Date().toISOString()
-  });
+    timestamp: new Date().toISOString(),
+    checks: {}
+  };
+
+  let allHealthy = true;
+
+  // Check 1: LLM Backend connectivity
+  try {
+    const llmUrl = process.env.HF_BACKEND_URL || 'http://localhost:8000';
+    const llmResponse = await fetch(`${llmUrl}/health`, { 
+      method: 'GET',
+      timeout: 5000 
+    });
+    
+    if (llmResponse.ok) {
+      health.checks.llm_backend = { status: 'healthy', url: llmUrl };
+    } else {
+      health.checks.llm_backend = { status: 'unhealthy', url: llmUrl, error: `HTTP ${llmResponse.status}` };
+      allHealthy = false;
+    }
+  } catch (error) {
+    health.checks.llm_backend = { status: 'unreachable', error: error.message };
+    allHealthy = false;
+  }
+
+  // Check 2: Google TTS availability (check credentials)
+  try {
+    const ttsCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    if (ttsCredentials && fs.existsSync(ttsCredentials)) {
+      health.checks.google_tts = { status: 'healthy', credentials: 'configured' };
+    } else {
+      health.checks.google_tts = { status: 'warning', credentials: 'not_configured' };
+      // Don't mark as unhealthy - TTS is optional
+    }
+  } catch (error) {
+    health.checks.google_tts = { status: 'error', error: error.message };
+  }
+
+  // Check 3: Disk space (outputs directory)
+  try {
+    const { execSync } = require('child_process');
+    const outputsDir = path.join(__dirname, 'outputs');
+    
+    // Ensure outputs directory exists
+    if (!fs.existsSync(outputsDir)) {
+      fs.mkdirSync(outputsDir, { recursive: true });
+    }
+    
+    // Get disk space (Windows compatible)
+    const drive = outputsDir.substring(0, 2); // e.g., "D:"
+    const diskInfo = execSync(`wmic logicaldisk where "DeviceID='${drive}' get FreeSpace,Size /format:csv`, { encoding: 'utf8' });
+    const lines = diskInfo.trim().split('\n').filter(l => l.includes(','));
+    
+    if (lines.length > 0) {
+      const parts = lines[0].split(',');
+      const freeSpace = parseInt(parts[1]) || 0;
+      const totalSpace = parseInt(parts[2]) || 0;
+      const freeGB = (freeSpace / (1024 * 1024 * 1024)).toFixed(2);
+      const totalGB = (totalSpace / (1024 * 1024 * 1024)).toFixed(2);
+      const usedPercent = totalSpace > 0 ? ((1 - freeSpace / totalSpace) * 100).toFixed(1) : 0;
+      
+      health.checks.disk_space = {
+        status: freeSpace > 5 * 1024 * 1024 * 1024 ? 'healthy' : 'warning', // 5GB threshold
+        free_gb: freeGB,
+        total_gb: totalGB,
+        used_percent: `${usedPercent}%`
+      };
+      
+      if (freeSpace < 1 * 1024 * 1024 * 1024) { // Less than 1GB
+        health.checks.disk_space.status = 'critical';
+        allHealthy = false;
+      }
+    }
+  } catch (error) {
+    health.checks.disk_space = { status: 'unknown', error: 'Unable to check disk space' };
+  }
+
+  // Check 4: Job queue health
+  health.checks.job_queue = {
+    status: 'healthy',
+    active_jobs: jobs.size,
+    jobs_list: Array.from(jobs.values()).map(j => ({
+      id: j.jobId,
+      chapter: j.chapter_id,
+      status: j.status,
+      progress: j.progress
+    }))
+  };
+
+  // Overall status
+  health.status = allHealthy ? 'healthy' : 'degraded';
+
+  const statusCode = health.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 // Error handling middleware
@@ -2444,21 +3170,36 @@ if (!fs.existsSync('logs')) {
 }
 
 app.listen(PORT, () => {
-  console.log('\n' + '='.repeat(60));
-  console.log('🚀 Journey Creation - School Pipeline Server');
-  console.log('='.repeat(60));
-  console.log(`📡 Server:          http://localhost:${PORT}`);
-  console.log('\n🌐 TEACHER INTERFACES:');
-  console.log(`   📤 Upload:       http://localhost:${PORT}/teacher/upload.html`);
-  console.log(`   🎤 Voice Config: http://localhost:${PORT}/teacher/voice-config.html`);
-  console.log(`   🎧 Preview Voices: https://cloud.google.com/text-to-speech/docs/voices`);
-  console.log(`   📝 Review:       http://localhost:${PORT}/teacher/review.html`);
-  console.log(`   📊 System Logs:  http://localhost:${PORT}/teacher/logs.html`);
-  console.log('\n💡 Backend API:     http://127.0.0.1:8000');
-  console.log('   Start with:      cd hf_backend && python main.py');
-  console.log('='.repeat(60) + '\n');
+  console.log('\n' + '='.repeat(70));
+  console.log('🚀 Journey Creation - Audio Revision Pipeline');
+  console.log('='.repeat(70));
+  console.log(`📡 Server Running:    http://localhost:${PORT}`);
+  console.log('');
+  console.log('📚 PIPELINE STAGES:');
+  console.log('   1️⃣  PDF Upload → Markdown Extraction');
+  console.log('   2️⃣  Concept Extraction + Chapter Analysis (LLM)');
+  console.log('   3️⃣  Episode Planning (Sequential, Textbook Order Preserved)');
+  console.log('   4️⃣  Script Generation (Conversational Audio)');
+  console.log('   5️⃣  Text-to-Speech (Google Cloud TTS)');
+  console.log('');
+  console.log('🎓 TEACHER INTERFACE:');
+  console.log(`   📤 Upload Chapter:    http://localhost:${PORT}/teacher/upload.html`);
+  console.log(`   📝 Review & Approve:  http://localhost:${PORT}/teacher/review.html`);
+  console.log(`   🎤 Voice Settings:    http://localhost:${PORT}/teacher/voice-config.html`);
+  console.log(`   📊 System Logs:       http://localhost:${PORT}/teacher/logs.html`);
+  console.log('');
+  console.log('🔧 BACKEND SERVICES:');
+  console.log(`   🤖 LLM Service:       http://127.0.0.1:8000`);
+  console.log('      Start: cd hf_backend && python main.py');
+  console.log('');
+  console.log('✨ RECENT UPDATES:');
+  console.log('   ✅ Enhanced chapter analysis prompt (210+ lines)');
+  console.log('   ✅ Sequential episode planning (preserves textbook order)');
+  console.log('   ✅ No concept reordering - respects pedagogical flow');
+  console.log('   ✅ Improved error handling and validation');
+  console.log('='.repeat(70) + '\n');
   
-  logger.info(`Journey Creation School Pipeline server running on port ${PORT}`);
+  logger.info(`Journey Creation server running on port ${PORT} - Pipeline ready`);
 });
 
 module.exports = app;

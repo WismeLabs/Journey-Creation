@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Educational Audio Revision Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: #f3f3f3;
+    }
+    .container {
+      max-width: 900px;
+      margin: 2em auto;
+      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+      border-radius: 18px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      padding: 2.5em 3em;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5em;
+    }
+    h1 {
+      text-align: center;
+      color: #1e3c72;
+      letter-spacing: 1px;
+      margin-bottom: 0.5em;
+      font-weight: 700;
+      font-size: 2.2em;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 2em;
+      font-size: 1.1em;
+    }
+    .step {
+      background: #f8f9fa;
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      padding: 1.5em;
+      margin-bottom: 1.5em;
+    }
+    .step.active {
+      border-color: #1e3c72;
+      background: #f0f4ff;
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      margin-bottom: 1em;
+    }
+    .step-number {
+      background: #1e3c72;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+    .step-title {
+      font-size: 1.3em;
+      font-weight: 600;
+      color: #1e3c72;
+    }
+    label {
+      font-weight: 600;
+      margin-bottom: 0.5em;
+      display: block;
+      color: #333;
+    }
+    input[type="text"], input[type="number"], input[type="file"], textarea, select {
+      width: 100%;
+      margin-bottom: 1em;
+      border-radius: 8px;
+      border: 2px solid #e9ecef;
+      padding: 0.8em;
+      background: white;
+      color: #333;
+      font-size: 1em;
+      transition: border 0.2s;
+      box-sizing: border-box;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: #1e3c72;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
+    }
+    .file-upload {
+      border: 2px dashed #1e3c72;
+      border-radius: 12px;
+      padding: 2em;
+      text-align: center;
+      background: #f8f9fa;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .file-upload:hover {
+      background: #e9ecef;
+      transform: translateY(-2px);
+    }
+    .file-upload.dragover {
+      background: #e3f2fd;
+      border-color: #2196f3;
+      transform: scale(1.02);
+    }
+    .file-upload.processing {
+      background: #fff3cd;
+      border-color: #ffc107;
+      pointer-events: none;
+    }
+    .file-upload.success {
+      background: #d4edda;
+      border-color: #28a745;
+    }
+    .metadata-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1em;
+    }
+    .voice-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1em;
+    }
+    button {
+      padding: 0.9em 2em;
+      border-radius: 8px;
+      border: none;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: white;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-right: 1em;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(30, 60, 114, 0.3);
+    }
+    button:disabled {
+      background: #ccc;
+      color: #666;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    button.secondary {
+      background: #6c757d;
+    }
+    button.secondary:hover {
+      background: #5a6268;
+    }
+    .script-preview {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 1.5em;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      color: #333;
+    }
+    .status {
+      text-align: center;
+      font-weight: bold;
+      padding: 1em;
+      border-radius: 8px;
+      margin: 1em 0;
+    }
+    .status.loading {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .hidden {
+      display: none;
+    }
+    .pdf-info {
+      background: #e3f2fd;
+      border: 1px solid #bbdefb;
+      border-radius: 8px;
+      padding: 1em;
+      margin: 1em 0;
+      color: #1565c0;
+    }
+    .concept-preview {
+      background: #f3e5f5;
+      border: 1px solid #e1bee7;
+      border-radius: 8px;
+      padding: 1em;
+      margin: 1em 0;
+      color: #4a148c;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📚 Educational Audio Revision Generator</h1>
+    <p class="subtitle">Transform your PDF chapters into engaging audio revision sessions</p>
+
+    <!-- Step 1: PDF Upload -->
+    <div class="step active" id="step1">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-title">Upload Chapter PDF</div>
+      </div>
+      
+      <div class="file-upload" id="fileUpload" onclick="document.getElementById('pdfFile').click()">
+        <input type="file" id="pdfFile" accept=".pdf" style="display: none;">
+        <div id="uploadText">
+          <strong>📄 Click to upload PDF</strong><br>
+          <span style="color: #666;">Or drag and drop your chapter PDF here</span>
+        </div>
+      </div>
+      
+      <div id="pdfInfo" class="pdf-info hidden">
+        <h4>📋 PDF Information</h4>
+        <div id="pdfDetails"></div>
+      </div>
+      
+      <div id="conceptPreview" class="concept-preview hidden">
+        <h4>🎯 Detected Concepts</h4>
+        <div id="conceptsList"></div>
+      </div>
+    </div>
+
+    <!-- Step 2: Configuration -->
+    <div class="step" id="step2">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-title">Configure Audio Settings</div>
+      </div>
+      
+      <div class="metadata-grid">
+        <div>
+          <label for="gradeBand">Grade Band:</label>
+          <select id="gradeBand">
+            <option value="6-8">Grade 6-8 (Middle School)</option>
+            <option value="9-10" selected>Grade 9-10 (High School)</option>
+            <option value="11-12">Grade 11-12 (Senior High)</option>
+            <option value="college">College Level</option>
+          </select>
+        </div>
+        <div>
+          <label for="duration">Duration (minutes):</label>
+          <input type="number" id="duration" value="10" min="5" max="30">
+        </div>
+      </div>
+      
+      <div class="voice-grid">
+        <div>
+          <label for="speaker1">Speaker 1 Name:</label>
+          <input type="text" id="speaker1" value="Arjun" placeholder="e.g., Arjun">
+          <label for="speaker1Voice">Speaker 1 Voice:</label>
+          <select id="speaker1Voice">
+            <option value="en-IN-Wavenet-B" selected>Indian English Male (High Quality)</option>
+            <option value="en-IN-Wavenet-A">Indian English Female (High Quality)</option>
+            <option value="en-IN-Wavenet-C">Indian English Male Alt (High Quality)</option>
+            <option value="en-IN-Wavenet-D">Indian English Female Alt (High Quality)</option>
+            <option value="en-IN-Standard-B">Indian English Male (Standard)</option>
+            <option value="en-IN-Standard-A">Indian English Female (Standard)</option>
+            <option value="hi-IN-Wavenet-B">Hindi Male (High Quality)</option>
+            <option value="hi-IN-Wavenet-A">Hindi Female (High Quality)</option>
+          </select>
+        </div>
+        <div>
+          <label for="speaker2">Speaker 2 Name:</label>
+          <input type="text" id="speaker2" value="Priya" placeholder="e.g., Priya">
+          <label for="speaker2Voice">Speaker 2 Voice:</label>
+          <select id="speaker2Voice">
+            <option value="en-IN-Wavenet-A" selected>Indian English Female (High Quality)</option>
+            <option value="en-IN-Wavenet-B">Indian English Male (High Quality)</option>
+            <option value="en-IN-Wavenet-D">Indian English Female Alt (High Quality)</option>
+            <option value="en-IN-Wavenet-C">Indian English Male Alt (High Quality)</option>
+            <option value="en-IN-Standard-A">Indian English Female (Standard)</option>
+            <option value="en-IN-Standard-B">Indian English Male (Standard)</option>
+            <option value="hi-IN-Wavenet-A">Hindi Female (High Quality)</option>
+            <option value="hi-IN-Wavenet-B">Hindi Male (High Quality)</option>
+          </select>
+        </div>
+      </div>
+      
+      <div>
+        <label for="episodeTitle">Episode Title:</label>
+        <input type="text" id="episodeTitle" placeholder="e.g., Physics Chapter 1 - Motion" value="Chapter Revision">
+      </div>
+    </div>
+
+    <!-- Step 3: Script Generation -->
+    <div class="step" id="step3">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <div class="step-title">Generate & Review Script</div>
+      </div>
+      
+      <button id="generateScript" onclick="generateScript()">🤖 Generate Educational Script</button>
+      <button id="regenerateScript" onclick="regenerateScript()" class="secondary hidden">🔄 Regenerate Script</button>
+      
+      <div id="scriptPreview" class="script-preview hidden">
+        <div id="scriptContent"></div>
+      </div>
+      
+      <div id="scriptActions" class="hidden">
+        <button id="generateAudio" onclick="generateAudio()">🎵 Generate Audio</button>
+        <button onclick="editScript()" class="secondary">✏️ Edit Script</button>
+      </div>
+    </div>
+
+    <!-- Status Display -->
+    <div id="status" class="status hidden"></div>
+  </div>
+
+  <script>
+    let currentPdfData = null;
+    let currentScript = null;
+
+    // File upload handling
+    const fileUpload = document.getElementById('fileUpload');
+    const pdfFile = document.getElementById('pdfFile');
+
+    // Drag and drop functionality
+    fileUpload.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      fileUpload.classList.add('dragover');
+    });
+
+    fileUpload.addEventListener('dragleave', () => {
+      fileUpload.classList.remove('dragover');
+    });
+
+    fileUpload.addEventListener('drop', (e) => {
+      e.preventDefault();
+      fileUpload.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        const file = files[0];
+        console.log('Dropped file:', file.name, 'Type:', file.type);
+        if (file.type === 'application/pdf') {
+          pdfFile.files = files;
+          handlePdfUpload(file);
+        } else {
+          showStatus('Please upload a PDF file only', 'error');
+        }
+      }
+    });
+
+    pdfFile.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        const file = e.target.files[0];
+        console.log('Selected file:', file.name, 'Type:', file.type);
+        if (file.type === 'application/pdf') {
+          handlePdfUpload(file);
+        } else {
+          showStatus('Please select a PDF file only', 'error');
+        }
+      }
+    });
+
+    async function handlePdfUpload(file) {
+      console.log('Starting PDF upload:', file.name, 'Size:', file.size, 'bytes');
+      
+      // Add visual feedback
+      const uploadElement = document.getElementById('fileUpload');
+      uploadElement.classList.remove('success');
+      uploadElement.classList.add('processing');
+      
+      document.getElementById('uploadText').innerHTML = `
+        <strong>📤 Processing PDF...</strong><br>
+        <span style="color: #666;">📄 ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)</span>
+      `;
+      
+      showStatus('Uploading and processing PDF...', 'loading');
+      
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        uploadElement.classList.remove('processing');
+        showStatus('File too large. Please upload a PDF smaller than 10MB.', 'error');
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('pdfFile', file);
+
+      try {
+        console.log('Sending PDF to server...');
+        const response = await fetch('/api/upload-pdf', {
+          method: 'POST',
+          body: formData
+        });
+
+        console.log('Server response status:', response.status);
+        const result = await response.json();
+        console.log('Server response:', result);
+
+        if (result.success) {
+          currentPdfData = result.data;
+          displayPdfInfo(result.data);
+          activateStep(2);
+          showStatus('PDF processed successfully!', 'success');
+        } else {
+          uploadElement.classList.remove('processing');
+          showStatus('Error: ' + (result.error || 'Unknown error'), 'error');
+          console.error('PDF processing error:', result);
+          // Reset upload area
+          document.getElementById('uploadText').innerHTML = `
+            <strong>📄 Click to upload PDF</strong><br>
+            <span style="color: #666;">Or drag and drop your chapter PDF here</span>
+          `;
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        uploadElement.classList.remove('processing');
+        showStatus('Upload failed: ' + error.message, 'error');
+        // Reset upload area
+        document.getElementById('uploadText').innerHTML = `
+          <strong>📄 Click to upload PDF</strong><br>
+          <span style="color: #666;">Or drag and drop your chapter PDF here</span>
+        `;
+      }
+    }
+
+    function displayPdfInfo(data) {
+      const pdfInfo = document.getElementById('pdfInfo');
+      const pdfDetails = document.getElementById('pdfDetails');
+      const conceptPreview = document.getElementById('conceptPreview');
+      const conceptsList = document.getElementById('conceptsList');
+
+      pdfDetails.innerHTML = `
+        <strong>📄 File:</strong> ${data.filename}<br>
+        <strong>📊 Pages:</strong> ${data.metadata.pages}<br>
+        <strong>📝 Words:</strong> ${data.metadata.wordCount.toLocaleString()}<br>
+        <strong>⏰ Processed:</strong> ${new Date(data.metadata.extractedAt).toLocaleString()}
+      `;
+
+      conceptsList.textContent = data.concepts;
+
+      pdfInfo.classList.remove('hidden');
+      conceptPreview.classList.remove('hidden');
+
+      // Update upload text and styling
+      const uploadElement = document.getElementById('fileUpload');
+      uploadElement.classList.add('success');
+      document.getElementById('uploadText').innerHTML = `
+        <strong>✅ PDF Uploaded Successfully</strong><br>
+        <span style="color: #666;">📄 ${data.filename} (${data.metadata.pages} pages, ${data.metadata.wordCount.toLocaleString()} words)</span><br>
+        <small style="color: #999;">Click to upload a different file</small>
+      `;
+    }
+
+    async function generateScript() {
+      if (!currentPdfData) {
+        showStatus('Please upload a PDF first', 'error');
+        return;
+      }
+
+      showStatus('Generating educational script with AI...', 'loading');
+
+      const metadata = {
+        chapterContent: currentPdfData.extractedText,
+        gradeBand: document.getElementById('gradeBand').value,
+        durationMinutes: parseInt(document.getElementById('duration').value),
+        speaker1Name: document.getElementById('speaker1').value,
+        speaker2Name: document.getElementById('speaker2').value,
+        episodeTitle: document.getElementById('episodeTitle').value,
+        episodeNumber: 1
+      };
+
+      try {
+        const response = await fetch('/api/generate-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(metadata)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          currentScript = result.data.script;
+          displayScript(result.data.script);
+          activateStep(3);
+          showStatus('Script generated successfully!', 'success');
+        } else {
+          showStatus('Script generation failed: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showStatus('Generation failed: ' + error.message, 'error');
+      }
+    }
+
+    async function regenerateScript() {
+      if (!currentPdfData) return;
+
+      showStatus('Regenerating script...', 'loading');
+
+      const metadata = {
+        chapterContent: currentPdfData.extractedText,
+        gradeBand: document.getElementById('gradeBand').value,
+        durationMinutes: parseInt(document.getElementById('duration').value),
+        speaker1Name: document.getElementById('speaker1').value,
+        speaker2Name: document.getElementById('speaker2').value,
+        episodeTitle: document.getElementById('episodeTitle').value,
+        episodeNumber: 1,
+        modifications: "Make it more engaging and add more examples"
+      };
+
+      try {
+        const response = await fetch('/api/regenerate-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(metadata)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          currentScript = result.data.script;
+          displayScript(result.data.script);
+          showStatus('Script regenerated successfully!', 'success');
+        } else {
+          showStatus('Regeneration failed: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showStatus('Regeneration failed: ' + error.message, 'error');
+      }
+    }
+
+    function displayScript(script) {
+      const scriptPreview = document.getElementById('scriptPreview');
+      const scriptContent = document.getElementById('scriptContent');
+      const scriptActions = document.getElementById('scriptActions');
+      const regenerateBtn = document.getElementById('regenerateScript');
+
+      // Format script for display
+      let formattedScript = `Title: ${script.title}\n`;
+      formattedScript += `Duration: ${Math.floor(script.estimated_duration_seconds / 60)} minutes\n`;
+      formattedScript += `Word Count: ${script.word_count}\n`;
+      formattedScript += `Grade Level: ${script.grade_level}\n\n`;
+
+      script.sections.forEach(section => {
+        formattedScript += `--- ${section.type.toUpperCase()} ---\n`;
+        formattedScript += section.text + '\n\n';
+      });
+
+      scriptContent.textContent = formattedScript;
+      scriptPreview.classList.remove('hidden');
+      scriptActions.classList.remove('hidden');
+      regenerateBtn.classList.remove('hidden');
+    }
+
+    async function generateAudio() {
+      if (!currentScript) {
+        showStatus('No script available for audio generation', 'error');
+        return;
+      }
+
+      showStatus('Cleaning script and starting audio generation...', 'loading');
+
+      // Clean the script text - keep ONLY character dialogues with proper formatting
+      function cleanScriptForTTS(scriptText) {
+        // First, let's handle the case where dialogue might be in one long line
+        let processedText = scriptText
+          // Remove anything in square brackets [like this]
+          .replace(/\[[^\]]*\]/g, '')
+          // Remove anything in parentheses (like this)
+          .replace(/\([^\)]*\)/g, '')
+          // Remove stage directions like "--- DIALOGUE ---"
+          .replace(/---[^---]*---/g, '')
+          // Remove title, duration, word count lines
+          .replace(/^Title:.*$/gm, '')
+          .replace(/^Duration:.*$/gm, '')
+          .replace(/^Word Count:.*$/gm, '')
+          .replace(/^Grade Level:.*$/gm, '');
+        
+        // Split dialogue that might be on one line (Name: text Name: text)
+        // Look for pattern where one dialogue ends and another begins
+        processedText = processedText.replace(/([.!?])\s+([A-Za-z]+:)/g, '$1\n$2');
+        
+        // Now split into lines and filter
+        const dialogueLines = processedText
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => {
+            // Keep only lines that look like "Name: dialogue"
+            return line.length > 0 && /^[A-Za-z]+:\s*.+/.test(line);
+          })
+          .map(line => {
+            // Clean up each dialogue line
+            return line.replace(/\s+/g, ' ').trim();
+          });
+        
+        console.log(`[Script Cleaning] Found ${dialogueLines.length} dialogue lines`);
+        dialogueLines.forEach((line, i) => {
+          console.log(`[Script Cleaning] Line ${i + 1}: ${line.substring(0, 50)}...`);
+        });
+        
+        return dialogueLines.join('\n');
+      }
+
+      // Combine all sections into one clean script instead of separate prompts
+      const allSectionsText = currentScript.sections.map(section => section.text).join('\n\n');
+      const cleanedScript = cleanScriptForTTS(allSectionsText);
+      
+      console.log('Original script length:', allSectionsText.length);
+      console.log('Cleaned script length:', cleanedScript.length);
+      console.log('Cleaned script preview:', cleanedScript.substring(0, 200) + '...');
+      
+      // Send as single prompt instead of multiple prompts
+      const cleanedPrompts = [cleanedScript]; // Single script file
+      
+      const audioRequest = {
+        context: `Educational revision for ${currentScript.grade_level}`,
+        journeyName: currentScript.title.replace(/[^a-zA-Z0-9]/g, '_'),
+        prompts: cleanedPrompts,
+        hostName: document.getElementById('speaker1').value,
+        hostVoiceId: document.getElementById('speaker1Voice').value,
+        speakerName: document.getElementById('speaker2').value,
+        speakerVoiceId: document.getElementById('speaker2Voice').value,
+        provider: 'google'
+      };
+      
+      console.log('Audio request:', audioRequest);
+
+      try {
+        console.log('Sending audio generation request...');
+        const response = await fetch('/api/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(audioRequest)
+        });
+
+        console.log('Response status:', response.status);
+        const result = await response.json();
+        console.log('Response data:', result);
+
+        if (result.status === 'completed') {
+          showStatus('🎉 Audio generated successfully! Check the outputs folder.', 'success');
+        } else {
+          showStatus('Audio generation failed: ' + (result.error || 'Unknown error'), 'error');
+          console.error('Audio generation error:', result);
+        }
+      } catch (error) {
+        showStatus('Audio generation failed: ' + error.message, 'error');
+      }
+    }
+
+    function editScript() {
+      // Simple script editing functionality
+      const scriptContent = document.getElementById('scriptContent');
+      const currentText = scriptContent.textContent;
+      
+      scriptContent.innerHTML = `<textarea style="width: 100%; height: 300px; border: none; background: transparent; resize: vertical;">${currentText}</textarea>`;
+      
+      const textarea = scriptContent.querySelector('textarea');
+      textarea.focus();
+      
+      // Add save button
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = '💾 Save Changes';
+      saveBtn.onclick = () => {
+        scriptContent.textContent = textarea.value;
+        saveBtn.remove();
+      };
+      scriptContent.appendChild(saveBtn);
+    }
+
+    function activateStep(stepNumber) {
+      // Remove active class from all steps
+      document.querySelectorAll('.step').forEach(step => {
+        step.classList.remove('active');
+      });
+      
+      // Add active class to current step
+      document.getElementById(`step${stepNumber}`).classList.add('active');
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = `status ${type}`;
+      status.classList.remove('hidden');
+      
+      if (type === 'success') {
+        setTimeout(() => {
+          status.classList.add('hidden');
+        }, 5000);
+      }
+    }
+  </script>
+</body>
+</html>

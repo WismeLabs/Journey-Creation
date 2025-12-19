@@ -7,6 +7,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Google TTS imports
 const { TextToSpeechClient } = require('@google-cloud/text-to-speech');
+const { generateIndianTTS, isIndianVoiceSupported } = require('./src/utils/indianTTSConfig');
 
 // TTS config: set these in your environment or replace here
 
@@ -17,18 +18,46 @@ const SPEAKER_VOICE_ID = process.env.SPEAKER_VOICE_ID || '<speaker_voice_id>';
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const AUTOMATION_ENABLED = (process.env.AUTOMATION_ENABLED || 'true').toLowerCase() === 'true';
 
-// TTS Provider Configuration
-const TTS_PROVIDER = process.env.TTS_PROVIDER || 'elevenlabs'; // 'elevenlabs' or 'google'
+// TTS Provider Configuration - Default to Google with Indian voices for educational content
+const TTS_PROVIDER = process.env.TTS_PROVIDER || 'google'; // 'elevenlabs' or 'google'
 const GOOGLE_TTS_KEY = process.env.GOOGLE_TTS_API_KEY;
-const GOOGLE_HOST_VOICE = process.env.GOOGLE_HOST_VOICE || 'en-US-Journey-D';
-const GOOGLE_SPEAKER_VOICE = process.env.GOOGLE_SPEAKER_VOICE || 'en-US-Journey-F';
+const GOOGLE_HOST_VOICE = process.env.GOOGLE_HOST_VOICE || 'en-IN-PrabhatNeural';
+const GOOGLE_SPEAKER_VOICE = process.env.GOOGLE_SPEAKER_VOICE || 'en-IN-NeerjaNeural';
 
-// Initialize Google TTS client
+// Initialize Google TTS client - Always initialize for educational content
 let googleTTSClient = null;
-if (GOOGLE_TTS_KEY && TTS_PROVIDER === 'google') {
-  googleTTSClient = new TextToSpeechClient({
-    apiKey: GOOGLE_TTS_KEY
-  });
+
+// Check for service account credentials first
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  try {
+    googleTTSClient = new TextToSpeechClient();
+    console.log('[Google TTS] ✅ Client initialized with service account credentials');
+  } catch (error) {
+    console.error('[Google TTS] ❌ Service account initialization failed:', error.message);
+  }
+} else if (GOOGLE_TTS_KEY) {
+  console.log('[Google TTS] ⚠️  API key found but Google TTS requires service account authentication');
+  console.log('[Google TTS] Please set up service account credentials:');
+  console.log('[Google TTS] 1. Create service account at https://console.cloud.google.com/');
+  console.log('[Google TTS] 2. Download JSON key file');
+  console.log('[Google TTS] 3. Set GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json');
+} else {
+  console.log('[Google TTS] ❌ No Google TTS credentials found');
+  console.log('[Google TTS] Please set up Google Cloud TTS service account');
+}
+
+// Test Google TTS client
+if (googleTTSClient) {
+  console.log('[Google TTS] 🧪 Testing client connection...');
+  // Simple test to verify the client works
+  googleTTSClient.listVoices({})
+    .then(() => {
+      console.log('[Google TTS] ✅ Client connection test successful');
+    })
+    .catch((error) => {
+      console.error('[Google TTS] ❌ Client connection test failed:', error.message);
+      googleTTSClient = null; // Disable if not working
+    });
 }
 // Optional: Manually trigger TTS for a user-supplied journeyN.txt
 async function ttsForUserJourney(journeyPath, hostName, hostVoiceId, speakerName, speakerVoiceId) {
@@ -124,12 +153,19 @@ async function generateElevenLabsTTS(text, voiceId, outPath) {
   fs.writeFileSync(outPath, response.data);
 }
 
-// New Google TTS function with Chirp3-HD voices
+// Enhanced Google TTS function with Indian voices for educational content
 async function generateGoogleTTS(text, voiceName, outPath) {
   if (!googleTTSClient) {
     throw new Error('Google TTS client not initialized');
   }
 
+  // Use Indian TTS configuration if voice is supported
+  if (isIndianVoiceSupported(voiceName)) {
+    await generateIndianTTS(text, voiceName, outPath, googleTTSClient);
+    return;
+  }
+
+  // Fallback to original implementation for non-Indian voices
   const request = {
     input: { text: text },
     voice: { 
@@ -139,14 +175,13 @@ async function generateGoogleTTS(text, voiceName, outPath) {
     audioConfig: { 
       audioEncoding: 'LINEAR16',
       pitch: 0,
-      speakingRate: 1
+      speakingRate: 0.9 // Slightly slower for educational content
     }
   };
 
   const [response] = await googleTTSClient.synthesizeSpeech(request);
   
   // Convert LINEAR16 to MP3 and save
-  // For now, we'll save as WAV and you can convert to MP3 later if needed
   const wavPath = outPath.replace('.mp3', '.wav');
   fs.writeFileSync(wavPath, response.audioContent, 'binary');
   
@@ -173,8 +208,9 @@ async function ttsForScript(filePath, hostName, hostVoiceId, speakerName, speake
       return;
     }
   } else if (TTS_PROVIDER === 'google') {
-    if (!GOOGLE_TTS_KEY) {
-      console.log('[TTS] Skipped: Google TTS API key not set');
+    if (!googleTTSClient) {
+      console.log('[TTS] Skipped: GOOGLE TTS not properly configured.');
+      console.log('[TTS] Please set up Google Cloud service account credentials.');
       return;
     }
     // Use Google voice names from env
@@ -206,16 +242,31 @@ async function ttsForScript(filePath, hostName, hostVoiceId, speakerName, speake
   // Assign voices: first speaker = host, second = speaker, rest = fallback to host voice
   const speakerVoiceMap = {};
   speakers.forEach((spk, i) => {
-    if (i === 0) speakerVoiceMap[spk] = hostVoiceId;
-    else if (i === 1) speakerVoiceMap[spk] = speakerVoiceId;
-    else speakerVoiceMap[spk] = hostVoiceId; // fallback
+    if (i === 0) {
+      speakerVoiceMap[spk] = hostVoiceId;
+      console.log(`[TTS] Speaker "${spk}" assigned HOST voice: ${hostVoiceId}`);
+    } else if (i === 1) {
+      speakerVoiceMap[spk] = speakerVoiceId;
+      console.log(`[TTS] Speaker "${spk}" assigned SPEAKER voice: ${speakerVoiceId}`);
+    } else {
+      speakerVoiceMap[spk] = hostVoiceId; // fallback
+      console.log(`[TTS] Speaker "${spk}" assigned fallback HOST voice: ${hostVoiceId}`);
+    }
   });
+  
+  console.log(`[TTS] Voice mapping:`, speakerVoiceMap);
+  console.log(`[TTS] Processing ${lineInfos.length} dialogue lines...`);
+  
   // Generate audio for each line
   for (const { speaker, text, idx } of lineInfos) {
     const voiceId = speakerVoiceMap[speaker];
     const safeSpeaker = speaker.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const outPath = path.join(path.dirname(filePath), `${safeSpeaker}_line${idx}.mp3`);
     const isHost = (speaker === speakers[0]);
+    
+    console.log(`[TTS] Line ${idx}: Speaker "${speaker}" using voice "${voiceId}"`);
+    console.log(`[TTS] Text preview: "${text.substring(0, 50)}..."`);
+    
     await ttsLine(text, voiceId, outPath, isHost);
   }
 }
@@ -301,32 +352,30 @@ async function runAutomation(prompts, context = "", journeyName, hostName, hostV
   // Create journey output dir
   const journeyDir = path.join(OUTPUT_DIR, journeyName);
   if (!fs.existsSync(journeyDir)) fs.mkdirSync(journeyDir, { recursive: true });
-  // Run all prompts in parallel
-  await Promise.all(prompts.map(async (prompt, i) => {
-    const episodeNum = i + 1;
-    const outputDir = path.join(journeyDir, `Output-${episodeNum}`);
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
-    console.log(`\n--- Processing ${journeyName}/Output-${episodeNum} ---`);
-    // Step 1: Send prompt with context as history
-    const history = context ? [context] : [];
-    console.log(`[Prompt] Sending to Gemini:`, prompt);
-    const response = await interactWithGemini(prompt, history);
-    const journeyPath = path.join(outputDir, `journey${episodeNum}.txt`);
-    fs.writeFileSync(journeyPath, response, 'utf-8');
-    console.log(`[Prompt] Response written to ${journeyPath}`);
-    // Step 2: (journey_followup logic removed for now)
-    // Only journeyN.txt will be generated and used for TTS/merge.
-    // Step 3: Wait 30 seconds before starting TTS
-    console.log('[TTS] Waiting 30 seconds before starting audio generation...');
-    await new Promise(res => setTimeout(res, 30000));
-    // Step 4: TTS only for journeyX.txt (not followup)
-    if (ttsConfigured) {
-      console.log(`[TTS] Generating audio for ${journeyPath} using ${TTS_PROVIDER.toUpperCase()}`);
-      await ttsForScript(journeyPath, resolvedHostName, resolvedHostVoiceId, resolvedSpeakerName, resolvedSpeakerVoiceId);
-    } else {
-      console.log(`[TTS] Skipped: ${TTS_PROVIDER.toUpperCase()} TTS not properly configured.`);
-    }
-  }));
+  // Process as single episode (educational scripts are already combined)
+  const outputDir = path.join(journeyDir, 'Output-1');
+  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
+  
+  console.log(`\n--- Processing ${journeyName}/Output-1 ---`);
+  
+  // For educational scripts, we expect a single combined script
+  const combinedScript = prompts.join('\n\n'); // Combine all prompts if multiple
+  
+  console.log(`[Script] Processing combined educational script`);
+  console.log(`[Script] Total length: ${combinedScript.length} characters`);
+  
+  // Write the script directly (no need to call Gemini again)
+  const journeyPath = path.join(outputDir, 'journey1.txt');
+  fs.writeFileSync(journeyPath, combinedScript, 'utf-8');
+  console.log(`[Script] Educational script written to ${journeyPath}`);
+  
+  // Generate audio immediately
+  if (ttsConfigured) {
+    console.log(`[TTS] Generating audio for ${journeyPath} using ${TTS_PROVIDER.toUpperCase()}`);
+    await ttsForScript(journeyPath, resolvedHostName, resolvedHostVoiceId, resolvedSpeakerName, resolvedSpeakerVoiceId);
+  } else {
+    console.log(`[TTS] Skipped: ${TTS_PROVIDER.toUpperCase()} TTS not properly configured.`);
+  }
   // Check for audio files before merging
   const episodeDirs = fs.readdirSync(journeyDir)
     .filter(f => f.startsWith('Output-'))

@@ -2,7 +2,45 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const FFMPEG_PATH = "C:\\ffmpeg-master-latest-win64-gpl-shared\\bin\\ffmpeg.exe";
+// Auto-detect ffmpeg path based on operating system
+function getFFmpegPath() {
+  const os = require('os');
+  const { execSync } = require('child_process');
+  
+  try {
+    // Try to find ffmpeg in PATH first
+    const result = execSync('which ffmpeg', { encoding: 'utf8' }).trim();
+    if (result) {
+      console.log(`[merge] Found ffmpeg at: ${result}`);
+      return result;
+    }
+  } catch (error) {
+    // ffmpeg not in PATH, try common locations
+  }
+  
+  // Common ffmpeg locations by OS
+  const commonPaths = {
+    'darwin': ['/usr/local/bin/ffmpeg', '/opt/homebrew/bin/ffmpeg'],
+    'linux': ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg'],
+    'win32': ['C:\\ffmpeg\\bin\\ffmpeg.exe', 'ffmpeg.exe']
+  };
+  
+  const platform = os.platform();
+  const paths = commonPaths[platform] || [];
+  
+  for (const ffmpegPath of paths) {
+    if (fs.existsSync(ffmpegPath)) {
+      console.log(`[merge] Found ffmpeg at: ${ffmpegPath}`);
+      return ffmpegPath;
+    }
+  }
+  
+  // Fallback to just 'ffmpeg' and hope it's in PATH
+  console.log(`[merge] Using fallback ffmpeg command`);
+  return 'ffmpeg';
+}
+
+const FFMPEG_PATH = getFFmpegPath();
 
 // Requires ffmpeg installed and in PATH
 function mergeAudiosInOrder(outputDir, outFile) {
